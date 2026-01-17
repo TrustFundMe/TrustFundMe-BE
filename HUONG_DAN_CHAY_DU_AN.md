@@ -24,6 +24,7 @@ Start-Service MySQL80
 Mở MySQL Workbench và chạy:
 ```sql
 CREATE DATABASE IF NOT EXISTS trustfundme_identity_db;
+CREATE DATABASE IF NOT EXISTS trustfundme_campaign_db;
 ```
 
 **Lưu ý:** Database sẽ tự động tạo nếu chưa có (vì có `createDatabaseIfNotExist=true`)
@@ -49,18 +50,19 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 .\run-all-services.ps1
 ```
 
-Script sẽ tự động mở 3 cửa sổ PowerShell, mỗi cửa sổ chạy 1 service.
+Script sẽ tự động mở 4 cửa sổ PowerShell, mỗi cửa sổ chạy 1 service.
 
 **Thứ tự chạy:**
 1. Discovery Server (port 8761) - Chạy trước
 2. API Gateway (port 8080) - Chạy sau
-3. Identity Service (port 8081) - Chạy cuối
+3. Identity Service (port 8081)
+4. Campaign Service (port 8082) - Chạy cuối
 
 ---
 
 ### Cách 2: Chạy Thủ Công Từng Service
 
-Mở **3 cửa sổ PowerShell riêng biệt**:
+Mở **4 cửa sổ PowerShell riêng biệt**:
 
 #### Terminal 1 - Discovery Server
 ```powershell
@@ -89,6 +91,15 @@ mvn spring-boot:run
 
 **Đợi đến khi thấy:** `Started IdentityServiceApplication`
 
+#### Terminal 4 - Campaign Service
+```powershell
+cd "D:\HOC\Ki 9\TrustFundME- BE\campaign-service"
+$env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+mvn spring-boot:run
+```
+
+**Đợi đến khi thấy:** `Started CampaignServiceApplication`
+
 ---
 
 ## ✅ Kiểm Tra Services Đã Chạy
@@ -104,6 +115,10 @@ mvn spring-boot:run
 ### 3. Identity Service
 - **Swagger UI:** http://localhost:8081/swagger-ui.html
 - **API Docs:** http://localhost:8081/api-docs
+
+### 4. Campaign Service
+- **Swagger UI:** http://localhost:8082/swagger-ui.html
+- **API Docs:** http://localhost:8082/api-docs
 
 ---
 
@@ -123,6 +138,10 @@ mvn spring-boot:run
 }
 ```
 5. Click "Execute"
+
+### Campaign Service (port 8082)
+1. Mở: http://localhost:8082/swagger-ui.html
+2. Thử `GET /api/campaigns` (danh sách campaign), `GET /api/campaigns/{id}`, `GET /api/campaigns/fund-owner/{fundOwnerId}`
 
 ### Qua API Gateway
 ```powershell
@@ -182,9 +201,9 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 
 1. ✅ Đảm bảo MySQL đang chạy
 2. ✅ Kiểm tra password MySQL trong `application.properties`
-3. ✅ Chạy: `.\run-all-services.ps1`
+3. ✅ Chạy: `.\run-all-services.ps1` (sẽ mở 4 cửa sổ: Discovery, API Gateway, Identity, Campaign)
 4. ✅ Đợi tất cả services khởi động xong
-5. ✅ Test API qua Swagger: http://localhost:8081/swagger-ui.html
+5. ✅ Test API qua Swagger: http://localhost:8081/swagger-ui.html (Identity) hoặc http://localhost:8082/swagger-ui.html (Campaign)
 
 ---
 
@@ -193,6 +212,7 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 - **Eureka Dashboard:** http://localhost:8761
 - **API Gateway Health:** http://localhost:8080/actuator/health
 - **Identity Service Swagger:** http://localhost:8081/swagger-ui.html
+- **Campaign Service Swagger:** http://localhost:8082/swagger-ui.html
 - **API Endpoint:** http://localhost:8080/api/auth/*
 
 ---

@@ -41,6 +41,7 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
                         .anyRequest().authenticated()
                 )
