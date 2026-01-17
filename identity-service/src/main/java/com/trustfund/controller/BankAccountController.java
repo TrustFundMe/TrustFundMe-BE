@@ -21,6 +21,16 @@ public class BankAccountController {
 
     private final BankAccountService bankAccountService;
 
+    @GetMapping
+    @Operation(summary = "Get my bank accounts", description = "Get all bank accounts linked by current authenticated user")
+    public ResponseEntity<java.util.List<BankAccountResponse>> getMyBankAccounts() {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userIdStr = authentication.getName();
+        Long userId = Long.parseLong(userIdStr);
+
+        return ResponseEntity.ok(bankAccountService.getMyBankAccounts(userId));
+    }
+
     @PostMapping
     @Operation(summary = "Create bank account", description = "Create a new bank account for the authenticated user")
     public ResponseEntity<BankAccountResponse> create(@Valid @RequestBody CreateBankAccountRequest request) {

@@ -1,5 +1,6 @@
 package com.trustfund.service.implementServices;
 
+import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.model.BankAccount;
 import com.trustfund.model.User;
 import com.trustfund.model.request.CreateBankAccountRequest;
@@ -9,6 +10,9 @@ import com.trustfund.repository.UserRepository;
 import com.trustfund.service.interfaceServices.BankAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -33,16 +37,32 @@ public class BankAccountServiceImpl implements BankAccountService {
 
         BankAccount saved = bankAccountRepository.save(bankAccount);
 
+        return toBankAccountResponse(saved);
+    }
+
+    @Override
+    public List<BankAccountResponse> getMyBankAccounts(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        List<BankAccount> accounts = bankAccountRepository.findByUser_Id(userId);
+        
+        return accounts.stream()
+                .map(this::toBankAccountResponse)
+                .collect(Collectors.toList());
+    }
+
+    private BankAccountResponse toBankAccountResponse(BankAccount bankAccount) {
         return BankAccountResponse.builder()
-                .id(saved.getId())
-                .userId(saved.getUser().getId())
-                .bankCode(saved.getBankCode())
-                .accountNumber(saved.getAccountNumber())
-                .accountHolderName(saved.getAccountHolderName())
-                .isVerified(saved.getIsVerified())
-                .status(saved.getStatus())
-                .createdAt(saved.getCreatedAt())
-                .updatedAt(saved.getUpdatedAt())
+                .id(bankAccount.getId())
+                .userId(bankAccount.getUser().getId())
+                .bankCode(bankAccount.getBankCode())
+                .accountNumber(bankAccount.getAccountNumber())
+                .accountHolderName(bankAccount.getAccountHolderName())
+                .isVerified(bankAccount.getIsVerified())
+                .status(bankAccount.getStatus())
+                .createdAt(bankAccount.getCreatedAt())
+                .updatedAt(bankAccount.getUpdatedAt())
                 .build();
     }
 }
