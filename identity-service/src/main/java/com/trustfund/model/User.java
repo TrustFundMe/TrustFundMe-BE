@@ -60,8 +60,9 @@ public class User {
 
     public enum Role {
         USER,
-        ADMIN,
-        ORGANIZATION_ADMIN
+        FUND_OWNER,
+        STAFF,
+        ADMIN
     }
 }
 

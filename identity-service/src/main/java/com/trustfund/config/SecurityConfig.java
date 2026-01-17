@@ -41,7 +41,7 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "ORGANIZATION_ADMIN")
+                        .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess
