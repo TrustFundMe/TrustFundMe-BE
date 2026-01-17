@@ -1,6 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateBankAccountRequest;
+import com.trustfund.model.request.UpdateBankAccountStatusRequest;
 import com.trustfund.model.response.BankAccountResponse;
 import com.trustfund.service.interfaceServices.BankAccountService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -29,6 +30,22 @@ public class BankAccountController {
         Long userId = Long.parseLong(userIdStr);
 
         return ResponseEntity.ok(bankAccountService.getMyBankAccounts(userId));
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Update bank account status", description = "Update status and verification for a bank account")
+    public ResponseEntity<BankAccountResponse> updateStatus(@PathVariable("id") Long id,
+                                                           @Valid @RequestBody UpdateBankAccountStatusRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        String currentRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .orElse(null);
+
+        BankAccountResponse response = bankAccountService.updateStatus(id, request, currentUserId, currentRole);
+        return ResponseEntity.ok(response);
     }
 
     @PostMapping

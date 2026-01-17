@@ -4,6 +4,7 @@ import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.model.BankAccount;
 import com.trustfund.model.User;
 import com.trustfund.model.request.CreateBankAccountRequest;
+import com.trustfund.model.request.UpdateBankAccountStatusRequest;
 import com.trustfund.model.response.BankAccountResponse;
 import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
@@ -50,6 +51,52 @@ public class BankAccountServiceImpl implements BankAccountService {
         return accounts.stream()
                 .map(this::toBankAccountResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public BankAccountResponse updateStatus(Long bankAccountId, UpdateBankAccountStatusRequest request, Long currentUserId, String currentRole) {
+        BankAccount bankAccount = bankAccountRepository.findById(bankAccountId)
+                .orElseThrow(() -> new NotFoundException("Bank account not found"));
+
+        if (bankAccount.getUser() == null || bankAccount.getUser().getId() == null) {
+            throw new NotFoundException("Bank account user not found");
+        }
+
+        boolean isOwner = bankAccount.getUser().getId().equals(currentUserId);
+        String role = currentRole;
+        if (role != null && role.startsWith("ROLE_")) {
+            role = role.substring("ROLE_".length());
+        }
+
+        boolean isStaff = role != null && role.equals("STAFF");
+        boolean isAdmin = role != null && role.equals("ADMIN");
+
+        if (!isOwner && !isStaff && !isAdmin) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Not allowed to update this bank account");
+        }
+
+        String newStatus = request.getStatus();
+        if (newStatus == null) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
+        }
+
+        if (newStatus.equals("DISABLE")) {
+            bankAccount.setStatus("DISABLE");
+        } else if (newStatus.equals("ACTIVE")) {
+            if (!isStaff && !isAdmin) {
+                throw new com.trustfund.exception.exceptions.UnauthorizedException("Only staff can activate bank account");
+            }
+            bankAccount.setStatus("ACTIVE");
+
+            if (request.getIsVerified() != null) {
+                bankAccount.setIsVerified(request.getIsVerified());
+            }
+        } else {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
+        }
+
+        BankAccount saved = bankAccountRepository.save(bankAccount);
+        return toBankAccountResponse(saved);
     }
 
     private BankAccountResponse toBankAccountResponse(BankAccount bankAccount) {
