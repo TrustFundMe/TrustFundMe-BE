@@ -23,21 +23,21 @@ public class UserController {
     private final UserService userService;
 
     @GetMapping
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZATION_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Get all users", description = "Retrieve a list of all users (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<List<UserInfo>> getAllUsers() {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZATION_ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER')")
     @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'ORGANIZATION_ADMIN', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER')")
     @Operation(summary = "Update user", description = "Update user information by user ID (User can only update their own profile)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> updateUser(
             @PathVariable Long id,
@@ -46,7 +46,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZATION_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Delete user", description = "Permanently delete a user by user ID (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.deleteUser(id);
@@ -54,14 +54,14 @@ public class UserController {
     }
 
     @PutMapping("/{id}/ban")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZATION_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Ban user", description = "Ban/deactivate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> banUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.banUser(id));
     }
 
     @PutMapping("/{id}/unban")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('ORGANIZATION_ADMIN')")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Unban user", description = "Unban/activate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> unbanUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.unbanUser(id));
