@@ -99,6 +99,13 @@ public class BankAccountServiceImpl implements BankAccountService {
         return toBankAccountResponse(saved);
     }
 
+    @Override
+    public List<BankAccountResponse> getAllBankAccounts() {
+        return bankAccountRepository.findAll().stream()
+                .map(this::toBankAccountResponse)
+                .collect(Collectors.toList());
+    }
+
     private BankAccountResponse toBankAccountResponse(BankAccount bankAccount) {
         return BankAccountResponse.builder()
                 .id(bankAccount.getId())

@@ -12,4 +12,6 @@ public interface BankAccountService {
     List<BankAccountResponse> getMyBankAccounts(Long userId);
 
     BankAccountResponse updateStatus(Long bankAccountId, UpdateBankAccountStatusRequest request, Long currentUserId, String currentRole);
+
+    List<BankAccountResponse> getAllBankAccounts();
 }

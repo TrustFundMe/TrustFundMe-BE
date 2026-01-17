@@ -12,6 +12,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -30,6 +31,13 @@ public class BankAccountController {
         Long userId = Long.parseLong(userIdStr);
 
         return ResponseEntity.ok(bankAccountService.getMyBankAccounts(userId));
+    }
+
+    @GetMapping("/all")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get all bank accounts", description = "Get all bank accounts in database (STAFF/ADMIN only)")
+    public ResponseEntity<java.util.List<BankAccountResponse>> getAllBankAccounts() {
+        return ResponseEntity.ok(bankAccountService.getAllBankAccounts());
     }
 
     @PatchMapping("/{id}/status")
