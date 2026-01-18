@@ -63,8 +63,9 @@ public class CampaignController {
     @PutMapping("/{id}")
     @Operation(
             summary = "Update campaign",
-            description = "Update an existing campaign (Authentication required - any authenticated user)"
+            description = "Update an existing campaign (Fund Owner, Staff and Admin only)"
     )
+    @PreAuthorize("hasAnyRole('FUND_OWNER', 'STAFF', 'ADMIN')")
     public ResponseEntity<Campaign> update(@PathVariable Long id, @Valid @RequestBody UpdateCampaignRequest request) {
         return ResponseEntity.ok(campaignService.update(id, request));
     }
