@@ -30,6 +30,39 @@ public class FeedPostServiceImpl implements FeedPostService {
         return toResponse(saved);
     }
 
+    @Override
+    public FeedPostResponse getById(Long id, Long currentUserId) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        String visibility = post.getVisibility();
+        if (visibility == null || visibility.isBlank()) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
+        }
+
+        if (visibility.equals("PUBLIC")) {
+            return toResponse(post);
+        }
+
+        if (currentUserId == null) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        if (visibility.equals("PRIVATE")) {
+            if (!currentUserId.equals(post.getAuthorId())) {
+                throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to view this feed post");
+            }
+            return toResponse(post);
+        }
+
+        if (visibility.equals("FOLLOWERS")) {
+            // TODO: chưa có bảng follow trong feed-service, tạm thời yêu cầu login là đủ
+            return toResponse(post);
+        }
+
+        throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
+    }
+
     private FeedPostResponse toResponse(FeedPost entity) {
         return FeedPostResponse.builder()
                 .id(entity.getId())
