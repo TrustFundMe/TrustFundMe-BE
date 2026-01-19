@@ -37,6 +37,7 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/feed-posts/*").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess

@@ -30,4 +30,21 @@ public class FeedPostController {
         FeedPostResponse response = feedPostService.create(request, authorId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Get feed post detail", description = "Get detail of a feed post by id")
+    public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = null;
+        if (authentication != null) {
+            try {
+                currentUserId = Long.parseLong(authentication.getName());
+            } catch (Exception ignored) {
+                currentUserId = null;
+            }
+        }
+
+        FeedPostResponse response = feedPostService.getById(id, currentUserId);
+        return ResponseEntity.ok(response);
+    }
 }
