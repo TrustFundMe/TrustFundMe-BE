@@ -12,6 +12,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import com.trustfund.model.request.SupabaseLoginRequest;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -36,6 +38,12 @@ public class AuthController {
     @Operation(summary = "Refresh token", description = "Get new access token using refresh token")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Refresh-Token") String refreshToken) {
         return ResponseEntity.ok(authService.refreshToken(refreshToken));
+    }
+
+    @PostMapping("/login-supabase")
+    @Operation(summary = "Login with Supabase token", description = "Authenticate using Supabase access token (Google login via Supabase)")
+    public ResponseEntity<AuthResponse> loginWithSupabase(@Valid @RequestBody SupabaseLoginRequest request) {
+        return ResponseEntity.ok(authService.loginWithSupabase(request));
     }
 }
 
