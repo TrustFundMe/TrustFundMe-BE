@@ -21,9 +21,6 @@ public class UpdateCampaignRequest {
     @Size(max = 5000)
     private String description;
 
-    @Size(max = 500)
-    private String coverImage;
-
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 
@@ -35,6 +32,6 @@ public class UpdateCampaignRequest {
 
     private BigDecimal balance;
 
-    private Boolean approvedByStaff;
+    private Long approvedByStaff; // id staff duyệt
     private LocalDateTime approvedAt;
 }

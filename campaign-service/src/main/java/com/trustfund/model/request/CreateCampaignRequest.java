@@ -26,9 +26,6 @@ public class CreateCampaignRequest {
     @Size(max = 5000)
     private String description;
 
-    @Size(max = 500)
-    private String coverImage;
-
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 
