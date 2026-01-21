@@ -2,6 +2,7 @@ package com.trustfund.service.implementServices;
 
 import com.trustfund.model.FeedPost;
 import com.trustfund.model.request.CreateFeedPostRequest;
+import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.response.FeedPostResponse;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
@@ -126,6 +127,37 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         post.setVisibility(visibility);
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved);
+    }
+
+    @Override
+    public FeedPostResponse updateContent(Long id, Long currentUserId, UpdateFeedPostContentRequest request) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        if (currentUserId == null) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        if (!currentUserId.equals(post.getAuthorId())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to update this feed post");
+        }
+
+        boolean hasTitle = request.getTitle() != null && !request.getTitle().isBlank();
+        boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
+
+        if (!hasTitle && !hasContent) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
+        }
+
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
         FeedPost saved = feedPostRepository.save(post);
         return toResponse(saved);
     }
