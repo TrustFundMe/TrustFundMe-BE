@@ -1,4 +1,4 @@
-# Script to run Identity Service
+# Script to run Media Service
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
@@ -13,19 +13,11 @@ if (Test-Path $envFile) {
         if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
             $key = $matches[1].Trim()
             $value = $matches[2].Trim()
-            # Remove quotes if present
             if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
                 $value = $matches[1]
             }
-            # Map SHARED_* variables to non-prefixed versions for Spring Boot
-            if ($key -match '^SHARED_(.+)$') {
-                $springKey = $matches[1]
-                [Environment]::SetEnvironmentVariable($springKey, $value, "Process")
-                Write-Host "  Set $springKey (from $key)" -ForegroundColor Gray
-            } else {
-                [Environment]::SetEnvironmentVariable($key, $value, "Process")
-                Write-Host "  Set $key" -ForegroundColor Gray
-            }
+            [Environment]::SetEnvironmentVariable($key, $value, "Process")
+            Write-Host "  Set $key" -ForegroundColor Gray
         }
     }
     # Verify JWT_SECRET is loaded
@@ -42,18 +34,9 @@ if (Test-Path $envFile) {
     Write-Host "  Root directory: $rootDir" -ForegroundColor Gray
 }
 
-cd "D:\HOC\Ki 9\TrustFundME- BE\identity-service"
+cd "$PSScriptRoot\media-service"
 $env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+Write-Host "Starting Media Service on port 8083..." -ForegroundColor Green
+Write-Host "Note: Ensure MySQL is running and Discovery Server (Eureka) is up" -ForegroundColor Yellow
+mvn spring-boot:run
 
-# Verify JWT_SECRET is set before starting
-$jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")
-if (-not $jwtSecret -or $jwtSecret.Trim() -eq "") {
-    Write-Host "[ERROR] JWT_SECRET is not set! Please check your .env file." -ForegroundColor Red
-    Write-Host "  Expected .env file at: $envFile" -ForegroundColor Yellow
-    exit 1
-}
-
-Write-Host "Starting Identity Service on port 8081..." -ForegroundColor Green
-Write-Host "Note: Ensure MySQL is running and database 'trustfundme_identity_db' exists" -ForegroundColor Yellow
-Write-Host "Environment variables will be inherited by Maven process" -ForegroundColor Gray
-mvn spring-boot:run -e

@@ -16,7 +16,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashMap;
@@ -47,10 +46,17 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        // Campaigns endpoints
                         .requestMatchers(HttpMethod.GET, "/api/campaigns").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**").permitAll()
                         .requestMatchers("/api/campaigns/**").authenticated()
+                        // Fundraising Goals endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**").permitAll()
+                        .requestMatchers("/api/fundraising-goals/**").authenticated()
+                        // Campaign follow endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/campaign-follows/**").permitAll()
+                        .requestMatchers("/api/campaign-follows/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess

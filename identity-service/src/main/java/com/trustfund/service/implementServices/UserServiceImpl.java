@@ -9,9 +9,11 @@ import com.trustfund.repository.UserRepository;
 import com.trustfund.service.interfaceServices.UserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -23,6 +25,10 @@ public class UserServiceImpl implements UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final RestTemplate restTemplate;
+
+    @Value("${media.service.url:http://localhost:8083}")
+    private String mediaServiceUrl;
 
     @Override
     @Transactional(readOnly = true)
@@ -65,6 +71,11 @@ public class UserServiceImpl implements UserService {
             user.setPhoneNumber(request.getPhoneNumber());
         }
         if (request.getAvatarUrl() != null) {
+            // Nếu có avatarUrl cũ và khác với mới, xóa file cũ
+            String oldAvatarUrl = user.getAvatarUrl();
+            if (oldAvatarUrl != null && !oldAvatarUrl.equals(request.getAvatarUrl())) {
+                deleteOldAvatarFile(oldAvatarUrl);
+            }
             user.setAvatarUrl(request.getAvatarUrl());
         }
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
@@ -106,5 +117,20 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("Unbanned user with id: {}", id);
         return UserInfo.fromUser(user);
+    }
+
+    private void deleteOldAvatarFile(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
+            return;
+        }
+        try {
+            String deleteUrl = mediaServiceUrl + "/api/media/by-url?url=" + 
+                    java.net.URLEncoder.encode(avatarUrl, java.nio.charset.StandardCharsets.UTF_8);
+            restTemplate.delete(deleteUrl);
+            log.info("Deleted old avatar file: {}", avatarUrl);
+        } catch (Exception e) {
+            // Log but don't fail the update if delete fails
+            log.warn("Failed to delete old avatar file {}: {}", avatarUrl, e.getMessage());
+        }
     }
 }

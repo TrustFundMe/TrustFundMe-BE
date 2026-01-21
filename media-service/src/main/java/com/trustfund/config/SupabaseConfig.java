@@ -19,13 +19,12 @@ public class SupabaseConfig {
 
     private String normalizedBaseUrl() {
         if (supabaseUrl == null || supabaseUrl.trim().isEmpty()) {
-            throw new IllegalStateException("Thiếu cấu hình SUPABASE_URL (supabase.url). Hãy set env SUPABASE_URL=https://<project>.supabase.co");
+            throw new IllegalStateException("Missing SUPABASE_URL");
         }
         String base = supabaseUrl.trim();
         if (!(base.startsWith("http://") || base.startsWith("https://"))) {
-            throw new IllegalStateException("SUPABASE_URL phải có scheme http/https, ví dụ: https://<project>.supabase.co");
+            throw new IllegalStateException("SUPABASE_URL must include http/https scheme");
         }
-        // bỏ dấu / cuối nếu có để tránh // khi nối chuỗi
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
@@ -34,7 +33,7 @@ public class SupabaseConfig {
 
     private String requiredBucket() {
         if (bucketName == null || bucketName.trim().isEmpty()) {
-            throw new IllegalStateException("Thiếu cấu hình SUPABASE_STORAGE_BUCKET (supabase.storage.bucket). Hãy set env SUPABASE_STORAGE_BUCKET=<bucket_name>");
+            throw new IllegalStateException("Missing SUPABASE_STORAGE_BUCKET");
         }
         return bucketName.trim();
     }

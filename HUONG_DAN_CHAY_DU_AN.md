@@ -120,6 +120,10 @@ mvn spring-boot:run
 - **Swagger UI:** http://localhost:8082/swagger-ui.html
 - **API Docs:** http://localhost:8082/api-docs
 
+### 4. Media Service
+- **Swagger UI:** http://localhost:8083/swagger-ui.html
+- **API Docs:** http://localhost:8083/api-docs
+
 ---
 
 ## 🧪 Test API
@@ -194,6 +198,57 @@ Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ### Lỗi: "Main class not found"
 - Chạy: `mvn clean compile`
 - Sau đó chạy lại: `mvn spring-boot:run`
+
+### Lỗi: Maven JWT Dependencies (jjwt-api, jjwt-impl, jjwt-jackson)
+Nếu bạn gặp lỗi về JWT dependencies khi pull code từ GitHub:
+
+**Cách 1: Dùng script tự động (Khuyến nghị)**
+```powershell
+.\fix-maven-jwt.ps1
+```
+
+**Cách 2: Thủ công**
+```powershell
+# 1. Clean tất cả projects
+cd identity-service
+mvn clean
+cd ..\campaign-service
+mvn clean
+cd ..\api-gateway
+mvn clean
+cd ..\media-service
+mvn clean
+cd ..
+
+# 2. Xóa JWT dependencies từ local repository
+Remove-Item -Path "$env:USERPROFILE\.m2\repository\io\jsonwebtoken" -Recurse -Force
+
+# 3. Re-download dependencies
+cd identity-service
+mvn dependency:resolve
+cd ..\campaign-service
+mvn dependency:resolve
+cd ..\api-gateway
+mvn dependency:resolve
+cd ..\media-service
+mvn dependency:resolve
+cd ..
+```
+
+**Nguyên nhân thường gặp:**
+- Maven local repository bị corrupt
+- Java version khác nhau (cần Java 17+)
+- Maven version cũ
+- Cache của Maven
+
+**Kiểm tra:**
+```powershell
+# Kiểm tra Java version (cần 17+)
+java -version
+
+# Kiểm tra Maven version
+mvn -version
+```
 
 ---
 
