@@ -43,6 +43,9 @@ public class Campaign {
     @Column(length = 5000)
     private String description;
 
+    @Column(length = 100)
+    private String category;
+
     @Column(name = "start_date")
     private LocalDateTime startDate;
 
