@@ -7,9 +7,11 @@
 -- =======================================
 DROP DATABASE IF EXISTS trustfundme_campaign_db;
 DROP DATABASE IF EXISTS trustfundme_identity_db;
+DROP DATABASE IF EXISTS trustfundme_media_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -17,6 +19,7 @@ CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_un
 CREATE USER IF NOT EXISTS 'trustfundme_user'@'%' IDENTIFIED BY 'trustfundme_password';
 GRANT ALL PRIVILEGES ON trustfundme_campaign_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -109,15 +112,24 @@ CREATE TABLE bank_account (
 );
 
 -- =======================================
+-- 3.1 Schema: media-service (DB: trustfundme_media_db)
+-- =======================================
+-- Media service không lưu metadata vào DB, chỉ upload lên Supabase và trả về URL
+-- DB này giữ lại để sau này có thể dùng cho các tính năng khác
+USE trustfundme_media_db;
+-- (No tables needed - media files are stored only on Supabase)
+
+-- =======================================
 -- 4. Sample data
 -- =======================================
 -- Users (passwords are plain text placeholders; replace in real env)
+USE trustfundme_identity_db;
 INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, role, is_active, created_at, updated_at)
 VALUES
     (1, 'admin@example.com',    'password', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, NOW(), NOW()),
     (2, 'staff@example.com',    'password', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, NOW(), NOW()),
-    (3, 'owner@example.com',    'password', 'Fund Owner',   '0900000003', NULL, 'FUND_OWNER', TRUE, NOW(), NOW()),
-    (4, 'user@example.com',     'password', 'Normal User',  '0900000004', NULL, 'USER', TRUE, NOW(), NOW())
+    (3, 'owner@example.com',    'password', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, NOW(), NOW()),
+    (4, 'user@example.com',     'password', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Bank accounts (link to sample users)

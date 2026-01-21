@@ -120,6 +120,10 @@ mvn spring-boot:run
 - **Swagger UI:** http://localhost:8082/swagger-ui.html
 - **API Docs:** http://localhost:8082/api-docs
 
+### 4. Media Service
+- **Swagger UI:** http://localhost:8083/swagger-ui.html
+- **API Docs:** http://localhost:8083/api-docs
+
 ---
 
 ## 🧪 Test API
