@@ -3,6 +3,12 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
+# Load common functions
+$commonFunctionsPath = Join-Path $PSScriptRoot "common-functions.ps1"
+if (Test-Path $commonFunctionsPath) {
+    . $commonFunctionsPath
+}
+
 # Load .env file from root directory (same directory as script)
 $rootDir = $PSScriptRoot
 $envFile = Join-Path $rootDir ".env"
@@ -43,7 +49,9 @@ if (Test-Path $envFile) {
 }
 
 cd "$PSScriptRoot\identity-service"
-$env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+
+# Auto-detect and add Maven to PATH
+Add-MavenToPath | Out-Null
 
 # Verify JWT_SECRET is set before starting
 $jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")

@@ -3,7 +3,15 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
+# Load common functions
+$commonFunctionsPath = Join-Path $PSScriptRoot "common-functions.ps1"
+if (Test-Path $commonFunctionsPath) {
+    . $commonFunctionsPath
+}
+
 cd "$PSScriptRoot\api-gateway"
-$env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+
+# Auto-detect and add Maven to PATH
+Add-MavenToPath | Out-Null
 Write-Host "Starting API Gateway on port 8080..." -ForegroundColor Green
 mvn spring-boot:run

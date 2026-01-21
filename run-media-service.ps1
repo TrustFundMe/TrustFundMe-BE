@@ -3,6 +3,12 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
+# Load common functions
+$commonFunctionsPath = Join-Path $PSScriptRoot "common-functions.ps1"
+if (Test-Path $commonFunctionsPath) {
+    . $commonFunctionsPath
+}
+
 # Load .env file from root directory (same directory as script)
 $rootDir = $PSScriptRoot
 $envFile = Join-Path $rootDir ".env"
@@ -35,7 +41,9 @@ if (Test-Path $envFile) {
 }
 
 cd "$PSScriptRoot\media-service"
-$env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+
+# Auto-detect and add Maven to PATH
+Add-MavenToPath | Out-Null
 Write-Host "Starting Media Service on port 8083..." -ForegroundColor Green
 Write-Host "Note: Ensure MySQL is running and Discovery Server (Eureka) is up" -ForegroundColor Yellow
 mvn spring-boot:run
