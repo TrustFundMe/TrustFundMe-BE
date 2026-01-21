@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.server.reactive.ServerHttpRequest;
 import org.springframework.http.server.reactive.ServerHttpResponse;
@@ -17,7 +18,6 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 @Slf4j
 @Component
@@ -26,19 +26,14 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     @Value("${jwt.secret:trustfund-secret-key-for-jwt-token-generation-minimum-256-bits}")
     private String jwtSecret;
 
-    private static final List<String> PUBLIC_ENDPOINTS = List.of(
-            "/api/auth/login",
-            "/api/auth/register",
-            "/api/auth/refresh"
-    );
-
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        HttpMethod method = request.getMethod();
 
         // Skip authentication for public endpoints
-        if (isPublicEndpoint(path)) {
+        if (isPublicEndpoint(path, method)) {
             return chain.filter(exchange);
         }
 
@@ -64,8 +59,25 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
     }
 
-    private boolean isPublicEndpoint(String path) {
-        return PUBLIC_ENDPOINTS.stream().anyMatch(path::startsWith);
+    private boolean isPublicEndpoint(String path, HttpMethod method) {
+        // /api/auth - All methods are public
+        if (path.startsWith("/api/auth")) {
+            return true;
+        }
+        
+        // /api/media - POST (upload) and GET (read) are public
+        if (path.startsWith("/api/media")) {
+            return method == HttpMethod.POST || method == HttpMethod.GET;
+        }
+        
+        // Campaign Service - Only GET methods are public
+        if (path.startsWith("/api/campaigns") || 
+            path.startsWith("/api/fundraising-goals") || 
+            path.startsWith("/api/campaign-follows")) {
+            return method == HttpMethod.GET;
+        }
+        
+        return false;
     }
 
     private String extractToken(ServerHttpRequest request) {

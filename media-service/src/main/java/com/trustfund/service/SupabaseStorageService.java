@@ -1,4 +1,4 @@
-package com.trustfund.service.implementServices;
+package com.trustfund.service;
 
 import com.trustfund.config.SupabaseConfig;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +23,7 @@ public class SupabaseStorageService {
     private final SupabaseConfig supabaseConfig;
     private final HttpClient httpClient = HttpClient.newHttpClient();
 
-    public String uploadFile(MultipartFile file) throws IOException, InterruptedException {
+    public StoredFile uploadFile(MultipartFile file) throws IOException, InterruptedException {
         String uniqueFilename = UUID.randomUUID() + "-" + file.getOriginalFilename();
         String encodedFilename = URLEncoder.encode(uniqueFilename, StandardCharsets.UTF_8);
         String uploadUrl = supabaseConfig.getUploadUrl() + "/" + encodedFilename;
@@ -39,14 +39,15 @@ public class SupabaseStorageService {
         int statusCode = response.statusCode();
 
         if (statusCode >= 200 && statusCode < 300) {
-            return supabaseConfig.getPublicUrl(encodedFilename);
+            String publicUrl = supabaseConfig.getPublicUrl(encodedFilename);
+            return new StoredFile(uniqueFilename, encodedFilename, publicUrl);
         } else {
             throw new RuntimeException("Supabase upload failed with status code: " + statusCode);
         }
     }
 
-    public void deleteFile(String fileName) throws IOException, InterruptedException {
-        String encodedFilename = URLEncoder.encode(fileName, StandardCharsets.UTF_8);
+    public void deleteFile(String storedName) throws IOException, InterruptedException {
+        String encodedFilename = URLEncoder.encode(storedName, StandardCharsets.UTF_8);
         String deleteUrl = supabaseConfig.getDeleteUrl(encodedFilename);
 
         HttpRequest request = HttpRequest.newBuilder()
@@ -62,5 +63,20 @@ public class SupabaseStorageService {
             throw new RuntimeException("Supabase delete failed with status code: " + statusCode);
         }
     }
+
+    public void deleteFileByPublicUrl(String publicUrl) throws IOException, InterruptedException {
+        if (publicUrl == null || publicUrl.isBlank()) {
+            return;
+        }
+        int idx = publicUrl.lastIndexOf('/');
+        if (idx == -1 || idx == publicUrl.length() - 1) {
+            throw new IllegalArgumentException("Invalid Supabase public URL: " + publicUrl);
+        }
+        String encodedFilename = publicUrl.substring(idx + 1);
+        String storedName = java.net.URLDecoder.decode(encodedFilename, StandardCharsets.UTF_8);
+        deleteFile(storedName);
+    }
+
+    public record StoredFile(String storedName, String encodedName, String publicUrl) {}
 }
 
