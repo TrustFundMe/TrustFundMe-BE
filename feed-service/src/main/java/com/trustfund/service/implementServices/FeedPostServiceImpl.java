@@ -63,6 +63,12 @@ public class FeedPostServiceImpl implements FeedPostService {
         throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
     }
 
+    @Override
+    public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId, org.springframework.data.domain.Pageable pageable) {
+        return feedPostRepository.findVisibleActivePosts(currentUserId, pageable)
+                .map(this::toResponse);
+    }
+
     private FeedPostResponse toResponse(FeedPost entity) {
         return FeedPostResponse.builder()
                 .id(entity.getId())

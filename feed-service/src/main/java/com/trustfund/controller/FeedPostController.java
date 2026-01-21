@@ -11,6 +11,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -29,6 +33,26 @@ public class FeedPostController {
 
         FeedPostResponse response = feedPostService.create(request, authorId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping
+    @Operation(summary = "Get active feed posts", description = "Get list of feed posts with status=ACTIVE and visibility rules")
+    public ResponseEntity<Page<FeedPostResponse>> getActiveFeedPosts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort
+    ) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        return ResponseEntity.ok(feedPostService.getActiveFeedPosts(currentUserId, pageable));
     }
 
     @GetMapping("/{id}")
