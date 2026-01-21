@@ -1,6 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateFeedPostRequest;
+import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostStatusRequest;
 import com.trustfund.model.request.UpdateFeedPostVisibilityRequest;
 import com.trustfund.model.response.FeedPostResponse;
@@ -98,6 +99,17 @@ public class FeedPostController {
                 .orElse(null);
 
         FeedPostResponse response = feedPostService.updateVisibility(id, currentUserId, currentRole, request.getVisibility());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}")
+    @Operation(summary = "Update feed post content", description = "Update title/content of a feed post (author only)")
+    public ResponseEntity<FeedPostResponse> updateContent(@PathVariable("id") Long id,
+                                                         @Valid @RequestBody UpdateFeedPostContentRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        FeedPostResponse response = feedPostService.updateContent(id, currentUserId, request);
         return ResponseEntity.ok(response);
     }
 }

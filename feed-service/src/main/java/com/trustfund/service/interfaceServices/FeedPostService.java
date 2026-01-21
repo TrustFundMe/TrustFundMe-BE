@@ -1,6 +1,7 @@
 package com.trustfund.service.interfaceServices;
 
 import com.trustfund.model.request.CreateFeedPostRequest;
+import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.response.FeedPostResponse;
 
 public interface FeedPostService {
@@ -13,4 +14,6 @@ public interface FeedPostService {
     FeedPostResponse updateStatus(Long id, Long currentUserId, String status);
 
     FeedPostResponse updateVisibility(Long id, Long currentUserId, String currentRole, String visibility);
+
+    FeedPostResponse updateContent(Long id, Long currentUserId, UpdateFeedPostContentRequest request);
 }
