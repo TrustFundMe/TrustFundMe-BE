@@ -1,16 +1,16 @@
 USE trustfundme_campaign_db;
 
+DROP TABLE IF EXISTS campaigns;
 
-CREATE TABLE IF NOT EXISTS campaigns (
+CREATE TABLE campaigns (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     fund_owner_id BIGINT NOT NULL,
-    approved_by_staff BOOLEAN NULL,
+    approved_by_staff BIGINT NULL, -- lưu id staff duyệt
     approved_at DATETIME NULL,
     thank_message VARCHAR(2000) NULL,
     balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
     title VARCHAR(255) NOT NULL,
     description VARCHAR(5000) NULL,
-    cover_image VARCHAR(500) NULL,
     start_date DATETIME NULL,
     end_date DATETIME NULL,
     status VARCHAR(50) NULL,

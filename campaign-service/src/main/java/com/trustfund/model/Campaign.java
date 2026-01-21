@@ -25,7 +25,7 @@ public class Campaign {
     private Long fundOwnerId;
 
     @Column(name = "approved_by_staff")
-    private Boolean approvedByStaff;
+    private Long approvedByStaff; // id của staff duyệt
 
     @Column(name = "approved_at")
     private LocalDateTime approvedAt;
@@ -42,9 +42,6 @@ public class Campaign {
 
     @Column(length = 5000)
     private String description;
-
-    @Column(name = "cover_image", length = 500)
-    private String coverImage;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;

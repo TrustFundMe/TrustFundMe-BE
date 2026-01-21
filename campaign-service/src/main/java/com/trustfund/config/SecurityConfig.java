@@ -47,10 +47,14 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        // Campaigns endpoints
                         .requestMatchers(HttpMethod.GET, "/api/campaigns").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**").permitAll()
                         .requestMatchers("/api/campaigns/**").authenticated()
+                        // Fundraising Goals endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**").permitAll()
+                        .requestMatchers("/api/fundraising-goals/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess
