@@ -1,6 +1,8 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateFeedPostRequest;
+import com.trustfund.model.request.UpdateFeedPostStatusRequest;
+import com.trustfund.model.request.UpdateFeedPostVisibilityRequest;
 import com.trustfund.model.response.FeedPostResponse;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -69,6 +71,33 @@ public class FeedPostController {
         }
 
         FeedPostResponse response = feedPostService.getById(id, currentUserId);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Update feed post status", description = "Update feed post status between DRAFT and ACTIVE")
+    public ResponseEntity<FeedPostResponse> updateStatus(@PathVariable("id") Long id,
+                                                        @Valid @RequestBody UpdateFeedPostStatusRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        FeedPostResponse response = feedPostService.updateStatus(id, currentUserId, request.getStatus());
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/visibility")
+    @Operation(summary = "Update feed post visibility", description = "Update feed post visibility between PUBLIC, PRIVATE and FOLLOWERS")
+    public ResponseEntity<FeedPostResponse> updateVisibility(@PathVariable("id") Long id,
+                                                            @Valid @RequestBody UpdateFeedPostVisibilityRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        String currentRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .orElse(null);
+
+        FeedPostResponse response = feedPostService.updateVisibility(id, currentUserId, currentRole, request.getVisibility());
         return ResponseEntity.ok(response);
     }
 }

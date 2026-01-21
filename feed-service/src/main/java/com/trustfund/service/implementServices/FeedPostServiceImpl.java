@@ -69,6 +69,67 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .map(this::toResponse);
     }
 
+    @Override
+    public FeedPostResponse updateStatus(Long id, Long currentUserId, String status) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        if (currentUserId == null) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        if (!currentUserId.equals(post.getAuthorId())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to update this feed post");
+        }
+
+        if (status == null || status.isBlank()) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
+        }
+
+        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
+        }
+
+        post.setStatus(status);
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved);
+    }
+
+    @Override
+    public FeedPostResponse updateVisibility(Long id, Long currentUserId, String currentRole, String visibility) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        if (currentUserId == null) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        String role = currentRole;
+        if (role != null && role.startsWith("ROLE_")) {
+            role = role.substring("ROLE_".length());
+        }
+
+        boolean isAuthor = currentUserId.equals(post.getAuthorId());
+        boolean isStaff = role != null && role.equals("STAFF");
+        boolean isAdmin = role != null && role.equals("ADMIN");
+
+        if (!isAuthor && !isStaff && !isAdmin) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to update this feed post");
+        }
+
+        if (visibility == null || visibility.isBlank()) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Visibility is required");
+        }
+
+        if (!visibility.equals("PUBLIC") && !visibility.equals("PRIVATE") && !visibility.equals("FOLLOWERS")) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
+        }
+
+        post.setVisibility(visibility);
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved);
+    }
+
     private FeedPostResponse toResponse(FeedPost entity) {
         return FeedPostResponse.builder()
                 .id(entity.getId())

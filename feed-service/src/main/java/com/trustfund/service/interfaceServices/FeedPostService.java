@@ -9,4 +9,8 @@ public interface FeedPostService {
     FeedPostResponse getById(Long id, Long currentUserId);
 
     org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId, org.springframework.data.domain.Pageable pageable);
+
+    FeedPostResponse updateStatus(Long id, Long currentUserId, String status);
+
+    FeedPostResponse updateVisibility(Long id, Long currentUserId, String currentRole, String visibility);
 }
