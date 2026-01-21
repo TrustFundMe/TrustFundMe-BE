@@ -3,11 +3,12 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
-# Load .env file from root directory
-$rootDir = Split-Path -Parent $PSScriptRoot
+# Load .env file from root directory (same directory as script)
+$rootDir = $PSScriptRoot
 $envFile = Join-Path $rootDir ".env"
 if (Test-Path $envFile) {
     Write-Host "Loading environment variables from .env file..." -ForegroundColor Cyan
+    Write-Host "  .env file path: $envFile" -ForegroundColor Gray
     Get-Content $envFile | ForEach-Object {
         if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
             $key = $matches[1].Trim()
@@ -20,8 +21,18 @@ if (Test-Path $envFile) {
             Write-Host "  Set $key" -ForegroundColor Gray
         }
     }
+    # Verify JWT_SECRET is loaded
+    $jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")
+    if ($jwtSecret) {
+        $secretLength = $jwtSecret.Length
+        Write-Host "  [OK] JWT_SECRET loaded (length: $secretLength chars)" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERROR] WARNING: JWT_SECRET not found in environment!" -ForegroundColor Red
+    }
 } else {
     Write-Host "Warning: .env file not found at $envFile" -ForegroundColor Yellow
+    Write-Host "  Current script directory: $PSScriptRoot" -ForegroundColor Gray
+    Write-Host "  Root directory: $rootDir" -ForegroundColor Gray
 }
 
 cd "$PSScriptRoot\campaign-service"

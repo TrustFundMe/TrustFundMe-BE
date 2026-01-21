@@ -23,6 +23,12 @@ public class JwtUtil {
     private Long expiration;
 
     private SecretKey getSigningKey() {
+        if (secret == null || secret.trim().isEmpty()) {
+            throw new IllegalStateException("JWT_SECRET is not configured! Please set JWT_SECRET environment variable or in .env file.");
+        }
+        if (secret.length() < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 characters long. Current length: " + secret.length());
+        }
         return Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
     }
 

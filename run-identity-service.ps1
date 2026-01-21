@@ -3,11 +3,12 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
-# Load .env file from root directory
-$rootDir = Split-Path -Parent $PSScriptRoot
+# Load .env file from root directory (same directory as script)
+$rootDir = $PSScriptRoot
 $envFile = Join-Path $rootDir ".env"
 if (Test-Path $envFile) {
     Write-Host "Loading environment variables from .env file..." -ForegroundColor Cyan
+    Write-Host "  .env file path: $envFile" -ForegroundColor Gray
     Get-Content $envFile | ForEach-Object {
         if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
             $key = $matches[1].Trim()
@@ -27,12 +28,32 @@ if (Test-Path $envFile) {
             }
         }
     }
+    # Verify JWT_SECRET is loaded
+    $jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")
+    if ($jwtSecret) {
+        $secretLength = $jwtSecret.Length
+        Write-Host "  [OK] JWT_SECRET loaded (length: $secretLength chars)" -ForegroundColor Green
+    } else {
+        Write-Host "  [ERROR] WARNING: JWT_SECRET not found in environment!" -ForegroundColor Red
+    }
 } else {
     Write-Host "Warning: .env file not found at $envFile" -ForegroundColor Yellow
+    Write-Host "  Current script directory: $PSScriptRoot" -ForegroundColor Gray
+    Write-Host "  Root directory: $rootDir" -ForegroundColor Gray
 }
 
 cd "D:\HOC\Ki 9\TrustFundME- BE\identity-service"
 $env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
+
+# Verify JWT_SECRET is set before starting
+$jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")
+if (-not $jwtSecret -or $jwtSecret.Trim() -eq "") {
+    Write-Host "[ERROR] JWT_SECRET is not set! Please check your .env file." -ForegroundColor Red
+    Write-Host "  Expected .env file at: $envFile" -ForegroundColor Yellow
+    exit 1
+}
+
 Write-Host "Starting Identity Service on port 8081..." -ForegroundColor Green
 Write-Host "Note: Ensure MySQL is running and database 'trustfundme_identity_db' exists" -ForegroundColor Yellow
+Write-Host "Environment variables will be inherited by Maven process" -ForegroundColor Gray
 mvn spring-boot:run -e
