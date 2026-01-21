@@ -47,6 +47,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .fundOwnerId(request.getFundOwnerId())
                 .title(request.getTitle())
                 .description(request.getDescription())
+                .category(request.getCategory())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .status(request.getStatus() != null ? request.getStatus() : "DRAFT")
@@ -65,6 +66,7 @@ public class CampaignServiceImpl implements CampaignService {
 
         if (request.getTitle() != null) campaign.setTitle(request.getTitle());
         if (request.getDescription() != null) campaign.setDescription(request.getDescription());
+        if (request.getCategory() != null) campaign.setCategory(request.getCategory());
         if (request.getStartDate() != null) campaign.setStartDate(request.getStartDate());
         if (request.getEndDate() != null) campaign.setEndDate(request.getEndDate());
         if (request.getStatus() != null) campaign.setStatus(request.getStatus());

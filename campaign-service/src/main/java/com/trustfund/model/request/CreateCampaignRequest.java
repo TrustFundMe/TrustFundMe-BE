@@ -26,6 +26,9 @@ public class CreateCampaignRequest {
     @Size(max = 5000)
     private String description;
 
+    @Size(max = 100)
+    private String category;
+
     private LocalDateTime startDate;
     private LocalDateTime endDate;
 

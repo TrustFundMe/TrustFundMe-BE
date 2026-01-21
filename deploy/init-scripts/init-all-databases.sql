@@ -37,6 +37,7 @@ CREATE TABLE campaigns (
     balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
     title VARCHAR(255) NOT NULL,
     description VARCHAR(5000) NULL,
+    category VARCHAR(100) NULL,
     start_date DATETIME NULL,
     end_date DATETIME NULL,
     status VARCHAR(50) NULL,
@@ -143,10 +144,10 @@ ON DUPLICATE KEY UPDATE account_number = VALUES(account_number);
 USE trustfundme_campaign_db;
 
 -- Campaigns (fund_owner_id points to user id = 3)
-INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, start_date, end_date, status, created_at, updated_at)
+INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, category, start_date, end_date, status, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn đã ủng hộ!', 1000.00, 'Chiến dịch gây quỹ 1', 'Mô tả chiến dịch 1', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Chiến dịch gây quỹ 2', 'Mô tả chiến dịch 2', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NOW(), NOW())
+    (1, 3, 2, NOW(), 'Cảm ơn đã ủng hộ!', 1000.00, 'Chiến dịch gây quỹ 1', 'Mô tả chiến dịch 1', 'Education', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NOW(), NOW()),
+    (2, 3, NULL, NULL, NULL, 0.00, 'Chiến dịch gây quỹ 2', 'Mô tả chiến dịch 2', 'Healthcare', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- Fundraising goals
