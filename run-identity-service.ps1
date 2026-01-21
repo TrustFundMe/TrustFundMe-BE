@@ -42,7 +42,7 @@ if (Test-Path $envFile) {
     Write-Host "  Root directory: $rootDir" -ForegroundColor Gray
 }
 
-cd "D:\HOC\Ki 9\TrustFundME- BE\identity-service"
+cd "$PSScriptRoot\identity-service"
 $env:Path += ";C:\ProgramData\chocolatey\lib\maven\apache-maven-3.9.12\bin"
 
 # Verify JWT_SECRET is set before starting
