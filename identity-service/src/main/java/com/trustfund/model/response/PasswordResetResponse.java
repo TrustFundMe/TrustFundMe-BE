@@ -12,4 +12,5 @@ import lombok.NoArgsConstructor;
 public class PasswordResetResponse {
     private Boolean success;
     private String message;
+    private String token; // Token for password reset (returned after OTP verification)
 }
