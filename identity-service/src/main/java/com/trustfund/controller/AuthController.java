@@ -4,6 +4,7 @@ import com.trustfund.model.request.LoginRequest;
 import com.trustfund.model.request.RegisterRequest;
 import com.trustfund.model.request.ResetPasswordRequest;
 import com.trustfund.model.request.SendOtpRequest;
+import com.trustfund.model.request.VerifyEmailRequest;
 import com.trustfund.model.request.VerifyOtpRequest;
 import com.trustfund.model.response.AuthResponse;
 import com.trustfund.model.response.PasswordResetResponse;
@@ -49,13 +50,19 @@ public class AuthController {
     }
 
     @PostMapping("/verify-otp")
-    @Operation(summary = "Verify OTP", description = "Verify OTP code sent to email")
+    @Operation(summary = "Verify OTP", description = "Verify OTP code sent to email. Returns token if OTP is correct.")
     public ResponseEntity<PasswordResetResponse> verifyOtp(@Valid @RequestBody VerifyOtpRequest request) {
         return ResponseEntity.ok(authService.verifyOtp(request));
     }
 
+    @PostMapping("/verify-email")
+    @Operation(summary = "Verify email", description = "Verify user email using token from verify-otp")
+    public ResponseEntity<PasswordResetResponse> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        return ResponseEntity.ok(authService.verifyEmail(request));
+    }
+
     @PostMapping("/reset-password")
-    @Operation(summary = "Reset password", description = "Reset password using verified OTP")
+    @Operation(summary = "Reset password", description = "Reset password using token from verify-otp")
     public ResponseEntity<PasswordResetResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         return ResponseEntity.ok(authService.resetPassword(request));
     }

@@ -9,6 +9,7 @@ import com.trustfund.model.request.LoginRequest;
 import com.trustfund.model.request.RegisterRequest;
 import com.trustfund.model.request.ResetPasswordRequest;
 import com.trustfund.model.request.SendOtpRequest;
+import com.trustfund.model.request.VerifyEmailRequest;
 import com.trustfund.model.request.VerifyOtpRequest;
 import com.trustfund.model.response.AuthResponse;
 import com.trustfund.model.response.PasswordResetResponse;
@@ -166,7 +167,7 @@ public class AuthServiceImpl implements AuthService {
 
         // Send OTP via email
         try {
-            emailService.sendOtpEmail(user.getEmail(), otp, user.getFullName());
+            emailService.sendOtpEmail(user.getEmail(), otp, user.getFullName(), "reset_password");
             log.info("OTP email sent to: {}", user.getEmail());
         } catch (Exception e) {
             log.error("Failed to send OTP email: {}", e.getMessage());
@@ -192,51 +193,101 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("OTP has expired");
         }
 
-        // Don't mark as used here - will be marked when reset password
-        // This allows user to verify OTP first, then reset password
-        log.info("OTP verified successfully for email: {}", request.getEmail());
+        // Mark OTP as used (OTP chỉ dùng 1 lần để verify)
+        otpTokenRepository.markAsUsed(request.getEmail(), request.getOtp());
+
+        // Generate password reset token (JWT) - dùng chung cho verify email và reset password
+        String resetToken = jwtUtil.generatePasswordResetToken(request.getEmail());
+
+        log.info("OTP verified successfully for email: {}. Reset token generated.", request.getEmail());
 
         return PasswordResetResponse.builder()
                 .success(true)
                 .message("OTP verified successfully. You can now reset your password.")
+                .token(resetToken)
                 .build();
     }
 
     @Override
     @Transactional
     public PasswordResetResponse resetPassword(ResetPasswordRequest request) {
-        // Verify OTP again
-        OtpToken otpToken = otpTokenRepository
-                .findByEmailAndOtpAndUsedFalse(request.getEmail(), request.getOtp())
-                .orElseThrow(() -> new UnauthorizedException("Invalid or expired OTP"));
+        try {
+            // Verify JWT token
+            if (jwtUtil.isTokenExpired(request.getToken())) {
+                throw new UnauthorizedException("Reset token has expired");
+            }
 
-        // Check if OTP is expired
-        if (otpToken.getExpiresAt().isBefore(LocalDateTime.now())) {
-            otpTokenRepository.delete(otpToken);
-            throw new UnauthorizedException("OTP has expired");
+            // Extract email from token
+            String email = jwtUtil.extractUsername(request.getToken());
+            
+            // Verify token type (should be password_reset)
+            String tokenType = jwtUtil.extractClaim(request.getToken(), claims -> {
+                Object type = claims.get("type");
+                return type != null ? type.toString() : null;
+            });
+            
+            if (tokenType == null || !"password_reset".equals(tokenType)) {
+                throw new UnauthorizedException("Invalid reset token");
+            }
+
+            // Get user and update password
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+
+            user.setPassword(passwordEncoder.encode(request.getNewPassword()));
+            userRepository.save(user);
+
+            log.info("Password reset successfully for user: {}", user.getEmail());
+
+            return PasswordResetResponse.builder()
+                    .success(true)
+                    .message("Password reset successfully")
+                    .build();
+        } catch (Exception e) {
+            log.error("Password reset failed: {}", e.getMessage());
+            throw new UnauthorizedException("Invalid or expired reset token");
         }
+    }
 
-        // Check if OTP is already used
-        if (otpToken.getUsed()) {
-            throw new UnauthorizedException("OTP has already been used");
+    @Override
+    @Transactional
+    public PasswordResetResponse verifyEmail(VerifyEmailRequest request) {
+        try {
+            // Verify JWT token
+            if (jwtUtil.isTokenExpired(request.getToken())) {
+                throw new UnauthorizedException("Verification token has expired");
+            }
+
+            // Extract email from token
+            String email = jwtUtil.extractUsername(request.getToken());
+            
+            // Verify token type (should be password_reset - dùng chung cho verify email và reset password)
+            String tokenType = jwtUtil.extractClaim(request.getToken(), claims -> {
+                Object type = claims.get("type");
+                return type != null ? type.toString() : null;
+            });
+            
+            if (tokenType == null || !"password_reset".equals(tokenType)) {
+                throw new UnauthorizedException("Invalid verification token");
+            }
+
+            // Get user and update verified status
+            User user = userRepository.findByEmail(email)
+                    .orElseThrow(() -> new NotFoundException("User not found"));
+
+            user.setVerified(true);
+            userRepository.save(user);
+
+            log.info("Email verified successfully for user: {}", user.getEmail());
+
+            return PasswordResetResponse.builder()
+                    .success(true)
+                    .message("Email verified successfully")
+                    .build();
+        } catch (Exception e) {
+            log.error("Email verification failed: {}", e.getMessage());
+            throw new UnauthorizedException("Invalid or expired verification token");
         }
-
-        // Get user and update password
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() -> new NotFoundException("User not found"));
-
-        user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
-
-        // Mark OTP as used
-        otpTokenRepository.markAsUsed(request.getEmail(), request.getOtp());
-
-        log.info("Password reset successfully for user: {}", user.getEmail());
-
-        return PasswordResetResponse.builder()
-                .success(true)
-                .message("Password reset successfully")
-                .build();
     }
 
     private String generateOtp() {

@@ -73,12 +73,23 @@ public class JwtUtil {
         return createToken(claims, username);
     }
 
+    public String generatePasswordResetToken(String email) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("type", "password_reset");
+        // Password reset token expires in 30 minutes (1800000 ms)
+        return createToken(claims, email, 1800000L);
+    }
+
     private String createToken(Map<String, Object> claims, String subject) {
+        return createToken(claims, subject, expiration);
+    }
+
+    private String createToken(Map<String, Object> claims, String subject, Long expirationMs) {
         return Jwts.builder()
                 .claims(claims)
                 .subject(subject)
                 .issuedAt(new Date(System.currentTimeMillis()))
-                .expiration(new Date(System.currentTimeMillis() + expiration))
+                .expiration(new Date(System.currentTimeMillis() + expirationMs))
                 .signWith(getSigningKey())
                 .compact();
     }

@@ -21,7 +21,7 @@ public class EmailServiceImpl implements EmailService {
     private String fromEmail;
 
     @Override
-    public void sendOtpEmail(String toEmail, String otp, String userName) {
+    public void sendOtpEmail(String toEmail, String otp, String userName, String purpose) {
         if (fromEmail == null || fromEmail.trim().isEmpty()) {
             log.error("Email configuration is missing. Cannot send OTP email.");
             throw new IllegalStateException("Email service is not configured");
@@ -33,21 +33,30 @@ public class EmailServiceImpl implements EmailService {
 
             helper.setFrom(fromEmail);
             helper.setTo(toEmail);
-            helper.setSubject("Password Reset OTP - TrustFundME");
+            helper.setSubject("Your Verification Code - TrustFundME");
 
-            String emailContent = buildOtpEmail(userName, otp);
+            String emailContent = buildOtpEmail(userName, otp, purpose);
 
             helper.setText(emailContent, true); // true = HTML content
 
             mailSender.send(message);
-            log.info("OTP email sent successfully to: {}", toEmail);
+            log.info("OTP email sent successfully to: {} for purpose: {}", toEmail, purpose);
         } catch (MessagingException e) {
             log.error("Failed to send OTP email to {}: {}", toEmail, e.getMessage());
             throw new RuntimeException("Failed to send OTP email", e);
         }
     }
 
-    private String buildOtpEmail(String userName, String otp) {
+    private String buildOtpEmail(String userName, String otp, String purpose) {
+        String purposeText = "";
+        if ("verify_email".equals(purpose)) {
+            purposeText = "verify your email address";
+        } else if ("reset_password".equals(purpose)) {
+            purposeText = "reset your password";
+        } else {
+            purposeText = "complete your verification";
+        }
+        
         return "<!DOCTYPE html>" +
                 "<html>" +
                 "<head>" +
@@ -66,19 +75,18 @@ public class EmailServiceImpl implements EmailService {
                 "<body>" +
                 "<div class='container'>" +
                 "<div class='header'>" +
-                "<h1>Password Reset OTP</h1>" +
+                "<h1>Verification Code</h1>" +
                 "</div>" +
                 "<div class='content'>" +
                 "<p>Hello " + (userName != null ? userName : "User") + ",</p>" +
-                "<p>We received a request to reset your password for your TrustFundME account.</p>" +
-                "<p>Please use the following OTP code to verify your identity:</p>" +
+                "<p>Please use the following verification code to " + purposeText + ":</p>" +
                 "<div class='otp-box'>" +
                 "<div class='otp-code'>" + otp + "</div>" +
                 "</div>" +
                 "<div class='warning'>" +
-                "<p><strong>Important:</strong> This OTP will expire in 10 minutes. Do not share this code with anyone.</p>" +
+                "<p><strong>Important:</strong> This code will expire in 10 minutes. Do not share this code with anyone.</p>" +
                 "</div>" +
-                "<p>If you did not request a password reset, please ignore this email or contact support if you have concerns.</p>" +
+                "<p>If you did not request this code, please ignore this email or contact support if you have concerns.</p>" +
                 "</div>" +
                 "<div class='footer'>" +
                 "<p>© 2024 TrustFundME. All rights reserved.</p>" +
