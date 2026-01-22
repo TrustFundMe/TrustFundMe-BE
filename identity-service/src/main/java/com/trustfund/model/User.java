@@ -42,6 +42,10 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private Boolean verified = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

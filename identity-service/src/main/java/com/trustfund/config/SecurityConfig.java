@@ -40,6 +40,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
+                        .requestMatchers("/api/users/check-email").permitAll() // Public endpoint to check email
                         .requestMatchers("/login").permitAll() // Prevent redirect to login page
                         .requestMatchers(
                                 "/swagger-ui.html",

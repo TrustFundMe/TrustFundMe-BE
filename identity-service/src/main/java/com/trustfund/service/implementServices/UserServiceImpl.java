@@ -4,6 +4,7 @@ import com.trustfund.exception.exceptions.BadRequestException;
 import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.model.User;
 import com.trustfund.model.request.UpdateUserRequest;
+import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
 import com.trustfund.repository.UserRepository;
 import com.trustfund.service.interfaceServices.UserService;
@@ -16,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -117,6 +119,27 @@ public class UserServiceImpl implements UserService {
         user = userRepository.save(user);
         log.info("Unbanned user with id: {}", id);
         return UserInfo.fromUser(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public CheckEmailResponse checkEmail(String email) {
+        Optional<User> userOptional = userRepository.findByEmail(email);
+        
+        if (userOptional.isPresent()) {
+            User user = userOptional.get();
+            return CheckEmailResponse.builder()
+                    .exists(true)
+                    .email(user.getEmail())
+                    .fullName(user.getFullName())
+                    .build();
+        } else {
+            return CheckEmailResponse.builder()
+                    .exists(false)
+                    .email(email)
+                    .fullName(null)
+                    .build();
+        }
     }
 
     private void deleteOldAvatarFile(String avatarUrl) {

@@ -89,6 +89,7 @@ CREATE TABLE users (
     avatar_url VARCHAR(500),
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     INDEX idx_email (email)
@@ -112,6 +113,19 @@ CREATE TABLE bank_account (
         ON UPDATE CASCADE
 );
 
+-- otp_tokens
+CREATE TABLE otp_tokens (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL,
+    otp VARCHAR(6) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_otp (otp),
+    INDEX idx_expires_at (expires_at)
+);
+
 -- =======================================
 -- 3.1 Schema: media-service (DB: trustfundme_media_db)
 -- =======================================
@@ -125,12 +139,12 @@ USE trustfundme_media_db;
 -- =======================================
 -- Users (passwords are plain text placeholders; replace in real env)
 USE trustfundme_identity_db;
-INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, role, is_active, created_at, updated_at)
+INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, role, is_active, verified, created_at, updated_at)
 VALUES
-    (1, 'admin@example.com',    'password', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, NOW(), NOW()),
-    (2, 'staff@example.com',    'password', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, NOW(), NOW()),
-    (3, 'owner@example.com',    'password', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, NOW(), NOW()),
-    (4, 'user@example.com',     'password', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, NOW(), NOW())
+    (1, 'admin@example.com',    'password', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, TRUE, NOW(), NOW()),
+    (2, 'staff@example.com',    'password', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (3, 'owner@example.com',    'password', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
+    (4, 'user@example.com',     'password', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, FALSE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Bank accounts (link to sample users)

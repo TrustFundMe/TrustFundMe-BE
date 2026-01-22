@@ -1,6 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.request.UpdateUserRequest;
+import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
 import com.trustfund.service.interfaceServices.UserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -65,5 +66,11 @@ public class UserController {
     @Operation(summary = "Unban user", description = "Unban/activate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> unbanUser(@PathVariable Long id) {
         return ResponseEntity.ok(userService.unbanUser(id));
+    }
+
+    @GetMapping("/check-email")
+    @Operation(summary = "Check email existence", description = "Check if email already exists in database (public endpoint for sign-in vs sign-up flow)")
+    public ResponseEntity<CheckEmailResponse> checkEmail(@RequestParam String email) {
+        return ResponseEntity.ok(userService.checkEmail(email));
     }
 }

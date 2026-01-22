@@ -17,6 +17,7 @@ public class UserInfo {
     private String phoneNumber;
     private String avatarUrl;
     private User.Role role;
+    private Boolean verified;
 
     public static UserInfo fromUser(User user) {
         return UserInfo.builder()
@@ -26,6 +27,7 @@ public class UserInfo {
                 .phoneNumber(user.getPhoneNumber())
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
+                .verified(user.getVerified())
                 .build();
     }
 }
