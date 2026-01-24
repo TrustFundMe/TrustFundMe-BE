@@ -62,6 +62,31 @@ public class UserKYCServiceImpl implements UserKYCService {
 
     @Override
     @Transactional
+    public KYCResponse resubmitKYC(Long userId, SubmitKYCRequest request) {
+        UserKYC userKYC = userKYCRepository.findByUserId(userId)
+                .orElseThrow(() -> new RuntimeException("KYC record not found"));
+
+        if (userKYC.getStatus() == KYCStatus.APPROVED) {
+            throw new RuntimeException("Cannot resubmit APPROVED KYC");
+        }
+
+        userKYC.setIdType(request.getIdType());
+        userKYC.setIdNumber(request.getIdNumber());
+        userKYC.setIssueDate(request.getIssueDate());
+        userKYC.setExpiryDate(request.getExpiryDate());
+        userKYC.setIssuePlace(request.getIssuePlace());
+        userKYC.setIdImageFront(request.getIdImageFront());
+        userKYC.setIdImageBack(request.getIdImageBack());
+        userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setStatus(KYCStatus.PENDING);
+        userKYC.setRejectionReason(null);
+
+        UserKYC savedKYC = userKYCRepository.save(userKYC);
+        return mapToResponse(savedKYC);
+    }
+
+    @Override
+    @Transactional
     public KYCResponse updateKYCStatus(Long kycId, KYCStatus status, String rejectionReason) {
         UserKYC userKYC = userKYCRepository.findById(kycId)
                 .orElseThrow(() -> new RuntimeException("KYC record not found"));
