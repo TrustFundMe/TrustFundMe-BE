@@ -28,12 +28,12 @@ if (Test-Path $envFile) {
     }
 }
 
-cd "$PSScriptRoot\moderation-service"
+cd "$PSScriptRoot\flag-service"
 
 # Auto-detect and add Maven to PATH
 if (Get-Command Add-MavenToPath -ErrorAction SilentlyContinue) {
     Add-MavenToPath | Out-Null
 }
 
-Write-Host "Starting Moderation Service on port 8085..." -ForegroundColor Green
+Write-Host "Starting Flag Service on port 8085..." -ForegroundColor Green
 mvn spring-boot:run

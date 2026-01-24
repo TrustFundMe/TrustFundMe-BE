@@ -13,10 +13,10 @@
     </parent>
 
     <groupId>com.trustfund</groupId>
-    <artifactId>moderation-service</artifactId>
+    <artifactId>flag-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>Moderation Service</name>
-    <description>Moderation and Flagging Service for TrustFundME</description>
+    <name>Flag Service</name>
+    <description>Flagging Service for TrustFundME</description>
 
     <properties>
         <spring-cloud.version>2023.0.1</spring-cloud.version>
@@ -105,7 +105,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.trustfund.ModerationServiceApplication</mainClass>
+                    <mainClass>com.trustfund.FlagServiceApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

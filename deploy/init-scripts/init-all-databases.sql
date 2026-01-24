@@ -10,12 +10,13 @@ DROP DATABASE IF EXISTS trustfundme_identity_db;
 DROP DATABASE IF EXISTS trustfundme_media_db;
 DROP DATABASE IF EXISTS trustfundme_feed_db;
 DROP DATABASE IF EXISTS trustfundme_moderation_db;
+DROP DATABASE IF EXISTS trustfundme_flag_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE trustfundme_moderation_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_flag_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -25,7 +26,7 @@ GRANT ALL PRIVILEGES ON trustfundme_campaign_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
-GRANT ALL PRIVILEGES ON trustfundme_moderation_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_flag_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -196,9 +197,9 @@ CREATE TABLE IF NOT EXISTS feed_post (
 );
 
 -- =======================================
--- 3.3 Schema: moderation-service (DB: trustfundme_moderation_db)
+-- 3.3 Schema: flag-service (DB: trustfundme_flag_db)
 -- =======================================
-USE trustfundme_moderation_db;
+USE trustfundme_flag_db;
 
 CREATE TABLE IF NOT EXISTS flags (
     flag_id BIGINT PRIMARY KEY AUTO_INCREMENT,
