@@ -32,6 +32,12 @@ public class FlagController {
         return ResponseEntity.ok(flagService.submitFlag(userId, request));
     }
 
+    @GetMapping("/{id}")
+    @Operation(summary = "Get flag by ID", description = "View details of a specific report")
+    public ResponseEntity<FlagResponse> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(flagService.getFlagById(id));
+    }
+
     @GetMapping("/pending")
     @Operation(summary = "Get pending reports", description = "Admin/Staff list all reports with PENDING status")
     public ResponseEntity<Page<FlagResponse>> getPending(

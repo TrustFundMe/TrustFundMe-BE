@@ -36,6 +36,13 @@ public class FlagServiceImpl implements FlagService {
     }
 
     @Override
+    public FlagResponse getFlagById(Long id) {
+        Flag flag = flagRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Flag not found with id: " + id));
+        return mapToResponse(flag);
+    }
+
+    @Override
     public Page<FlagResponse> getPendingFlags(Pageable pageable) {
         return flagRepository.findByStatus("PENDING", pageable)
                 .map(this::mapToResponse);

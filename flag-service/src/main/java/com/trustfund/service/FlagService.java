@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 public interface FlagService {
     FlagResponse submitFlag(Long userId, FlagRequest request);
 
+    FlagResponse getFlagById(Long id);
+
     Page<FlagResponse> getPendingFlags(Pageable pageable);
 
     FlagResponse reviewFlag(Long flagId, Long adminId, String status);
