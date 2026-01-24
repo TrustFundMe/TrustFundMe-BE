@@ -8,6 +8,7 @@ import com.trustfund.model.request.VerifyEmailRequest;
 import com.trustfund.model.request.VerifyOtpRequest;
 import com.trustfund.model.response.AuthResponse;
 import com.trustfund.model.response.PasswordResetResponse;
+import com.trustfund.model.request.GoogleLoginRequest;
 
 public interface AuthService {
     AuthResponse register(RegisterRequest request);
@@ -17,6 +18,7 @@ public interface AuthService {
     PasswordResetResponse verifyOtp(VerifyOtpRequest request);
     PasswordResetResponse verifyEmail(VerifyEmailRequest request);
     PasswordResetResponse resetPassword(ResetPasswordRequest request);
+    AuthResponse googleLogin(GoogleLoginRequest request);
 }
 
 

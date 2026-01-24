@@ -6,6 +6,7 @@ import com.trustfund.model.request.ResetPasswordRequest;
 import com.trustfund.model.request.SendOtpRequest;
 import com.trustfund.model.request.VerifyEmailRequest;
 import com.trustfund.model.request.VerifyOtpRequest;
+import com.trustfund.model.request.GoogleLoginRequest;
 import com.trustfund.model.response.AuthResponse;
 import com.trustfund.model.response.PasswordResetResponse;
 import com.trustfund.service.interfaceServices.AuthService;
@@ -41,6 +42,12 @@ public class AuthController {
     @Operation(summary = "Refresh token", description = "Get new access token using refresh token")
     public ResponseEntity<AuthResponse> refreshToken(@RequestHeader("Refresh-Token") String refreshToken) {
         return ResponseEntity.ok(authService.refreshToken(refreshToken));
+    }
+
+    @PostMapping("/google-login")
+    @Operation(summary = "Google Login", description = "Login or Register using Google ID Token")
+    public ResponseEntity<AuthResponse> googleLogin(@Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.googleLogin(request));
     }
 
     @PostMapping("/send-otp")

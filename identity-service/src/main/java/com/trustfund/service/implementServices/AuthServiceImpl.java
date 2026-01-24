@@ -26,6 +26,14 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import com.google.api.client.http.javanet.NetHttpTransport;
+import com.google.api.client.json.gson.GsonFactory;
+import com.trustfund.model.request.GoogleLoginRequest;
+import java.util.Collections;
+import java.util.UUID;
+
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
 
@@ -42,6 +50,9 @@ public class AuthServiceImpl implements AuthService {
 
     @Value("${app.otp.expiration:10}")
     private int otpExpirationMinutes;
+
+    @Value("${app.google.client-id}")
+    private String googleClientId;
 
     @Override
     @Transactional
@@ -295,6 +306,66 @@ public class AuthServiceImpl implements AuthService {
         int otp = 100000 + random.nextInt(900000); // Generate 6-digit OTP (100000-999999)
         return String.valueOf(otp);
     }
+    @Override
+    @Transactional
+    public AuthResponse googleLogin(GoogleLoginRequest request) {
+        try {
+            GoogleIdTokenVerifier verifier = new GoogleIdTokenVerifier.Builder(new NetHttpTransport(), new GsonFactory())
+                    .setAudience(Collections.singletonList(googleClientId))
+                    .build();
+
+            // Verify the ID token
+            GoogleIdToken idToken = verifier.verify(request.getIdToken());
+            if (idToken == null) {
+                throw new UnauthorizedException("Invalid Google ID Token");
+            }
+
+            GoogleIdToken.Payload payload = idToken.getPayload();
+            String email = payload.getEmail();
+            String name = (String) payload.get("name");
+
+            // Check if user exists
+            User user = userRepository.findByEmail(email).orElse(null);
+
+            if (user == null) {
+                // Register new user
+                user = User.builder()
+                        .email(email)
+                        .password(passwordEncoder.encode(UUID.randomUUID().toString())) // Random password
+                        .fullName(name != null ? name : "Google User")
+                        .role(User.Role.USER)
+                        .isActive(true)
+                        .verified(true) // Verified by Google
+                        .build();
+                user = userRepository.save(user);
+                log.info("New user registered via Google: {}", email);
+            } else {
+                if (!user.getIsActive()) {
+                    throw new UnauthorizedException("Account is deactivated");
+                }
+            }
+
+            // Generate tokens
+            String accessToken = jwtUtil.generateToken(
+                    user.getId().toString(),
+                    user.getEmail(),
+                    user.getRole().name()
+            );
+            String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
+
+            return AuthResponse.builder()
+                    .accessToken(accessToken)
+                    .refreshToken(refreshToken)
+                    .expiresIn(jwtUtil.extractExpiration(accessToken).getTime() - System.currentTimeMillis())
+                    .user(UserInfo.fromUser(user))
+                    .build();
+
+        } catch (Exception e) {
+            log.error("Google login failed: {}", e.getMessage());
+            throw new UnauthorizedException("Google login failed: " + e.getMessage());
+        }
+    }
+
 }
 
 

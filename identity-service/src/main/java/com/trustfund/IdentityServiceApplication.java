@@ -30,11 +30,9 @@ public class IdentityServiceApplication {
                     .ignoreIfMissing() // Không báo lỗi nếu không tìm thấy
                     .load();
             
-            // Load các biến SHARED_* vào System properties để Spring Boot có thể đọc
+            // Load tất cả các biến vào System properties để Spring Boot có thể đọc
             dotenv.entries().forEach(entry -> {
-                if (entry.getKey().startsWith("SHARED_")) {
-                    System.setProperty(entry.getKey(), entry.getValue());
-                }
+                System.setProperty(entry.getKey(), entry.getValue());
             });
         } catch (Exception e) {
             System.err.println("Warning: Could not load .env file: " + e.getMessage());
