@@ -7,6 +7,8 @@ import com.trustfund.model.response.KYCResponse;
 public interface UserKYCService {
     KYCResponse submitKYC(Long userId, SubmitKYCRequest request);
 
+    KYCResponse resubmitKYC(Long userId, SubmitKYCRequest request);
+
     KYCResponse getMyKYC(Long userId);
 
     KYCResponse getKYCByUserId(Long userId);

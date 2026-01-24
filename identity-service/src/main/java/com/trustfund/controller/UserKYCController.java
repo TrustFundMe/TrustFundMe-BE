@@ -30,6 +30,14 @@ public class UserKYCController {
         return ResponseEntity.ok(userKYCService.submitKYC(userId, request));
     }
 
+    @PutMapping
+    @Operation(summary = "Resubmit KYC", description = "Resubmit KYC data if rejected or updating info")
+    public ResponseEntity<KYCResponse> resubmitKYC(@Valid @RequestBody SubmitKYCRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(userKYCService.resubmitKYC(userId, request));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get my KYC status", description = "Get KYC status of current user")
     public ResponseEntity<KYCResponse> getMyKYC() {
