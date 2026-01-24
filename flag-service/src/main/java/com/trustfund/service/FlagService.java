@@ -14,5 +14,9 @@ public interface FlagService {
 
     Page<FlagResponse> getFlagsByPostId(Long postId, Pageable pageable);
 
+    Page<FlagResponse> getFlagsByCampaignId(Long campaignId, Pageable pageable);
+
+    Page<FlagResponse> getFlagsByUserId(Long userId, Pageable pageable);
+
     FlagResponse reviewFlag(Long flagId, Long adminId, String status);
 }

@@ -57,6 +57,27 @@ public class FlagController {
         return ResponseEntity.ok(flagService.getFlagsByPostId(postId, pageable));
     }
 
+    @GetMapping("/campaigns/{campaignId}")
+    @Operation(summary = "Get flags by Campaign ID", description = "Admin/Staff view all reports for a specific campaign")
+    public ResponseEntity<Page<FlagResponse>> getByCampaignId(
+            @PathVariable Long campaignId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(flagService.getFlagsByCampaignId(campaignId, pageable));
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Get my reports", description = "User views their own submitted reports")
+    public ResponseEntity<Page<FlagResponse>> getMyFlags(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = Long.parseLong(authentication.getName());
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(flagService.getFlagsByUserId(userId, pageable));
+    }
+
     @PatchMapping("/{id}/review")
     @Operation(summary = "Review a report", description = "Admin/Staff resolve or dismiss a report")
     public ResponseEntity<FlagResponse> review(

@@ -55,6 +55,18 @@ public class FlagServiceImpl implements FlagService {
     }
 
     @Override
+    public Page<FlagResponse> getFlagsByCampaignId(Long campaignId, Pageable pageable) {
+        return flagRepository.findByCampaignId(campaignId, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<FlagResponse> getFlagsByUserId(Long userId, Pageable pageable) {
+        return flagRepository.findByUserId(userId, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
     @Transactional
     public FlagResponse reviewFlag(Long flagId, Long adminId, String status) {
         Flag flag = flagRepository.findById(flagId)
