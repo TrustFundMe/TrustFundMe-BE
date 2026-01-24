@@ -1,26 +1,20 @@
-package com.trustfund.model.response;
+package com.trustfund.model.request;
 
 import com.trustfund.model.enums.MediaType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
+import org.springframework.web.multipart.MultipartFile;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class MediaFileResponse {
-    private Long id;
+public class MediaUploadRequest {
+    private MultipartFile file;
     private Long postId;
     private Long campaignId;
     private MediaType mediaType;
-    private String url;
     private String description;
-    private String fileName;
-    private String contentType;
-    private Long sizeBytes;
-    private LocalDateTime createdAt;
 }

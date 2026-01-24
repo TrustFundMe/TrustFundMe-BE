@@ -155,7 +155,21 @@ CREATE TABLE user_kyc (
 -- Media service không lưu metadata vào DB, chỉ upload lên Supabase và trả về URL
 -- DB này giữ lại để sau này có thể dùng cho các tính năng khác
 USE trustfundme_media_db;
--- (No tables needed - media files are stored only on Supabase)
+
+CREATE TABLE IF NOT EXISTS media (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NULL,
+    campaign_id BIGINT NULL,
+    media_type VARCHAR(50) NOT NULL,
+    url VARCHAR(1000) NOT NULL,
+    description VARCHAR(2000) NULL,
+    file_name VARCHAR(255) NULL,
+    content_type VARCHAR(100) NULL,
+    size_bytes BIGINT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_media_post_id (post_id),
+    INDEX idx_media_campaign_id (campaign_id)
+);
 
 -- =======================================
 -- 3.2 Schema: feed-service (DB: trustfundme_feed_db)
