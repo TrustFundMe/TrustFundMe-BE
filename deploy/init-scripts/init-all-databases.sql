@@ -8,10 +8,12 @@
 DROP DATABASE IF EXISTS trustfundme_campaign_db;
 DROP DATABASE IF EXISTS trustfundme_identity_db;
 DROP DATABASE IF EXISTS trustfundme_media_db;
+DROP DATABASE IF EXISTS trustfundme_feed_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -20,6 +22,7 @@ CREATE USER IF NOT EXISTS 'trustfundme_user'@'%' IDENTIFIED BY 'trustfundme_pass
 GRANT ALL PRIVILEGES ON trustfundme_campaign_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -126,6 +129,26 @@ CREATE TABLE otp_tokens (
     INDEX idx_expires_at (expires_at)
 );
 
+-- user_kyc
+CREATE TABLE user_kyc (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    id_type VARCHAR(255) NOT NULL,
+    id_number VARCHAR(255) NOT NULL,
+    issue_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    issue_place VARCHAR(255) NOT NULL,
+    id_image_front VARCHAR(255) NOT NULL,
+    id_image_back VARCHAR(255) NOT NULL,
+    selfie_image VARCHAR(255) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    rejection_reason VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_user_kyc_user FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
 -- =======================================
 -- 3.1 Schema: media-service (DB: trustfundme_media_db)
 -- =======================================
@@ -135,16 +158,37 @@ USE trustfundme_media_db;
 -- (No tables needed - media files are stored only on Supabase)
 
 -- =======================================
+-- 3.2 Schema: feed-service (DB: trustfundme_feed_db)
+-- =======================================
+USE trustfundme_feed_db;
+
+CREATE TABLE IF NOT EXISTS feed_post (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    budget_id BIGINT NULL,
+    author_id BIGINT NOT NULL,
+    type NVARCHAR(50) NOT NULL,
+    visibility NVARCHAR(50) NOT NULL,
+    title NVARCHAR(255) NULL,
+    content NVARCHAR(2000) NOT NULL,
+    status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_feed_post_author_id (author_id),
+    INDEX idx_feed_post_budget_id (budget_id),
+    INDEX idx_feed_post_created_at (created_at)
+);
+
+-- =======================================
 -- 4. Sample data
 -- =======================================
 -- Users (passwords are plain text placeholders; replace in real env)
 USE trustfundme_identity_db;
 INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, role, is_active, verified, created_at, updated_at)
 VALUES
-    (1, 'admin@example.com',    'password', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, TRUE, NOW(), NOW()),
-    (2, 'staff@example.com',    'password', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, TRUE, NOW(), NOW()),
-    (3, 'owner@example.com',    'password', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
-    (4, 'user@example.com',     'password', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, FALSE, NOW(), NOW())
+    (1, 'admin@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, TRUE, NOW(), NOW()),
+    (2, 'staff@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (3, 'owner@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
+    (4, 'user@example.com',     '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, FALSE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Bank accounts (link to sample users)

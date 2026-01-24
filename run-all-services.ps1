@@ -33,9 +33,16 @@ Start-Sleep -Seconds 5
 # Open Media Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-media-service.ps1`""
 
-Write-Host "Opened 4 PowerShell windows!" -ForegroundColor Green
+# Wait 5 seconds
+Start-Sleep -Seconds 5
+
+# Open Feed Service
+Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-feed-service.ps1`""
+
+Write-Host "Opened 6 PowerShell windows!" -ForegroundColor Green
 Write-Host "1. Discovery Server (port 8761)" -ForegroundColor Cyan
 Write-Host "2. API Gateway (port 8080)" -ForegroundColor Cyan
 Write-Host "3. Identity Service (port 8081)" -ForegroundColor Cyan
 Write-Host "4. Campaign Service (port 8082)" -ForegroundColor Cyan
 Write-Host "5. Media Service (port 8083)" -ForegroundColor Cyan
+Write-Host "6. Feed Service (port 8084)" -ForegroundColor Cyan
