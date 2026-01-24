@@ -86,6 +86,13 @@ public class UserKYCServiceImpl implements UserKYCService {
     }
 
     @Override
+    public org.springframework.data.domain.Page<KYCResponse> getPendingKYCRequests(
+            org.springframework.data.domain.Pageable pageable) {
+        return userKYCRepository.findByStatus(KYCStatus.PENDING, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
     @Transactional
     public KYCResponse updateKYCStatus(Long kycId, KYCStatus status, String rejectionReason) {
         UserKYC userKYC = userKYCRepository.findById(kycId)
