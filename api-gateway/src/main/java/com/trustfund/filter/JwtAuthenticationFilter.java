@@ -64,19 +64,24 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         if (path.startsWith("/api/auth")) {
             return true;
         }
-        
+
         // /api/media - POST (upload) and GET (read) are public
         if (path.startsWith("/api/media")) {
             return method == HttpMethod.POST || method == HttpMethod.GET;
         }
-        
+
         // Campaign Service - Only GET methods are public
-        if (path.startsWith("/api/campaigns") || 
-            path.startsWith("/api/fundraising-goals") || 
-            path.startsWith("/api/campaign-follows")) {
+        if (path.startsWith("/api/campaigns") ||
+                path.startsWith("/api/fundraising-goals") ||
+                path.startsWith("/api/campaign-follows")) {
             return method == HttpMethod.GET;
         }
-        
+
+        // Users endpoint - check-email is public
+        if (path.equals("/api/users/check-email")) {
+            return true;
+        }
+
         return false;
     }
 
@@ -117,5 +122,3 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         return -1;
     }
 }
-
-

@@ -7,6 +7,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -41,6 +42,8 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
                         .requestMatchers("/api/users/check-email").permitAll() // Public endpoint to check email
+                        .requestMatchers(HttpMethod.PUT, "/api/users/*").hasAnyRole("ADMIN", "STAFF", "USER")
+                        .requestMatchers(HttpMethod.GET, "/api/users/*").hasAnyRole("ADMIN", "STAFF", "USER")
                         .requestMatchers("/login").permitAll() // Prevent redirect to login page
                         .requestMatchers(
                                 "/swagger-ui.html",
