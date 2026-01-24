@@ -36,6 +36,13 @@ public class UserKYCController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
         return ResponseEntity.ok(userKYCService.getMyKYC(userId));
+
+    }
+
+    @GetMapping("/user/{userId}")
+    @Operation(summary = "Get KYC by user ID", description = "Get KYC details of a specific user (Admin/Staff only)")
+    public ResponseEntity<KYCResponse> getKYCByUserId(@PathVariable Long userId) {
+        return ResponseEntity.ok(userKYCService.getKYCByUserId(userId));
     }
 
     @PatchMapping("/{id}/status")
