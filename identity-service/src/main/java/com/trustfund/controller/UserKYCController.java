@@ -53,6 +53,24 @@ public class UserKYCController {
         return ResponseEntity.ok(userKYCService.getKYCByUserId(userId));
     }
 
+    @GetMapping("/pending")
+    @Operation(summary = "Get pending KYC requests", description = "Get list of pending KYC requests (Admin/Staff only)")
+    public ResponseEntity<org.springframework.data.domain.Page<KYCResponse>> getPendingKYCRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
+                && sortParts[1].equalsIgnoreCase("asc"))
+                        ? org.springframework.data.domain.Sort.Direction.ASC
+                        : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(direction, sortField));
+        return ResponseEntity.ok(userKYCService.getPendingKYCRequests(pageable));
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update KYC status", description = "Approve or Reject KYC (Admin/Staff only)")
     public ResponseEntity<KYCResponse> updateKYCStatus(@PathVariable Long id,
