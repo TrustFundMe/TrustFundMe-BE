@@ -28,10 +28,15 @@ public class SupabaseStorageService {
         String encodedFilename = URLEncoder.encode(uniqueFilename, StandardCharsets.UTF_8);
         String uploadUrl = supabaseConfig.getUploadUrl() + "/" + encodedFilename;
 
+        String contentType = file.getContentType();
+        if (contentType == null || contentType.isBlank()) {
+            contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        }
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(uploadUrl))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseConfig.getSupabaseKey())
-                .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_OCTET_STREAM_VALUE)
+                .header(HttpHeaders.CONTENT_TYPE, contentType)
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                 .build();
 
