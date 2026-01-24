@@ -22,19 +22,19 @@ public class UserKYCController {
 
     private final UserKYCService userKYCService;
 
-    @PostMapping("/submit")
-    @Operation(summary = "Submit KYC", description = "Submit KYC data for verification")
-    public ResponseEntity<KYCResponse> submitKYC(@Valid @RequestBody SubmitKYCRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long userId = Long.parseLong(authentication.getName());
+    @PostMapping("/users/{userId}")
+    @Operation(summary = "Submit KYC for User (Staff Only)", description = "Staff inputs KYC data for a user to verify them")
+    public ResponseEntity<KYCResponse> submitKYC(@PathVariable Long userId,
+            @Valid @RequestBody SubmitKYCRequest request) {
+        // Access control: Ensure logged-in user is STAFF or ADMIN handled by Security
+        // Config or Gateway
         return ResponseEntity.ok(userKYCService.submitKYC(userId, request));
     }
 
-    @PutMapping
-    @Operation(summary = "Resubmit KYC", description = "Resubmit KYC data if rejected or updating info")
-    public ResponseEntity<KYCResponse> resubmitKYC(@Valid @RequestBody SubmitKYCRequest request) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long userId = Long.parseLong(authentication.getName());
+    @PutMapping("/users/{userId}")
+    @Operation(summary = "Update KYC for User (Staff Only)", description = "Staff updates/resubmits KYC data for a user")
+    public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable Long userId,
+            @Valid @RequestBody SubmitKYCRequest request) {
         return ResponseEntity.ok(userKYCService.resubmitKYC(userId, request));
     }
 
