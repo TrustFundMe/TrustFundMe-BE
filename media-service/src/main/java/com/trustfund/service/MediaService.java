@@ -14,5 +14,7 @@ public interface MediaService {
 
     List<MediaFileResponse> getMediaByCampaignId(Long campaignId);
 
+    MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request);
+
     void deleteMedia(Long id) throws IOException, InterruptedException;
 }

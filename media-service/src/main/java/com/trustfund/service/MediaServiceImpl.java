@@ -64,6 +64,23 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional
+    public MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request) {
+        Media media = mediaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Media not found with id: " + id));
+
+        if (request.getPostId() != null)
+            media.setPostId(request.getPostId());
+        if (request.getCampaignId() != null)
+            media.setCampaignId(request.getCampaignId());
+        if (request.getDescription() != null)
+            media.setDescription(request.getDescription());
+
+        Media updatedMedia = mediaRepository.save(media);
+        return mapToResponse(updatedMedia);
+    }
+
+    @Override
+    @Transactional
     public void deleteMedia(Long id) throws IOException, InterruptedException {
         Media media = mediaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Media not found with id: " + id));

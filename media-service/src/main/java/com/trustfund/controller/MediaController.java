@@ -64,6 +64,13 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.getMediaByCampaignId(campaignId));
     }
 
+    @PatchMapping("/{id}")
+    @Operation(summary = "Update media metadata", description = "Update description, postId, or campaignId for a media record")
+    public ResponseEntity<MediaFileResponse> update(@PathVariable Long id,
+            @RequestBody com.trustfund.model.request.UpdateMediaRequest request) {
+        return ResponseEntity.ok(mediaService.updateMedia(id, request));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete media by ID", description = "Delete media from storage and database")
     public ResponseEntity<Void> delete(@PathVariable Long id) throws IOException, InterruptedException {
