@@ -47,6 +47,16 @@ public class FlagController {
         return ResponseEntity.ok(flagService.getPendingFlags(pageable));
     }
 
+    @GetMapping("/posts/{postId}")
+    @Operation(summary = "Get flags by Post ID", description = "Admin/Staff view all reports for a specific post")
+    public ResponseEntity<Page<FlagResponse>> getByPostId(
+            @PathVariable Long postId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(flagService.getFlagsByPostId(postId, pageable));
+    }
+
     @PatchMapping("/{id}/review")
     @Operation(summary = "Review a report", description = "Admin/Staff resolve or dismiss a report")
     public ResponseEntity<FlagResponse> review(

@@ -9,4 +9,6 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface FlagRepository extends JpaRepository<Flag, Long> {
     Page<Flag> findByStatus(String status, Pageable pageable);
+
+    Page<Flag> findByPostId(Long postId, Pageable pageable);
 }

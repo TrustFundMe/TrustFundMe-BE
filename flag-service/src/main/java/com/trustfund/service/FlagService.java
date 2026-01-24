@@ -12,5 +12,7 @@ public interface FlagService {
 
     Page<FlagResponse> getPendingFlags(Pageable pageable);
 
+    Page<FlagResponse> getFlagsByPostId(Long postId, Pageable pageable);
+
     FlagResponse reviewFlag(Long flagId, Long adminId, String status);
 }

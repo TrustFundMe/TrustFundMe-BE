@@ -49,6 +49,12 @@ public class FlagServiceImpl implements FlagService {
     }
 
     @Override
+    public Page<FlagResponse> getFlagsByPostId(Long postId, Pageable pageable) {
+        return flagRepository.findByPostId(postId, pageable)
+                .map(this::mapToResponse);
+    }
+
+    @Override
     @Transactional
     public FlagResponse reviewFlag(Long flagId, Long adminId, String status) {
         Flag flag = flagRepository.findById(flagId)
