@@ -9,6 +9,9 @@ if (Test-Path $commonFunctionsPath) {
     . $commonFunctionsPath
 }
 
+# Load .env (JWT_SECRET phải trùng Identity; nếu không có thì dùng fallback trong application.properties)
+Load-EnvFromRoot -RootDir $PSScriptRoot | Out-Null
+
 cd "$PSScriptRoot\api-gateway"
 
 # Auto-detect and add Maven to PATH
