@@ -9,11 +9,13 @@ DROP DATABASE IF EXISTS trustfundme_campaign_db;
 DROP DATABASE IF EXISTS trustfundme_identity_db;
 DROP DATABASE IF EXISTS trustfundme_media_db;
 DROP DATABASE IF EXISTS trustfundme_feed_db;
+DROP DATABASE IF EXISTS trustfundme_moderation_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_moderation_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -23,6 +25,7 @@ GRANT ALL PRIVILEGES ON trustfundme_campaign_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_moderation_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -155,7 +158,21 @@ CREATE TABLE user_kyc (
 -- Media service không lưu metadata vào DB, chỉ upload lên Supabase và trả về URL
 -- DB này giữ lại để sau này có thể dùng cho các tính năng khác
 USE trustfundme_media_db;
--- (No tables needed - media files are stored only on Supabase)
+
+CREATE TABLE IF NOT EXISTS media (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NULL,
+    campaign_id BIGINT NULL,
+    media_type VARCHAR(50) NOT NULL,
+    url VARCHAR(1000) NOT NULL,
+    description VARCHAR(2000) NULL,
+    file_name VARCHAR(255) NULL,
+    content_type VARCHAR(100) NULL,
+    size_bytes BIGINT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_media_post_id (post_id),
+    INDEX idx_media_campaign_id (campaign_id)
+);
 
 -- =======================================
 -- 3.2 Schema: feed-service (DB: trustfundme_feed_db)
@@ -176,6 +193,26 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_author_id (author_id),
     INDEX idx_feed_post_budget_id (budget_id),
     INDEX idx_feed_post_created_at (created_at)
+);
+
+-- =======================================
+-- 3.3 Schema: moderation-service (DB: trustfundme_moderation_db)
+-- =======================================
+USE trustfundme_moderation_db;
+
+CREATE TABLE IF NOT EXISTS flags (
+    flag_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NULL,
+    campaign_id BIGINT NULL,
+    user_id BIGINT NOT NULL,
+    reviewed_by BIGINT NULL,
+    reason NVARCHAR(2000) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_flags_post_id (post_id),
+    INDEX idx_flags_campaign_id (campaign_id),
+    INDEX idx_flags_user_id (user_id),
+    INDEX idx_flags_status (status)
 );
 
 -- =======================================
