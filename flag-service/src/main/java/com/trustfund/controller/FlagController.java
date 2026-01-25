@@ -12,6 +12,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
@@ -25,7 +26,8 @@ public class FlagController {
     private final FlagService flagService;
 
     @PostMapping
-    @Operation(summary = "Submit a report (Flag)", description = "User reports a postId or campaignId with a reason")
+    @PreAuthorize("hasRole('USER')")
+    @Operation(summary = "Submit a report (Flag)", description = "User reports a postId or campaignId with a reason. Only ROLE_USER can report.")
     public ResponseEntity<FlagResponse> submitFlag(@Valid @RequestBody FlagRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
@@ -33,12 +35,14 @@ public class FlagController {
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flag by ID", description = "View details of a specific report")
     public ResponseEntity<FlagResponse> getById(@PathVariable Long id) {
         return ResponseEntity.ok(flagService.getFlagById(id));
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get pending reports", description = "Admin/Staff list all reports with PENDING status")
     public ResponseEntity<Page<FlagResponse>> getPending(
             @RequestParam(defaultValue = "0") int page,
@@ -48,6 +52,7 @@ public class FlagController {
     }
 
     @GetMapping("/posts/{postId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flags by Post ID", description = "Admin/Staff view all reports for a specific post")
     public ResponseEntity<Page<FlagResponse>> getByPostId(
             @PathVariable Long postId,
@@ -58,6 +63,7 @@ public class FlagController {
     }
 
     @GetMapping("/campaigns/{campaignId}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flags by Campaign ID", description = "Admin/Staff view all reports for a specific campaign")
     public ResponseEntity<Page<FlagResponse>> getByCampaignId(
             @PathVariable Long campaignId,
@@ -68,6 +74,7 @@ public class FlagController {
     }
 
     @GetMapping("/me")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get my reports", description = "User views their own submitted reports")
     public ResponseEntity<Page<FlagResponse>> getMyFlags(
             @RequestParam(defaultValue = "0") int page,
@@ -79,6 +86,7 @@ public class FlagController {
     }
 
     @PatchMapping("/{id}/review")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Review a report", description = "Admin/Staff resolve or dismiss a report")
     public ResponseEntity<FlagResponse> review(
             @PathVariable Long id,
