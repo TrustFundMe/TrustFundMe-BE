@@ -34,6 +34,12 @@ Mở file `identity-service/src/main/resources/application.properties` và đả
 - `spring.datasource.username=root`
 - `spring.datasource.password=12345` (hoặc password MySQL của bạn)
 
+### Bước 4: Cấu hình Google Login (Mới)
+Mở file `.env` ở thư mục gốc và cập nhật:
+```properties
+GOOGLE_CLIENT_ID=YOUR_REAL_GOOGLE_CLIENT_ID
+```
+
 ## 🚀 Cách Chạy Dự Án
 
 ### Cách 1: Chạy Tự Động (Khuyến Nghị) ⭐
@@ -45,18 +51,21 @@ Mở file `identity-service/src/main/resources/application.properties` và đả
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```
 
-**Bước 3:** Chạy tất cả services:
+**Bước 3:** Chạy tất cả services bằng script tiện lợi:
 ```powershell
-.\run-all-services.ps1
+.\start.bat
 ```
+(Hoặc chạy file script gốc: `.\scripts\run-all-services.ps1`)
 
-Script sẽ tự động mở 4 cửa sổ PowerShell, mỗi cửa sổ chạy 1 service.
+Script sẽ tự động mở 6 cửa sổ PowerShell, mỗi cửa sổ chạy 1 service.
 
 **Thứ tự chạy:**
-1. Discovery Server (port 8761) - Chạy trước
-2. API Gateway (port 8080) - Chạy sau
+1. Discovery Server (port 8761)
+2. API Gateway (port 8080)
 3. Identity Service (port 8081)
-4. Campaign Service (port 8082) - Chạy cuối
+4. Campaign Service (port 8082)
+5. Media Service (port 8083)
+6. Feed Service (port 8084)
 
 ---
 
@@ -124,6 +133,10 @@ mvn spring-boot:run
 - **Swagger UI:** http://localhost:8083/swagger-ui.html
 - **API Docs:** http://localhost:8083/api-docs
 
+### 5. Feed Service
+- **Swagger UI:** http://localhost:8084/swagger-ui.html
+- **API Docs:** http://localhost:8084/api-docs
+
 ---
 
 ## 🧪 Test API
@@ -166,7 +179,7 @@ curl -X POST http://localhost:8080/api/auth/login `
 
 ### Cách 1: Dùng Script
 ```powershell
-.\stop-all-services.ps1
+.\scripts\stop-all-services.ps1
 ```
 
 ### Cách 2: Thủ Công
@@ -204,7 +217,7 @@ Nếu bạn gặp lỗi về JWT dependencies khi pull code từ GitHub:
 
 **Cách 1: Dùng script tự động (Khuyến nghị)**
 ```powershell
-.\fix-maven-jwt.ps1
+.\scripts\fix-maven-jwt.ps1
 ```
 
 **Cách 2: Thủ công**
@@ -256,7 +269,7 @@ mvn -version
 
 1. ✅ Đảm bảo MySQL đang chạy
 2. ✅ Kiểm tra password MySQL trong `application.properties`
-3. ✅ Chạy: `.\run-all-services.ps1` (sẽ mở 4 cửa sổ: Discovery, API Gateway, Identity, Campaign)
+3. ✅ Chạy: `.\start.bat`
 4. ✅ Đợi tất cả services khởi động xong
 5. ✅ Test API qua Swagger: http://localhost:8081/swagger-ui.html (Identity) hoặc http://localhost:8082/swagger-ui.html (Campaign)
 

@@ -9,7 +9,7 @@ if (Test-Path $commonFunctionsPath) {
     . $commonFunctionsPath
 }
 
-cd "$PSScriptRoot\discovery-server"
+cd "$PSScriptRoot\..\discovery-server"
 
 # Auto-detect and add Maven to PATH
 Add-MavenToPath | Out-Null

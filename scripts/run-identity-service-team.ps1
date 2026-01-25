@@ -9,7 +9,7 @@ if (Test-Path $commonFunctionsPath) {
     . $commonFunctionsPath
 }
 
-cd "$PSScriptRoot\identity-service"
+cd "$PSScriptRoot\..\identity-service"
 
 # Auto-detect and add Maven to PATH
 Add-MavenToPath | Out-Null

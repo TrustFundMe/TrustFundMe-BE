@@ -54,6 +54,12 @@ mysql -u root -p
 CREATE DATABASE trustfundme_identity_db;
 ```
 
+### Chạy Nhanh (Windows)
+
+```bash
+.\start.bat
+```
+
 #### 2. Khởi động Discovery Server
 
 ```bash

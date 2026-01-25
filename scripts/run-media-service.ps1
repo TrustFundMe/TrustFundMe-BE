@@ -1,4 +1,4 @@
-# Script to run Campaign Service
+# Script to run Media Service
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
@@ -10,7 +10,7 @@ if (Test-Path $commonFunctionsPath) {
 }
 
 # Load .env file from root directory (same directory as script)
-$rootDir = $PSScriptRoot
+$rootDir = Join-Path $PSScriptRoot ".."
 $envFile = Join-Path $rootDir ".env"
 if (Test-Path $envFile) {
     Write-Host "Loading environment variables from .env file..." -ForegroundColor Cyan
@@ -19,7 +19,6 @@ if (Test-Path $envFile) {
         if ($_ -match '^\s*([^#][^=]+)=(.*)$') {
             $key = $matches[1].Trim()
             $value = $matches[2].Trim()
-            # Remove quotes if present
             if ($value -match '^"(.*)"$' -or $value -match "^'(.*)'$") {
                 $value = $matches[1]
             }
@@ -41,10 +40,11 @@ if (Test-Path $envFile) {
     Write-Host "  Root directory: $rootDir" -ForegroundColor Gray
 }
 
-cd "$PSScriptRoot\campaign-service"
+cd "$PSScriptRoot\..\media-service"
 
 # Auto-detect and add Maven to PATH
 Add-MavenToPath | Out-Null
-Write-Host "Starting Campaign Service on port 8082..." -ForegroundColor Green
+Write-Host "Starting Media Service on port 8083..." -ForegroundColor Green
 Write-Host "Note: Ensure MySQL is running and Discovery Server (Eureka) is up" -ForegroundColor Yellow
 mvn spring-boot:run
+
