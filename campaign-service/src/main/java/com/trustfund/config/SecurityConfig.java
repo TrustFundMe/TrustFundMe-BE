@@ -57,6 +57,9 @@ public class SecurityConfig {
                         // Campaign follow endpoints
                         .requestMatchers(HttpMethod.GET, "/api/campaign-follows/**").permitAll()
                         .requestMatchers("/api/campaign-follows/**").authenticated()
+                        // Expenditures endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/expenditures/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess

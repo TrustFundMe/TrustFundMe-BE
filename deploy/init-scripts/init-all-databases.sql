@@ -81,6 +81,29 @@ CREATE TABLE campaign_follows (
     INDEX idx_campaign_follows_followed_at (followed_at)
 );
 
+-- expenditures
+CREATE TABLE expenditures (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    campaign_id BIGINT NOT NULL,
+    vote_created_by BIGINT NOT NULL,
+    evidence_due_at DATETIME NULL,
+    total_amount DECIMAL(19, 4) NOT NULL DEFAULT 0,
+    plan NVARCHAR(2000) NULL,
+    vote_start_at DATETIME NULL,
+    vote_end_at DATETIME NULL,
+    vote_status VARCHAR(50) NULL,
+    status VARCHAR(50) NULL,
+    evidence_status NVARCHAR(50) NULL,
+    vote_result NVARCHAR(2000) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    CONSTRAINT fk_expenditures_campaign
+        FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
+    INDEX idx_expenditures_campaign_id (campaign_id),
+    INDEX idx_expenditures_vote_created_by (vote_created_by),
+    INDEX idx_expenditures_status (status)
+);
+
 -- =======================================
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
 -- =======================================
@@ -258,4 +281,11 @@ INSERT INTO campaign_follows (campaign_id, user_id, followed_at)
 VALUES
     (1, 4, NOW())
 ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
+
+-- Expenditures
+INSERT INTO expenditures (id, campaign_id, vote_created_by, evidence_due_at, total_amount, plan, vote_start_at, vote_end_at, vote_status, status, evidence_status, vote_result, created_at, updated_at)
+VALUES
+    (1, 1, 3, DATE_ADD(NOW(), INTERVAL 5 DAY), 500.00, 'Kế hoạch chi tiêu cho giáo dục', NOW(), DATE_ADD(NOW(), INTERVAL 3 DAY), 'OPEN', 'PENDING', 'PENDING', 'Wait for voting', NOW(), NOW()),
+    (2, 2, 3, DATE_ADD(NOW(), INTERVAL 10 DAY), 1200.00, 'Kế hoạch chi tiêu cho y tế', NOW(), DATE_ADD(NOW(), INTERVAL 5 DAY), 'CLOSED', 'APPROVED', 'COMPLETED', 'Approved by majority', NOW(), NOW())
+ON DUPLICATE KEY UPDATE total_amount = VALUES(total_amount);
 
