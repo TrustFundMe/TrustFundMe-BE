@@ -7,7 +7,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
-public class ModerationServiceApplication {
+public class FlagServiceApplication {
     public static void main(String[] args) {
         // Load .env file from root
         Dotenv dotenv = Dotenv.configure()
@@ -18,6 +18,6 @@ public class ModerationServiceApplication {
 
         dotenv.entries().forEach(entry -> System.setProperty(entry.getKey(), entry.getValue()));
 
-        SpringApplication.run(ModerationServiceApplication.class, args);
+        SpringApplication.run(FlagServiceApplication.class, args);
     }
 }
