@@ -11,12 +11,14 @@ DROP DATABASE IF EXISTS trustfundme_media_db;
 DROP DATABASE IF EXISTS trustfundme_feed_db;
 DROP DATABASE IF EXISTS trustfundme_moderation_db;
 DROP DATABASE IF EXISTS trustfundme_flag_db;
+DROP DATABASE IF EXISTS trustfundme_chat_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_flag_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_chat_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -27,6 +29,7 @@ GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_flag_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_chat_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -214,6 +217,41 @@ CREATE TABLE IF NOT EXISTS flags (
     INDEX idx_flags_campaign_id (campaign_id),
     INDEX idx_flags_user_id (user_id),
     INDEX idx_flags_status (status)
+);
+
+-- =======================================
+-- 3.4 Schema: chat-service (DB: trustfundme_chat_db)
+-- =======================================
+USE trustfundme_chat_db;
+
+CREATE TABLE IF NOT EXISTS conversations (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    staff_id BIGINT NOT NULL,
+    fund_owner_id BIGINT NOT NULL,
+    campaign_id BIGINT NULL,
+    last_message_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_conversations_staff_id (staff_id),
+    INDEX idx_conversations_fund_owner_id (fund_owner_id),
+    INDEX idx_conversations_campaign_id (campaign_id),
+    INDEX idx_conversations_last_message_at (last_message_at)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    content VARCHAR(5000) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_messages_conversation_id (conversation_id),
+    INDEX idx_messages_sender_id (sender_id),
+    INDEX idx_messages_created_at (created_at),
+    INDEX idx_messages_is_read (is_read),
+    CONSTRAINT fk_messages_conversation
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
 );
 
 -- =======================================
