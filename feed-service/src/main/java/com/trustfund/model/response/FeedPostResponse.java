@@ -23,6 +23,15 @@ public class FeedPostResponse {
     private String content;
     private String status;
 
+    private Long categoryId;
+    private Long parentPostId;
+    private Integer replyCount;
+    private Integer viewCount;
+    private Boolean isPinned;
+    private Boolean isLocked;
+
+    private java.util.List<ForumAttachmentResponse> attachments;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;
 

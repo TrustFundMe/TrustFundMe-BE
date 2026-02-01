@@ -42,6 +42,28 @@ public class FeedPost {
     @Builder.Default
     private String status = "DRAFT";
 
+    @Column(name = "category_id")
+    private Long categoryId;
+
+    @Column(name = "parent_post_id")
+    private Long parentPostId;
+
+    @Column(name = "reply_count")
+    @Builder.Default
+    private Integer replyCount = 0;
+
+    @Column(name = "view_count")
+    @Builder.Default
+    private Integer viewCount = 0;
+
+    @Column(name = "is_pinned")
+    @Builder.Default
+    private Boolean isPinned = false;
+
+    @Column(name = "is_locked")
+    @Builder.Default
+    private Boolean isLocked = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

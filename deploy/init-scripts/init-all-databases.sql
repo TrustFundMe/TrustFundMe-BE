@@ -183,20 +183,57 @@ CREATE TABLE IF NOT EXISTS media (
 -- =======================================
 USE trustfundme_feed_db;
 
+CREATE TABLE IF NOT EXISTS forum_category (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL,
+    slug VARCHAR(100) NOT NULL UNIQUE,
+    description TEXT,
+    icon_url VARCHAR(500),
+    color VARCHAR(20),
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_forum_category_slug (slug),
+    INDEX idx_forum_category_is_active (is_active)
+);
+
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     budget_id BIGINT NULL,
     author_id BIGINT NOT NULL,
+    category_id BIGINT NULL,
+    parent_post_id BIGINT NULL,
     type NVARCHAR(50) NOT NULL,
     visibility NVARCHAR(50) NOT NULL,
     title NVARCHAR(255) NULL,
     content NVARCHAR(2000) NOT NULL,
     status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+    reply_count INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_locked BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_feed_post_author_id (author_id),
     INDEX idx_feed_post_budget_id (budget_id),
+    INDEX idx_feed_post_category_id (category_id),
+    INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
+);
+
+CREATE TABLE IF NOT EXISTS forum_attachment (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    type VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
+    url VARCHAR(1000) NOT NULL,
+    file_name VARCHAR(255) NULL,
+    file_size BIGINT NULL,
+    mime_type VARCHAR(100) NULL,
+    display_order INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_forum_attachment_post_id (post_id),
+    CONSTRAINT fk_forum_attachment_post
+        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
 );
 
 -- =======================================
@@ -263,8 +300,10 @@ INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, rol
 VALUES
     (1, 'admin@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, TRUE, NOW(), NOW()),
     (2, 'staff@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff User',   '0900000002', NULL, 'STAFF', TRUE, TRUE, NOW(), NOW()),
-    (3, 'owner@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Fund Owner',   '0900000003', 'https://cdn.example.com/avatars/owner.png', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
-    (4, 'user@example.com',     '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Normal User',  '0900000004', 'https://cdn.example.com/avatars/user.png', 'USER', TRUE, FALSE, NOW(), NOW())
+    (3, 'owner@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Fund Owner',   '0900000003', 'https://ui-avatars.com/api/?name=Fund+Owner&background=random', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
+    (4, 'user@example.com',     '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Normal User',  '0900000004', 'https://ui-avatars.com/api/?name=Normal+User&background=random', 'USER', TRUE, FALSE, NOW(), NOW()),
+    (5, 'alice@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Alice Nguyen', '0900000005', 'https://ui-avatars.com/api/?name=Alice+Nguyen&background=random', 'USER', TRUE, TRUE, NOW(), NOW()),
+    (6, 'bob@example.com',      '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Bob Tran',     '0900000006', 'https://ui-avatars.com/api/?name=Bob+Tran&background=random', 'USER', TRUE, TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Bank accounts (link to sample users)
@@ -296,4 +335,33 @@ INSERT INTO campaign_follows (campaign_id, user_id, followed_at)
 VALUES
     (1, 4, NOW())
 ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
+
+-- =======================================
+-- 5. Sample Data: feed-service
+-- =======================================
+USE trustfundme_feed_db;
+INSERT INTO forum_category (id, name, slug, description, color, display_order, is_active, created_at)
+VALUES
+    (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),
+    (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', '#ff5e14', 2, TRUE, NOW()),
+    (3, 'Hỏi đáp', 'qa', 'Hỏi đáp và hỗ trợ cộng đồng', '#10b981', 3, TRUE, NOW()),
+    (4, 'Tin tức', 'news', 'Tin tức mới nhất từ hệ thống', '#8b5cf6', 4, TRUE, NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+INSERT INTO feed_post (author_id, category_id, type, visibility, title, content, status, reply_count, view_count, is_pinned, created_at, budget_id)
+VALUES
+    -- General Category
+    (5, 1, 'DISCUSSION', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 15, FALSE, NOW(), NULL),
+    (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+    
+    -- Campaigns Category
+    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật tiến độ xây trường', 'Hôm nay chúng tôi đã hoàn thành phần móng. Cảm ơn các nhà hảo tâm!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
+    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về cách đóng góp', 'Mình muốn đóng góp bằng hiện vật thì liên hệ ai ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
+    
+    -- QA Category
+    (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
+    
+    -- News Category
+    (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
+ON DUPLICATE KEY UPDATE title = VALUES(title);
 
