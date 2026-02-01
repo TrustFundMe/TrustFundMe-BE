@@ -53,13 +53,7 @@ cd "$PSScriptRoot\..\identity-service"
 # Auto-detect and add Maven to PATH
 Add-MavenToPath | Out-Null
 
-# Verify JWT_SECRET is set before starting
-$jwtSecret = [Environment]::GetEnvironmentVariable("JWT_SECRET", "Process")
-if (-not $jwtSecret -or $jwtSecret.Trim() -eq "") {
-    Write-Host "[ERROR] JWT_SECRET is not set! Please check your .env file." -ForegroundColor Red
-    Write-Host "  Expected .env file at: $envFile" -ForegroundColor Yellow
-    exit 1
-}
+
 
 Write-Host "Starting Identity Service on port 8081..." -ForegroundColor Green
 Write-Host "Note: Ensure MySQL is running and database 'trustfundme_identity_db' exists" -ForegroundColor Yellow

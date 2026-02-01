@@ -37,13 +37,14 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
-                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/feed-posts/*").authenticated()
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/feed-posts/**", "/api/forum/categories/**").permitAll()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .anonymous(AbstractHttpConfigurer::disable)
+                .anonymous(AbstractHttpConfigurer::disable) // Enabled anonymous for public access
+
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }

@@ -2,6 +2,7 @@ package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
+import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostStatusRequest;
 import com.trustfund.model.request.UpdateFeedPostVisibilityRequest;
 import com.trustfund.model.response.FeedPostResponse;
@@ -46,7 +47,15 @@ public class FeedPostController {
             @RequestParam(defaultValue = "createdAt,desc") String sort
     ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long currentUserId = Long.parseLong(authentication.getName());
+        Long currentUserId = null;
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            try {
+                currentUserId = Long.parseLong(authentication.getName());
+            } catch (NumberFormatException ignored) {
+                currentUserId = null;
+            }
+        }
 
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];
@@ -60,7 +69,7 @@ public class FeedPostController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get feed post detail", description = "Get detail of a feed post by id")
-    public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id) {
+    public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id, jakarta.servlet.http.HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = null;
         if (authentication != null) {
@@ -71,7 +80,8 @@ public class FeedPostController {
             }
         }
 
-        FeedPostResponse response = feedPostService.getById(id, currentUserId);
+        String ipAddress = request.getRemoteAddr();
+        FeedPostResponse response = feedPostService.getById(id, currentUserId, ipAddress);
         return ResponseEntity.ok(response);
     }
 
@@ -102,6 +112,17 @@ public class FeedPostController {
         return ResponseEntity.ok(response);
     }
 
+    @PutMapping("/{id}")
+    @Operation(summary = "Update feed post (full)", description = "Update title, content, status, budgetId, attachments (author only)")
+    public ResponseEntity<FeedPostResponse> update(@PathVariable("id") Long id,
+                                                   @Valid @RequestBody UpdateFeedPostRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+
+        FeedPostResponse response = feedPostService.update(id, currentUserId, request);
+        return ResponseEntity.ok(response);
+    }
+
     @PatchMapping("/{id}")
     @Operation(summary = "Update feed post content", description = "Update title/content of a feed post (author only)")
     public ResponseEntity<FeedPostResponse> updateContent(@PathVariable("id") Long id,
@@ -111,5 +132,14 @@ public class FeedPostController {
 
         FeedPostResponse response = feedPostService.updateContent(id, currentUserId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Delete feed post", description = "Delete a feed post (author only)")
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = Long.parseLong(authentication.getName());
+        feedPostService.delete(id, currentUserId);
+        return ResponseEntity.noContent().build();
     }
 }
