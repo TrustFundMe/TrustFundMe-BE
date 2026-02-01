@@ -31,15 +31,19 @@ public class ChatServiceImpl implements ChatService {
         Long staffId;
         Long fundOwnerId;
 
-        if (role.equals("ROLE_STAFF")) {
+        if ("ROLE_STAFF".equals(role)) {
             staffId = userId;
             fundOwnerId = request.getFundOwnerId();
+            if (fundOwnerId == null) {
+                throw new BadRequestException("Fund Owner ID is required");
+            }
         } else {
             // Assume Fund Owner or Donor
             fundOwnerId = userId;
             staffId = request.getStaffId();
             if (staffId == null) {
-                throw new BadRequestException("Staff ID is required when Fund Owner creates conversation");
+                // Default staff ID or throw exception
+                throw new BadRequestException("Staff ID is required");
             }
         }
 
@@ -79,8 +83,8 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional
-    public MessageResponse sendMessage(SendMessageRequest request, Long senderId) {
-        Conversation conversation = conversationRepository.findById(request.getConversationId())
+    public MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId) {
+        Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
         // Verify sender is part of the conversation
@@ -89,7 +93,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         Message message = Message.builder()
-                .conversationId(request.getConversationId())
+                .conversationId(conversationId)
                 .senderId(senderId)
                 .content(request.getContent())
                 .isRead(false)
@@ -109,7 +113,7 @@ public class ChatServiceImpl implements ChatService {
         Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
-        return messageRepository.findByConversationIdOrderByCreatedAtDesc(conversationId)
+        return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId)
                 .stream()
                 .map(this::toMessageResponse)
                 .collect(java.util.stream.Collectors.toList());

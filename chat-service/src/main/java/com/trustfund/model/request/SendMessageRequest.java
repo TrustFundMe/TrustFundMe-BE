@@ -14,9 +14,6 @@ import lombok.NoArgsConstructor;
 @Builder
 public class SendMessageRequest {
 
-    @NotNull(message = "Conversation ID is required")
-    private Long conversationId;
-
     @NotBlank(message = "Message content is required")
     @Size(max = 5000, message = "Message content must not exceed 5000 characters")
     private String content;
