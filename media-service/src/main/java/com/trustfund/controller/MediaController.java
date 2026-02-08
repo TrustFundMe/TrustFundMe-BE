@@ -22,6 +22,32 @@ import java.util.List;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
+
+    @GetMapping("/debug/db-schema")
+    public ResponseEntity<String> debugDbSchema() {
+        try {
+            java.util.List<java.util.Map<String, Object>> columns = jdbcTemplate.queryForList("DESCRIBE media");
+            StringBuilder sb = new StringBuilder("Table: media\n");
+            for (java.util.Map<String, Object> col : columns) {
+                sb.append(String.format("Column: %s, Type: %s, Null: %s\n",
+                        col.get("Field"), col.get("Type"), col.get("Null")));
+            }
+            return ResponseEntity.ok(sb.toString());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/debug/fix-db")
+    public ResponseEntity<String> fixDb() {
+        try {
+            jdbcTemplate.execute("ALTER TABLE media MODIFY COLUMN media_type VARCHAR(50) NOT NULL");
+            return ResponseEntity.ok("Successfully updated media_type column to VARCHAR(50)!");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Fix failed: " + e.getMessage());
+        }
+    }
 
     @PostMapping(value = "/upload", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload file with metadata", description = "Upload a file and save metadata (post, campaign, description)")
@@ -39,7 +65,7 @@ public class MediaController {
                 .file(file)
                 .postId(postId)
                 .campaignId(campaignId)
-                .mediaType(mediaType != null ? mediaType : MediaType.PHOTO)
+                .mediaType(mediaType)
                 .description(description)
                 .build();
 

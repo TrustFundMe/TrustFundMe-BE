@@ -1,12 +1,14 @@
 package com.trustfund.controller;
 
 import com.trustfund.repository.UserRepository;
+import com.trustfund.service.interfaceServices.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Internal", description = "API nội bộ cho service khác gọi (VD: campaign-service)")
 public class InternalUserController {
 
+    private final UserService userService;
     private final UserRepository userRepository;
 
     @GetMapping("/{id}/exists")
@@ -25,5 +28,12 @@ public class InternalUserController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    @PutMapping("/{id}/upgrade-role")
+    @Operation(summary = "Nâng cấp role user lên FUND_OWNER (dùng khi duyệt campaign)")
+    public ResponseEntity<Void> upgradeRole(@PathVariable Long id) {
+        userService.upgradeToFundOwner(id);
+        return ResponseEntity.ok().build();
     }
 }

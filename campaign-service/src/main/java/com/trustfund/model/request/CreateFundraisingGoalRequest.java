@@ -1,7 +1,9 @@
 package com.trustfund.model.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -18,10 +20,12 @@ public class CreateFundraisingGoalRequest {
     @NotNull(message = "Campaign ID is required")
     private Long campaignId;
 
-    @NotNull(message = "Target amount is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Target amount must be greater than 0")
+    @NotNull(message = "Số tiền mục tiêu không được để trống")
+    @DecimalMin(value = "10000.0", message = "Số tiền mục tiêu tối thiểu phải là 10,000")
     private BigDecimal targetAmount;
 
+    @NotBlank(message = "Mô tả không được để trống")
+    @Size(min = 10, max = 1000, message = "Mô tả phải từ 10 đến 1000 ký tự")
     private String description;
 
     @Builder.Default

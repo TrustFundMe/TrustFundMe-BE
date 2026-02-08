@@ -1,6 +1,7 @@
 package com.trustfund.service;
 
 import com.trustfund.model.Media;
+import com.trustfund.model.enums.MediaType;
 import com.trustfund.model.request.MediaUploadRequest;
 import com.trustfund.model.response.MediaFileResponse;
 import com.trustfund.repository.MediaRepository;
@@ -24,11 +25,17 @@ public class MediaServiceImpl implements MediaService {
         // 1. Upload to Supabase
         SupabaseStorageService.StoredFile storedFile = supabaseStorageService.uploadFile(request.getFile());
 
-        // 2. Save metadata to DB
+        // 2. Auto-detect mediaType if not provided
+        MediaType finalMediaType = request.getMediaType();
+        if (finalMediaType == null) {
+            finalMediaType = detectMediaType(request.getFile().getContentType());
+        }
+
+        // 3. Save metadata to DB
         Media media = Media.builder()
                 .postId(request.getPostId())
                 .campaignId(request.getCampaignId())
-                .mediaType(request.getMediaType())
+                .mediaType(finalMediaType)
                 .url(storedFile.publicUrl())
                 .description(request.getDescription())
                 .fileName(request.getFile().getOriginalFilename())
@@ -36,6 +43,8 @@ public class MediaServiceImpl implements MediaService {
                 .sizeBytes(request.getFile().getSize())
                 .build();
 
+        System.out.println(">>> MediaServiceImpl: Saving media - Type: " + finalMediaType + ", URL Length: "
+                + (storedFile.publicUrl() != null ? storedFile.publicUrl().length() : 0));
         Media savedMedia = mediaRepository.save(media);
 
         return mapToResponse(savedMedia);
@@ -90,6 +99,40 @@ public class MediaServiceImpl implements MediaService {
 
         // 2. Delete from DB
         mediaRepository.delete(media);
+    }
+
+    private MediaType detectMediaType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return MediaType.FILE; // Default for unknown types
+        }
+
+        String type = contentType.toLowerCase();
+
+        // Image types
+        if (type.startsWith("image/")) {
+            return MediaType.PHOTO;
+        }
+
+        // Video types
+        if (type.startsWith("video/")) {
+            return MediaType.VIDEO;
+        }
+
+        // Document types
+        if (type.contains("pdf") ||
+                type.contains("document") ||
+                type.contains("word") ||
+                type.contains("excel") ||
+                type.contains("spreadsheet") ||
+                type.contains("text") ||
+                type.contains("msword") ||
+                type.contains("ms-excel") ||
+                type.contains("officedocument")) {
+            return MediaType.FILE;
+        }
+
+        // Default fallback
+        return MediaType.FILE;
     }
 
     private MediaFileResponse mapToResponse(Media media) {

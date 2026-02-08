@@ -26,7 +26,7 @@ public class Media {
     private Long campaignId;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "media_type", nullable = false)
+    @Column(name = "media_type", nullable = false, length = 50)
     private MediaType mediaType;
 
     @Column(nullable = false, length = 1000)
