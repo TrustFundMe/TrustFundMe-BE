@@ -51,6 +51,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .status(request.getStatus() != null ? request.getStatus() : "DRAFT")
+                .type(request.getType())
                 .thankMessage(request.getThankMessage())
                 .balance(request.getBalance() != null ? request.getBalance() : java.math.BigDecimal.ZERO)
                 .approvedByStaff(null)
@@ -64,16 +65,28 @@ public class CampaignServiceImpl implements CampaignService {
     public Campaign update(Long id, UpdateCampaignRequest request) {
         Campaign campaign = getById(id);
 
-        if (request.getTitle() != null) campaign.setTitle(request.getTitle());
-        if (request.getDescription() != null) campaign.setDescription(request.getDescription());
-        if (request.getCategory() != null) campaign.setCategory(request.getCategory());
-        if (request.getStartDate() != null) campaign.setStartDate(request.getStartDate());
-        if (request.getEndDate() != null) campaign.setEndDate(request.getEndDate());
-        if (request.getStatus() != null) campaign.setStatus(request.getStatus());
-        if (request.getThankMessage() != null) campaign.setThankMessage(request.getThankMessage());
-        if (request.getBalance() != null) campaign.setBalance(request.getBalance());
-        if (request.getApprovedByStaff() != null) campaign.setApprovedByStaff(request.getApprovedByStaff());
-        if (request.getApprovedAt() != null) campaign.setApprovedAt(request.getApprovedAt());
+        if (request.getTitle() != null)
+            campaign.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            campaign.setDescription(request.getDescription());
+        if (request.getCategory() != null)
+            campaign.setCategory(request.getCategory());
+        if (request.getStartDate() != null)
+            campaign.setStartDate(request.getStartDate());
+        if (request.getEndDate() != null)
+            campaign.setEndDate(request.getEndDate());
+        if (request.getStatus() != null)
+            campaign.setStatus(request.getStatus());
+        if (request.getType() != null)
+            campaign.setType(request.getType());
+        if (request.getThankMessage() != null)
+            campaign.setThankMessage(request.getThankMessage());
+        if (request.getBalance() != null)
+            campaign.setBalance(request.getBalance());
+        if (request.getApprovedByStaff() != null)
+            campaign.setApprovedByStaff(request.getApprovedByStaff());
+        if (request.getApprovedAt() != null)
+            campaign.setApprovedAt(request.getApprovedAt());
 
         return campaignRepository.save(campaign);
     }

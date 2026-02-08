@@ -23,7 +23,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
-    @Value("${jwt.secret:trustfund-secret-key-for-jwt-token-generation-minimum-256-bits}")
+    @Value("${jwt.secret:TrustFundME2024SecretKeyForJWTTokenGenerationSecureRandomString64Chars}")
     private String jwtSecret;
 
     @Override
@@ -60,14 +60,23 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
     }
 
     private boolean isPublicEndpoint(String path, HttpMethod method) {
+        if (method == HttpMethod.OPTIONS) {
+            return true;
+        }
+
         // /api/auth - All methods are public
         if (path.startsWith("/api/auth")) {
             return true;
         }
 
-        // /api/media - POST (upload) and GET (read) are public
+        // /api/media - POST (upload), GET (read) and DELETE are public
         if (path.startsWith("/api/media")) {
-            return method == HttpMethod.POST || method == HttpMethod.GET;
+            return method == HttpMethod.POST || method == HttpMethod.GET || method == HttpMethod.DELETE;
+        }
+
+        // Feed Service - GET methods are public
+        if (path.startsWith("/api/feed-posts") || path.startsWith("/api/forum/categories")) {
+            return method == HttpMethod.GET;
         }
 
         // Campaign Service - Only GET methods are public

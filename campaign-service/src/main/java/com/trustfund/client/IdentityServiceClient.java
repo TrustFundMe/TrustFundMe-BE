@@ -14,7 +14,7 @@ public class IdentityServiceClient {
     private final String identityServiceUrl;
 
     public IdentityServiceClient(RestTemplate restTemplate,
-                                @Value("${identity.service.url:http://localhost:8081}") String identityServiceUrl) {
+            @Value("${identity.service.url:http://localhost:8081}") String identityServiceUrl) {
         this.restTemplate = restTemplate;
         this.identityServiceUrl = identityServiceUrl.trim().replaceAll("/$", "");
     }
@@ -24,7 +24,8 @@ public class IdentityServiceClient {
      * Nếu không tồn tại hoặc không kết nối được -> ném 400.
      */
     public void validateUserExists(Long userId) {
-        if (userId == null) return;
+        if (userId == null)
+            return;
 
         String url = identityServiceUrl + "/api/internal/users/" + userId + "/exists";
         try {
@@ -35,6 +36,22 @@ public class IdentityServiceClient {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Unable to validate fund owner id. Please ensure Identity Service is running.");
+        }
+    }
+
+    /**
+     * Gọi identity-service để nâng cấp role của user lên FUND_OWNER.
+     */
+    public void upgradeUserRole(Long userId) {
+        if (userId == null)
+            return;
+
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/upgrade-role";
+        try {
+            restTemplate.put(url, null);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to upgrade user role. Please ensure Identity Service is running.");
         }
     }
 }

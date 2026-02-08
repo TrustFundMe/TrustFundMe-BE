@@ -55,7 +55,12 @@ public class Campaign {
     @Column(length = 50)
     private String status;
 
-    /** Trạng thái khi "xóa" mềm (soft delete) – dùng status thay vì cột is_deleted */
+    @Column(length = 50)
+    private String type;
+
+    /**
+     * Trạng thái khi "xóa" mềm (soft delete) – dùng status thay vì cột is_deleted
+     */
     public static final String STATUS_DELETED = "DELETED";
 
     @Column(name = "created_at", nullable = false, updatable = false)

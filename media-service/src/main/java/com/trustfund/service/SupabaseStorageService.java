@@ -47,7 +47,10 @@ public class SupabaseStorageService {
             String publicUrl = supabaseConfig.getPublicUrl(encodedFilename);
             return new StoredFile(uniqueFilename, encodedFilename, publicUrl);
         } else {
-            throw new RuntimeException("Supabase upload failed with status code: " + statusCode);
+            // Enhanced logging to help debug 403 errors
+            System.err.println("Supabase upload failed! Status: " + statusCode + ", URL: " + uploadUrl);
+            throw new RuntimeException("Supabase upload failed with status code: " + statusCode
+                    + ". This might be due to Storage Policies (RLS) or allowed mime-types.");
         }
     }
 
@@ -65,6 +68,7 @@ public class SupabaseStorageService {
         int statusCode = response.statusCode();
 
         if (statusCode < 200 || statusCode >= 300) {
+            System.err.println("Supabase delete failed! Status: " + statusCode + ", URL: " + deleteUrl);
             throw new RuntimeException("Supabase delete failed with status code: " + statusCode);
         }
     }
@@ -82,6 +86,6 @@ public class SupabaseStorageService {
         deleteFile(storedName);
     }
 
-    public record StoredFile(String storedName, String encodedName, String publicUrl) {}
+    public record StoredFile(String storedName, String encodedName, String publicUrl) {
+    }
 }
-
