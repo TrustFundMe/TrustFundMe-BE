@@ -84,6 +84,41 @@ CREATE TABLE campaign_follows (
     INDEX idx_campaign_follows_followed_at (followed_at)
 );
 
+-- expenditures
+CREATE TABLE `expenditures` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `campaign_id` BIGINT NOT NULL,
+    `evidence_due_at` DATETIME NULL,
+    `evidence_status` VARCHAR(50) NULL,
+    `evidence_status` VARCHAR(50) NULL,
+    `total_amount` DECIMAL(19, 4) NULL,
+    `total_expected_amount` DECIMAL(19, 4) NULL,
+    `variance` DECIMAL(19, 4) NULL,
+    `plan` VARCHAR(2000) NULL,
+    `status` VARCHAR(50) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE CASCADE,
+    INDEX `idx_expenditures_campaign_id` (`campaign_id`),
+    INDEX `idx_expenditures_status` (`status`)
+);
+
+-- expenditure_items
+CREATE TABLE `expenditure_items` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `expenditure_id` BIGINT NOT NULL,
+    `category` VARCHAR(255) NULL,
+    `quantity` INT NULL,
+    `actual_quantity` INT NULL,
+    `price` DECIMAL(19, 4) NULL,
+    `expected_price` DECIMAL(19, 4) NULL,
+    `note` VARCHAR(1000) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`expenditure_id`) REFERENCES `expenditures`(`id`) ON DELETE CASCADE,
+    INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
+);
+
 -- =======================================
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
 -- =======================================
@@ -319,16 +354,35 @@ USE trustfundme_campaign_db;
 -- Campaigns (fund_owner_id points to user id = 3)
 INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, category, start_date, end_date, status, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn đã ủng hộ!', 1000.00, 'Chiến dịch gây quỹ 1', 'Mô tả chiến dịch 1', 'Education', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Chiến dịch gây quỹ 2', 'Mô tả chiến dịch 2', 'Healthcare', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NOW(), NOW())
+    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 'Humanitarian', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NOW(), NOW()),
+    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 'Agriculture', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- Fundraising goals
 INSERT INTO fundraising_goals (id, campaign_id, target_amount, description, is_active, created_at, updated_at)
 VALUES
-    (1, 1, 5000.00, 'Goal cho chiến dịch 1', TRUE, NOW(), NOW()),
-    (2, 2, 8000.00, 'Goal cho chiến dịch 2', TRUE, NOW(), NOW())
+    (1, 1, 100000000.00, 'Ngân sách cho 2000 phần quà cứu trợ (mì tôm, nước, thuốc)', TRUE, NOW(), NOW()),
+    (2, 2, 50000000.00, 'Hỗ trợ 500 hộ dân cây giống lúa và ngô', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount);
+
+-- Expenditures
+INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, plan, status, created_at, updated_at)
+VALUES
+    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'APPROVED', NOW(), NOW()),
+    (2, 2, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 'Mua cây giống lúa ngắn ngày đợt 1', 'PENDING_REVIEW', NOW(), NOW()),
+    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', NOW(), NOW()),
+    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 2000000.00, 'Mua thuốc men và vật tư y tế', 'PENDING_REVIEW', NOW(), NOW())
+ON DUPLICATE KEY UPDATE plan = VALUES(plan);
+
+-- Expenditure Items
+INSERT INTO expenditure_items (expenditure_id, category, quantity, price, note, created_at, updated_at)
+VALUES
+    (1, 'Mì tôm', 500, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
+    (1, 'Nước sạch', 1000, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
+    (1, 'Lương khô', 200, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
+    (2, 'Giống lúa KH5', 500, 10000.00, 'Kg giống lúa năng suất cao', NOW(), NOW()),
+    (3, 'Thuê vận tải', 1, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
+    (4, 'Thuốc men', 50, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW());
 
 -- Campaign follows (user 4 follows campaign 1)
 INSERT INTO campaign_follows (campaign_id, user_id, followed_at)
@@ -355,8 +409,8 @@ VALUES
     (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
     
     -- Campaigns Category
-    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật tiến độ xây trường', 'Hôm nay chúng tôi đã hoàn thành phần móng. Cảm ơn các nhà hảo tâm!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
-    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về cách đóng góp', 'Mình muốn đóng góp bằng hiện vật thì liên hệ ai ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
+    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
+    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
     
     -- QA Category
     (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
