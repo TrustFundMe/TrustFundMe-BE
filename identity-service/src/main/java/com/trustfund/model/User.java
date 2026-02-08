@@ -28,6 +28,7 @@ public class User {
     @Column(nullable = false)
     private String fullName;
 
+    @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
     @Column(name = "avatar_url", length = 500)
@@ -38,7 +39,7 @@ public class User {
     @Builder.Default
     private Role role = Role.USER;
 
-    @Column(nullable = false)
+    @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 

@@ -69,8 +69,23 @@ public class UserServiceImpl implements UserService {
         if (request.getFullName() != null) {
             user.setFullName(request.getFullName());
         }
-        if (request.getPhoneNumber() != null) {
-            user.setPhoneNumber(request.getPhoneNumber());
+        String newPhoneNumber = request.getPhoneNumber();
+        if (newPhoneNumber != null && newPhoneNumber.trim().isEmpty()) {
+            newPhoneNumber = null;
+        }
+
+        if (newPhoneNumber != null) {
+            if (!newPhoneNumber.equals(user.getPhoneNumber())) {
+                log.info("Checking phone number uniqueness: current={}, requested={}", user.getPhoneNumber(), newPhoneNumber);
+                if (userRepository.existsByPhoneNumber(newPhoneNumber)) {
+                    log.warn("Phone number already exists: {}", newPhoneNumber);
+                    throw new BadRequestException("Phone number already exists");
+                }
+                user.setPhoneNumber(newPhoneNumber);
+            }
+        } else if (user.getPhoneNumber() != null) {
+            // User wants to clear their phone number
+            user.setPhoneNumber(null);
         }
         if (request.getAvatarUrl() != null) {
             // Nếu có avatarUrl cũ và khác với mới, xóa file cũ
