@@ -72,6 +72,13 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public MediaFileResponse getFirstImageByCampaignId(Long campaignId) {
+        return mediaRepository.findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(campaignId, MediaType.PHOTO)
+                .map(this::mapToResponse)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request) {
         Media media = mediaRepository.findById(id)

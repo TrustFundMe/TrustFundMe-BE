@@ -90,6 +90,12 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.getMediaByCampaignId(campaignId));
     }
 
+    @GetMapping("/campaigns/{campaignId}/first-image")
+    @Operation(summary = "Get first image by Campaign ID", description = "Get the first image associated with a campaign for cover display")
+    public ResponseEntity<MediaFileResponse> getFirstImageByCampaignId(@PathVariable Long campaignId) {
+        return ResponseEntity.ok(mediaService.getFirstImageByCampaignId(campaignId));
+    }
+
     @PatchMapping("/{id}")
     @Operation(summary = "Update media metadata", description = "Update description, postId, or campaignId for a media record")
     public ResponseEntity<MediaFileResponse> update(@PathVariable Long id,
