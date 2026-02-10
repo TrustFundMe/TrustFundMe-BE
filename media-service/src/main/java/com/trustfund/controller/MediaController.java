@@ -72,6 +72,27 @@ public class MediaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.uploadMedia(request));
     }
 
+    @PostMapping(value = "/upload/conversation", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload file for conversation (Chat)", description = "Upload a file and save metadata for a specific conversation")
+    public ResponseEntity<MediaFileResponse> uploadForConversation(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam Long conversationId,
+            @RequestParam(required = false) MediaType mediaType,
+            @RequestParam(required = false) String description) throws IOException, InterruptedException {
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+        }
+
+        MediaUploadRequest request = MediaUploadRequest.builder()
+                .file(file)
+                .conversationId(conversationId)
+                .mediaType(mediaType)
+                .description(description)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.uploadMedia(request));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get media by ID", description = "Get details of a media file from database")
     public ResponseEntity<MediaFileResponse> getById(@PathVariable Long id) {
@@ -88,6 +109,12 @@ public class MediaController {
     @Operation(summary = "Get media by Campaign ID", description = "Get all media files associated with a campaign")
     public ResponseEntity<List<MediaFileResponse>> getByCampaignId(@PathVariable Long campaignId) {
         return ResponseEntity.ok(mediaService.getMediaByCampaignId(campaignId));
+    }
+
+    @GetMapping("/conversations/{conversationId}")
+    @Operation(summary = "Get media by Conversation ID", description = "Get all media files associated with a conversation")
+    public ResponseEntity<List<MediaFileResponse>> getByConversationId(@PathVariable Long conversationId) {
+        return ResponseEntity.ok(mediaService.getMediaByConversationId(conversationId));
     }
 
     @GetMapping("/campaigns/{campaignId}/first-image")

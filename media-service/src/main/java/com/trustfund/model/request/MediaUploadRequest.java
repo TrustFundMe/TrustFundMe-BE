@@ -15,6 +15,7 @@ public class MediaUploadRequest {
     private MultipartFile file;
     private Long postId;
     private Long campaignId;
+    private Long conversationId;
     private MediaType mediaType;
     private String description;
 }

@@ -14,6 +14,8 @@ public interface MediaService {
 
     List<MediaFileResponse> getMediaByCampaignId(Long campaignId);
 
+    List<MediaFileResponse> getMediaByConversationId(Long conversationId);
+
     MediaFileResponse getFirstImageByCampaignId(Long campaignId);
 
     MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request);

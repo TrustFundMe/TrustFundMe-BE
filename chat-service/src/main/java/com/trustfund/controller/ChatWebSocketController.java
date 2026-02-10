@@ -21,16 +21,17 @@ public class ChatWebSocketController {
     @SendTo("/topic/conversation/{conversationId}")
     public MessageResponse sendMessage(
             @DestinationVariable Long conversationId,
-            @Payload ChatMessageRequest request
-    ) {
-        // In a real scenario, senderId should be extracted from the authenticated user (Principal)
-        // For simplicity or if trusting the payload (internal/prototype), we use request.getSenderId()
+            @Payload ChatMessageRequest request) {
+        // In a real scenario, senderId should be extracted from the authenticated user
+        // (Principal)
+        // For simplicity or if trusting the payload (internal/prototype), we use
+        // request.getSenderId()
         // Ideally: Long senderId = Long.parseLong(principal.getName());
 
         SendMessageRequest sendRequest = SendMessageRequest.builder()
                 .content(request.getContent())
                 .build();
-        
-        return chatService.sendMessage(conversationId, sendRequest, request.getSenderId()); 
+
+        return chatService.sendMessage(conversationId, sendRequest, request.getSenderId());
     }
 }
