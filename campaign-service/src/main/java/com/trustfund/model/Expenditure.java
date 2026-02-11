@@ -41,6 +41,10 @@ public class Expenditure {
     @Column(name = "variance", precision = 19, scale = 4)
     private BigDecimal variance;
 
+    @Column(name = "is_withdrawal_requested", nullable = false)
+    @Builder.Default
+    private Boolean isWithdrawalRequested = false;
+
     @Column(name = "plan", length = 2000)
     private String plan;
 

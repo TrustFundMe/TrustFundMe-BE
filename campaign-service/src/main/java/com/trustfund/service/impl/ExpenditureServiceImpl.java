@@ -31,6 +31,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public Expenditure createExpenditure(CreateExpenditureRequest request) {
         Campaign campaign = campaignService.getById(request.getCampaignId());
+        
+        // Ràng buộc: Đối với chiến dịch AUTHORIZED (Quỹ Ủy quyền), evidenceDueAt là bắt buộc
+        if ("AUTHORIZED".equalsIgnoreCase(campaign.getType()) && request.getEvidenceDueAt() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
+        }
 
         // Logic: AUTHORIZED -> PENDING_REVIEW, ITEMIZED -> APPROVED
         String initialStatus = "APPROVED";
@@ -100,6 +105,39 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public Expenditure updateExpenditureStatus(Long id, String status) {
         Expenditure expenditure = getExpenditureById(id);
         expenditure.setStatus(status);
+        
+        // Logic: Nếu là chi tiêu AUTHORIZED và được approved -> Tự động yêu cầu rút tiền
+        if ("APPROVED".equalsIgnoreCase(status)) {
+            Campaign campaign = campaignService.getById(expenditure.getCampaignId());
+            if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
+                expenditure.setIsWithdrawalRequested(true);
+            }
+        }
+        
+        return expenditureRepository.save(expenditure);
+    }
+
+    @Override
+    @Transactional
+    public Expenditure requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt) {
+        Expenditure expenditure = getExpenditureById(id);
+        
+        if (expenditure.getIsWithdrawalRequested()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yêu cầu rút tiền đã được thực hiện trước đó");
+        }
+
+        Campaign campaign = campaignService.getById(expenditure.getCampaignId());
+        
+        expenditure.setIsWithdrawalRequested(true);
+        if (evidenceDueAt != null) {
+            expenditure.setEvidenceDueAt(evidenceDueAt);
+        }
+        
+        // Đối với chiến dịch ITEMIZED, khi yêu cầu rút tiền thì đóng chi tiêu này lại
+        if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            expenditure.setStatus("CLOSED");
+        }
+        
         return expenditureRepository.save(expenditure);
     }
 

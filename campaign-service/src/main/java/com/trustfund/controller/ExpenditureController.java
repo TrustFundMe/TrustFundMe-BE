@@ -55,6 +55,14 @@ public class ExpenditureController {
         return ResponseEntity.ok(expenditureService.updateExpenditureActuals(id, request));
     }
 
+    @PostMapping("/{id}/request-withdrawal")
+    @Operation(summary = "Yêu cầu rút tiền", description = "Đánh dấu yêu cầu rút tiền cho khoản chi. Nếu là quỹ mục tiêu sẽ đóng luôn đợt chi này.")
+    public ResponseEntity<Expenditure> requestWithdrawal(
+            @PathVariable Long id, 
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt) {
+        return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt));
+    }
+
     @GetMapping("/{id}/items")
     @Operation(summary = "Lấy các hạng mục của chi tiêu", description = "Lấy danh sách các hạng mục (ExpenditureItems) thuộc về một khoản chi tiêu.")
     public List<ExpenditureItem> getItems(@PathVariable Long id) {
