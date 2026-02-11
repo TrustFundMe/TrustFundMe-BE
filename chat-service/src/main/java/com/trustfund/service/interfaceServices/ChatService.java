@@ -12,7 +12,7 @@ public interface ChatService {
 
     java.util.List<ConversationResponse> getConversations(Long userId);
 
-    MessageResponse sendMessage(SendMessageRequest request, Long senderId);
+    MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId);
 
     java.util.List<MessageResponse> getMessages(Long conversationId, Long userId);
 }

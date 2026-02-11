@@ -75,12 +75,7 @@ public class ChatController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long senderId = Long.parseLong(authentication.getName());
 
-        // Ensure conversationId in path matches request body
-        if (!conversationId.equals(request.getConversationId())) {
-            throw new com.trustfund.exception.exceptions.BadRequestException("Conversation ID mismatch");
-        }
-
-        MessageResponse response = chatService.sendMessage(request, senderId);
+        MessageResponse response = chatService.sendMessage(conversationId, request, senderId);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

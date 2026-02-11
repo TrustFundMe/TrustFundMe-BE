@@ -35,6 +35,7 @@ public class MediaServiceImpl implements MediaService {
         Media media = Media.builder()
                 .postId(request.getPostId())
                 .campaignId(request.getCampaignId())
+                .conversationId(request.getConversationId())
                 .mediaType(finalMediaType)
                 .url(storedFile.publicUrl())
                 .description(request.getDescription())
@@ -72,6 +73,20 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public List<MediaFileResponse> getMediaByConversationId(Long conversationId) {
+        return mediaRepository.findByConversationId(conversationId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public MediaFileResponse getFirstImageByCampaignId(Long campaignId) {
+        return mediaRepository.findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(campaignId, MediaType.PHOTO)
+                .map(this::mapToResponse)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request) {
         Media media = mediaRepository.findById(id)
@@ -81,6 +96,8 @@ public class MediaServiceImpl implements MediaService {
             media.setPostId(request.getPostId());
         if (request.getCampaignId() != null)
             media.setCampaignId(request.getCampaignId());
+        if (request.getConversationId() != null)
+            media.setConversationId(request.getConversationId());
         if (request.getDescription() != null)
             media.setDescription(request.getDescription());
 
@@ -140,6 +157,7 @@ public class MediaServiceImpl implements MediaService {
                 .id(media.getId())
                 .postId(media.getPostId())
                 .campaignId(media.getCampaignId())
+                .conversationId(media.getConversationId())
                 .mediaType(media.getMediaType())
                 .url(media.getUrl())
                 .description(media.getDescription())
