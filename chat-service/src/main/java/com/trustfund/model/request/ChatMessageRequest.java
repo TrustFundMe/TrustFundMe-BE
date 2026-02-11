@@ -9,9 +9,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UpdateMediaRequest {
-    private Long postId;
-    private Long campaignId;
+public class ChatMessageRequest {
     private Long conversationId;
-    private String description;
+    private String content;
+    private Long senderId; // Optional if we extract from Principal
 }

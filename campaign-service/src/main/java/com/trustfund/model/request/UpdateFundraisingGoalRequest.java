@@ -1,6 +1,7 @@
 package com.trustfund.model.request;
 
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Size;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,9 +15,10 @@ import java.math.BigDecimal;
 @Builder
 public class UpdateFundraisingGoalRequest {
 
-    @DecimalMin(value = "0.0", inclusive = false, message = "Target amount must be greater than 0")
+    @DecimalMin(value = "10000.0", message = "Số tiền mục tiêu tối thiểu phải là 10,000")
     private BigDecimal targetAmount;
 
+    @Size(min = 10, max = 1000, message = "Mô tả phải từ 10 đến 1000 ký tự")
     private String description;
 
     private Boolean isActive;

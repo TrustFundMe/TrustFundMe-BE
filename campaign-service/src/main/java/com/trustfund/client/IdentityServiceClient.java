@@ -63,4 +63,20 @@ public class IdentityServiceClient {
                     .build();
         }
     }
+
+    /**
+     * Gọi identity-service để nâng cấp role của user lên FUND_OWNER.
+     */
+    public void upgradeUserRole(Long userId) {
+        if (userId == null)
+            return;
+
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/upgrade-role";
+        try {
+            restTemplate.put(url, null);
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Unable to upgrade user role. Please ensure Identity Service is running.");
+        }
+    }
 }

@@ -69,9 +69,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
-        // /api/media - POST (upload) and GET (read) are public
+        // /api/media - POST (upload), GET (read) and DELETE are public
         if (path.startsWith("/api/media")) {
-            return method == HttpMethod.POST || method == HttpMethod.GET;
+            return method == HttpMethod.POST || method == HttpMethod.GET || method == HttpMethod.DELETE;
         }
 
         // Feed Service - GET methods are public
@@ -88,6 +88,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Users endpoint - check-email is public
         if (path.equals("/api/users/check-email")) {
+            return true;
+        }
+
+        // WebSocket endpoint - allow SockJS handshake (/ws/**)
+        if (path.startsWith("/ws")) {
             return true;
         }
 

@@ -140,7 +140,7 @@ public class UserServiceImpl implements UserService {
     @Transactional(readOnly = true)
     public CheckEmailResponse checkEmail(String email) {
         Optional<User> userOptional = userRepository.findByEmail(email);
-        
+
         if (userOptional.isPresent()) {
             User user = userOptional.get();
             return CheckEmailResponse.builder()
@@ -157,12 +157,28 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    @Transactional
+    public void upgradeToFundOwner(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
+
+        // Chỉ nâng cấp nếu đang là USER thường
+        if (User.Role.USER.equals(user.getRole())) {
+            user.setRole(User.Role.FUND_OWNER);
+            userRepository.save(user);
+            log.info("Upgraded user with id: {} to FUND_OWNER", id);
+        } else {
+            log.info("User with id: {} already has role: {} - skipping upgrade", id, user.getRole());
+        }
+    }
+
     private void deleteOldAvatarFile(String avatarUrl) {
         if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
             return;
         }
         try {
-            String deleteUrl = mediaServiceUrl + "/api/media/by-url?url=" + 
+            String deleteUrl = mediaServiceUrl + "/api/media/by-url?url=" +
                     java.net.URLEncoder.encode(avatarUrl, java.nio.charset.StandardCharsets.UTF_8);
             restTemplate.delete(deleteUrl);
             log.info("Deleted old avatar file: {}", avatarUrl);

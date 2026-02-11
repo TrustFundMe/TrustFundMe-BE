@@ -58,6 +58,9 @@ public class Campaign {
     @Column(name = "rejection_reason", length = 1000)
     private String rejectionReason;
 
+    @Column(length = 50)
+    private String type;
+
     /**
      * Trạng thái khi "xóa" mềm (soft delete) – dùng status thay vì cột is_deleted
      */

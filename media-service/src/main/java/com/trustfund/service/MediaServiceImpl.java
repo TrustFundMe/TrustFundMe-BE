@@ -1,6 +1,7 @@
 package com.trustfund.service;
 
 import com.trustfund.model.Media;
+import com.trustfund.model.enums.MediaType;
 import com.trustfund.model.request.MediaUploadRequest;
 import com.trustfund.model.response.MediaFileResponse;
 import com.trustfund.repository.MediaRepository;
@@ -24,11 +25,18 @@ public class MediaServiceImpl implements MediaService {
         // 1. Upload to Supabase
         SupabaseStorageService.StoredFile storedFile = supabaseStorageService.uploadFile(request.getFile());
 
-        // 2. Save metadata to DB
+        // 2. Auto-detect mediaType if not provided
+        MediaType finalMediaType = request.getMediaType();
+        if (finalMediaType == null) {
+            finalMediaType = detectMediaType(request.getFile().getContentType());
+        }
+
+        // 3. Save metadata to DB
         Media media = Media.builder()
                 .postId(request.getPostId())
                 .campaignId(request.getCampaignId())
-                .mediaType(request.getMediaType())
+                .conversationId(request.getConversationId())
+                .mediaType(finalMediaType)
                 .url(storedFile.publicUrl())
                 .description(request.getDescription())
                 .fileName(request.getFile().getOriginalFilename())
@@ -36,6 +44,8 @@ public class MediaServiceImpl implements MediaService {
                 .sizeBytes(request.getFile().getSize())
                 .build();
 
+        System.out.println(">>> MediaServiceImpl: Saving media - Type: " + finalMediaType + ", URL Length: "
+                + (storedFile.publicUrl() != null ? storedFile.publicUrl().length() : 0));
         Media savedMedia = mediaRepository.save(media);
 
         return mapToResponse(savedMedia);
@@ -63,6 +73,20 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public List<MediaFileResponse> getMediaByConversationId(Long conversationId) {
+        return mediaRepository.findByConversationId(conversationId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public MediaFileResponse getFirstImageByCampaignId(Long campaignId) {
+        return mediaRepository.findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(campaignId, MediaType.PHOTO)
+                .map(this::mapToResponse)
+                .orElse(null);
+    }
+
+    @Override
     @Transactional
     public MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request) {
         Media media = mediaRepository.findById(id)
@@ -72,6 +96,8 @@ public class MediaServiceImpl implements MediaService {
             media.setPostId(request.getPostId());
         if (request.getCampaignId() != null)
             media.setCampaignId(request.getCampaignId());
+        if (request.getConversationId() != null)
+            media.setConversationId(request.getConversationId());
         if (request.getDescription() != null)
             media.setDescription(request.getDescription());
 
@@ -92,11 +118,46 @@ public class MediaServiceImpl implements MediaService {
         mediaRepository.delete(media);
     }
 
+    private MediaType detectMediaType(String contentType) {
+        if (contentType == null || contentType.isBlank()) {
+            return MediaType.FILE; // Default for unknown types
+        }
+
+        String type = contentType.toLowerCase();
+
+        // Image types
+        if (type.startsWith("image/")) {
+            return MediaType.PHOTO;
+        }
+
+        // Video types
+        if (type.startsWith("video/")) {
+            return MediaType.VIDEO;
+        }
+
+        // Document types
+        if (type.contains("pdf") ||
+                type.contains("document") ||
+                type.contains("word") ||
+                type.contains("excel") ||
+                type.contains("spreadsheet") ||
+                type.contains("text") ||
+                type.contains("msword") ||
+                type.contains("ms-excel") ||
+                type.contains("officedocument")) {
+            return MediaType.FILE;
+        }
+
+        // Default fallback
+        return MediaType.FILE;
+    }
+
     private MediaFileResponse mapToResponse(Media media) {
         return MediaFileResponse.builder()
                 .id(media.getId())
                 .postId(media.getPostId())
                 .campaignId(media.getCampaignId())
+                .conversationId(media.getConversationId())
                 .mediaType(media.getMediaType())
                 .url(media.getUrl())
                 .description(media.getDescription())

@@ -9,7 +9,7 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface MessageRepository extends JpaRepository<Message, Long> {
 
-       java.util.List<Message> findByConversationIdOrderByCreatedAtDesc(Long conversationId);
+       java.util.List<Message> findByConversationIdOrderByCreatedAtAsc(Long conversationId);
 
        @Query("SELECT COUNT(m) FROM Message m WHERE m.conversationId = :conversationId " +
                      "AND m.senderId != :userId AND m.isRead = false")

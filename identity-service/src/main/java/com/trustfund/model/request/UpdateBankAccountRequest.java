@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CreateBankAccountRequest {
+public class UpdateBankAccountRequest {
 
     @NotBlank(message = "Mã ngân hàng không được để trống")
     @Size(min = 2, max = 50, message = "Mã ngân hàng phải từ 2 đến 50 ký tự")

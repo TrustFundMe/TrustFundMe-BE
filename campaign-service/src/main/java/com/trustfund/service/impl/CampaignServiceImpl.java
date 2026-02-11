@@ -58,6 +58,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .status(request.getStatus() != null ? request.getStatus() : "DRAFT")
+                .type(request.getType())
                 .thankMessage(request.getThankMessage())
                 .balance(request.getBalance() != null ? request.getBalance() : java.math.BigDecimal.ZERO)
                 .approvedByStaff(null)
@@ -84,6 +85,8 @@ public class CampaignServiceImpl implements CampaignService {
             campaign.setEndDate(request.getEndDate());
         if (request.getStatus() != null)
             campaign.setStatus(request.getStatus());
+        if (request.getType() != null)
+            campaign.setType(request.getType());
         if (request.getThankMessage() != null)
             campaign.setThankMessage(request.getThankMessage());
         if (request.getBalance() != null)
