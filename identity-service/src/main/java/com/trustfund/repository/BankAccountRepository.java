@@ -9,4 +9,9 @@ import java.util.List;
 @Repository
 public interface BankAccountRepository extends JpaRepository<BankAccount, Long> {
     List<BankAccount> findByUser_Id(Long userId);
+
+    org.springframework.data.domain.Page<BankAccount> findByStatus(String status,
+            org.springframework.data.domain.Pageable pageable);
+
+    boolean existsByAccountNumberAndBankCodeAndUserIdNot(String accountNumber, String bankCode, Long userId);
 }

@@ -16,5 +16,8 @@ public interface UserKYCService {
     org.springframework.data.domain.Page<KYCResponse> getPendingKYCRequests(
             org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<KYCResponse> getAllKYCRequests(
+            org.springframework.data.domain.Pageable pageable);
+
     KYCResponse updateKYCStatus(Long kycId, KYCStatus status, String rejectionReason);
 }

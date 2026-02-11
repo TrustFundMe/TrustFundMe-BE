@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -23,6 +24,7 @@ public class UserKYCController {
     private final UserKYCService userKYCService;
 
     @PostMapping("/users/{userId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Submit KYC for User (Staff Only)", description = "Staff inputs KYC data for a user to verify them")
     public ResponseEntity<KYCResponse> submitKYC(@PathVariable Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
@@ -32,6 +34,7 @@ public class UserKYCController {
     }
 
     @PutMapping("/users/{userId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Update KYC for User (Staff Only)", description = "Staff updates/resubmits KYC data for a user")
     public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
@@ -48,13 +51,34 @@ public class UserKYCController {
     }
 
     @GetMapping("/user/{userId}")
-    @Operation(summary = "Get KYC by user ID", description = "Get KYC details of a specific user (Admin/Staff only)")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get KYC by user ID", description = "Get KYC details of a specific user (STAFF/ADMIN only)")
     public ResponseEntity<KYCResponse> getKYCByUserId(@PathVariable Long userId) {
         return ResponseEntity.ok(userKYCService.getKYCByUserId(userId));
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get all KYC requests", description = "Get list of all KYC requests (STAFF/ADMIN only)")
+    public ResponseEntity<org.springframework.data.domain.Page<KYCResponse>> getAllKYCRequests(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
+                && sortParts[1].equalsIgnoreCase("asc"))
+                        ? org.springframework.data.domain.Sort.Direction.ASC
+                        : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(direction, sortField));
+        return ResponseEntity.ok(userKYCService.getAllKYCRequests(pageable));
+    }
+
     @GetMapping("/pending")
-    @Operation(summary = "Get pending KYC requests", description = "Get list of pending KYC requests (Admin/Staff only)")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get pending KYC requests", description = "Get list of pending KYC requests (STAFF/ADMIN only)")
     public ResponseEntity<org.springframework.data.domain.Page<KYCResponse>> getPendingKYCRequests(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
@@ -72,7 +96,8 @@ public class UserKYCController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update KYC status", description = "Approve or Reject KYC (Admin/Staff only)")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Update KYC status", description = "Approve or Reject KYC (STAFF/ADMIN only)")
     public ResponseEntity<KYCResponse> updateKYCStatus(@PathVariable Long id,
             @Valid @RequestBody UpdateKYCStatusRequest request) {
         return ResponseEntity.ok(userKYCService.updateKYCStatus(id, request.getStatus(), request.getRejectionReason()));

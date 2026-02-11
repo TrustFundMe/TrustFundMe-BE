@@ -41,9 +41,10 @@ public class BankAccountController {
     }
 
     @PatchMapping("/{id}/status")
-    @Operation(summary = "Update bank account status", description = "Update status and verification for a bank account")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Update bank account status", description = "Update status and verification for a bank account (STAFF/ADMIN only)")
     public ResponseEntity<BankAccountResponse> updateStatus(@PathVariable("id") Long id,
-                                                           @Valid @RequestBody UpdateBankAccountStatusRequest request) {
+            @Valid @RequestBody UpdateBankAccountStatusRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 
@@ -64,5 +65,32 @@ public class BankAccountController {
 
         BankAccountResponse response = bankAccountService.create(request, email);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/users/{userId}")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Submit bank account for User (Staff Only)", description = "Staff inputs bank account data for a user")
+    public ResponseEntity<BankAccountResponse> submitBankAccount(@PathVariable Long userId,
+            @Valid @RequestBody CreateBankAccountRequest request) {
+        return ResponseEntity.ok(bankAccountService.submitBankAccount(userId, request));
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get pending bank accounts", description = "Get list of pending bank account requests (Admin/Staff only)")
+    public ResponseEntity<org.springframework.data.domain.Page<BankAccountResponse>> getPendingBankAccounts(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
+                && sortParts[1].equalsIgnoreCase("asc"))
+                        ? org.springframework.data.domain.Sort.Direction.ASC
+                        : org.springframework.data.domain.Sort.Direction.DESC;
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size,
+                org.springframework.data.domain.Sort.by(direction, sortField));
+        return ResponseEntity.ok(bankAccountService.getPendingBankAccounts(pageable));
     }
 }
