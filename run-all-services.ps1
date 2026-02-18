@@ -9,8 +9,8 @@ Write-Host "Note: Each service will run in a separate window" -ForegroundColor Y
 # Open Discovery Server
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-discovery-server.ps1`""
 
-# Wait 5 seconds
-Start-Sleep -Seconds 5
+# Wait 10 seconds for Discovery Server to be ready
+Start-Sleep -Seconds 10
 
 # Open API Gateway
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-api-gateway.ps1`""
