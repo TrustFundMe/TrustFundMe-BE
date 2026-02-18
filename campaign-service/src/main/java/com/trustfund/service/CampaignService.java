@@ -1,22 +1,26 @@
 package com.trustfund.service;
 
-import com.trustfund.model.Campaign;
 import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
+import com.trustfund.model.response.CampaignResponse;
 
 import java.util.List;
 
 public interface CampaignService {
 
-    List<Campaign> getAll();
+    List<CampaignResponse> getAll();
 
-    Campaign getById(Long id);
+    CampaignResponse getById(Long id);
 
-    List<Campaign> getByFundOwnerId(Long fundOwnerId);
+    List<CampaignResponse> getByFundOwnerId(Long fundOwnerId);
 
-    Campaign create(CreateCampaignRequest request);
+    CampaignResponse create(CreateCampaignRequest request);
 
-    Campaign update(Long id, UpdateCampaignRequest request);
+    CampaignResponse update(Long id, UpdateCampaignRequest request);
 
-    Campaign markAsDeleted(Long id);
+    CampaignResponse markAsDeleted(Long id);
+
+    List<CampaignResponse> getByStatus(String status);
+
+    CampaignResponse reviewCampaign(Long id, Long staffId, String status, String rejectionReason);
 }

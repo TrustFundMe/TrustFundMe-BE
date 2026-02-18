@@ -55,6 +55,9 @@ public class Campaign {
     @Column(length = 50)
     private String status;
 
+    @Column(name = "rejection_reason", length = 1000)
+    private String rejectionReason;
+
     @Column(length = 50)
     private String type;
 

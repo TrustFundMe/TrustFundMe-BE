@@ -11,6 +11,7 @@ import com.trustfund.model.request.UpdateBankAccountStatusRequest;
 import com.trustfund.model.response.BankAccountResponse;
 import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
+import com.trustfund.repository.UserKYCRepository;
 import com.trustfund.service.interfaceServices.BankAccountService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,22 +25,34 @@ public class BankAccountServiceImpl implements BankAccountService {
 
     private final UserRepository userRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final UserKYCRepository userKYCRepository;
 
     @Override
     public BankAccountResponse create(CreateBankAccountRequest request, String userIdStr) {
         User user = userRepository.findById(Long.parseLong(userIdStr))
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
+                request.getAccountNumber(), request.getBankCode(), user.getId())) {
+            throw new BadRequestException("Bank account already exists for another user");
+        }
+
         BankAccount bankAccount = BankAccount.builder()
                 .user(user)
                 .bankCode(request.getBankCode())
                 .accountNumber(request.getAccountNumber())
                 .accountHolderName(request.getAccountHolderName())
-                .isVerified(false)
-                .status("PENDING")
+                .isVerified(true) // Auto-verify when STAFF creates
+                .status("APPROVED") // Auto-approve when STAFF creates
                 .build();
 
         BankAccount saved = bankAccountRepository.save(bankAccount);
+
+        // Check if should promote user to FUND_OWNER (if KYC is also verified)
+        if (shouldPromoteToFundOwner(user.getId())) {
+            user.setRole(User.Role.FUND_OWNER);
+            userRepository.save(user);
+        }
 
         return toBankAccountResponse(saved);
     }
@@ -72,18 +85,29 @@ public class BankAccountServiceImpl implements BankAccountService {
 
         if (newStatus.equals("DISABLE")) {
             bankAccount.setStatus("DISABLE");
-        } else if (newStatus.equals("ACTIVE")) {
+        } else if (newStatus.equals("ACTIVE") || newStatus.equals("APPROVED")) {
             String role = normalizeRole(currentRole);
             if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
                 throw new UnauthorizedException("Only staff or admin can activate bank account");
             }
-            bankAccount.setStatus("ACTIVE");
+            bankAccount.setStatus("APPROVED");
+            bankAccount.setIsVerified(true);
 
-            if (request.getIsVerified() != null) {
-                bankAccount.setIsVerified(request.getIsVerified());
+            // Check if user should be promoted to FUND_OWNER
+            User user = bankAccount.getUser();
+            if (shouldPromoteToFundOwner(user.getId())) {
+                user.setRole(User.Role.FUND_OWNER);
+                userRepository.save(user);
             }
+        } else if (newStatus.equals("REJECTED")) {
+            String role = normalizeRole(currentRole);
+            if (!"STAFF".equals(role) && !"ADMIN".equals(role)) {
+                throw new UnauthorizedException("Only staff or admin can reject bank account");
+            }
+            bankAccount.setStatus("REJECTED");
+            bankAccount.setIsVerified(false);
         } else {
-            throw new BadRequestException("Invalid status: only ACTIVE or DISABLE supported here");
+            throw new BadRequestException("Invalid status: only ACTIVE, DISABLE or REJECTED supported here");
         }
 
         BankAccount saved = bankAccountRepository.save(bankAccount);
@@ -95,6 +119,17 @@ public class BankAccountServiceImpl implements BankAccountService {
         return bankAccountRepository.findAll().stream()
                 .map(this::toBankAccountResponse)
                 .collect(Collectors.toList());
+    }
+
+    /**
+     * Check if user should be promoted to FUND_OWNER role.
+     * User is promoted when BOTH KYC and Bank Account are verified.
+     */
+    private boolean shouldPromoteToFundOwner(Long userId) {
+        // Check if user has approved KYC
+        return userKYCRepository.findByUserId(userId)
+                .map(kyc -> kyc.getStatus() == com.trustfund.model.enums.KYCStatus.APPROVED)
+                .orElse(false);
     }
 
     @Override
@@ -193,5 +228,58 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .createdAt(bankAccount.getCreatedAt())
                 .updatedAt(bankAccount.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    public BankAccountResponse submitBankAccount(Long userId, CreateBankAccountRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // Check if account number + bank code exists for ANY other user
+        if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
+                request.getAccountNumber(), request.getBankCode(), userId)) {
+            throw new BadRequestException("Bank account already exists for another user");
+        }
+
+        // Check if user already has a bank account
+        List<BankAccount> existingAccounts = bankAccountRepository.findByUser_Id(userId);
+        BankAccount bankAccount;
+
+        if (!existingAccounts.isEmpty()) {
+            // Update existing account (take the first one)
+            bankAccount = existingAccounts.get(0);
+            bankAccount.setBankCode(request.getBankCode());
+            bankAccount.setAccountNumber(request.getAccountNumber());
+            bankAccount.setAccountHolderName(request.getAccountHolderName());
+            bankAccount.setIsVerified(true);
+            bankAccount.setStatus("APPROVED");
+        } else {
+            // Create new account
+            bankAccount = BankAccount.builder()
+                    .user(user)
+                    .bankCode(request.getBankCode())
+                    .accountNumber(request.getAccountNumber())
+                    .accountHolderName(request.getAccountHolderName())
+                    .isVerified(true) // Auto-verify when STAFF submits
+                    .status("APPROVED") // Auto-approve when STAFF submits
+                    .build();
+        }
+
+        BankAccount saved = bankAccountRepository.save(bankAccount);
+
+        // Check if should promote user to FUND_OWNER (if KYC is also verified)
+        if (shouldPromoteToFundOwner(user.getId())) {
+            user.setRole(User.Role.FUND_OWNER);
+            userRepository.save(user);
+        }
+
+        return toBankAccountResponse(saved);
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<BankAccountResponse> getPendingBankAccounts(
+            org.springframework.data.domain.Pageable pageable) {
+        return bankAccountRepository.findByStatus("PENDING", pageable)
+                .map(this::toBankAccountResponse);
     }
 }

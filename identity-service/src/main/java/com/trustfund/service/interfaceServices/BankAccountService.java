@@ -17,6 +17,11 @@ public interface BankAccountService {
 
     List<BankAccountResponse> getAllBankAccounts();
 
+    BankAccountResponse submitBankAccount(Long userId, CreateBankAccountRequest request);
+
+    org.springframework.data.domain.Page<BankAccountResponse> getPendingBankAccounts(
+            org.springframework.data.domain.Pageable pageable);
+
     BankAccountResponse getById(Long id, Long currentUserId, String currentRole);
 
     BankAccountResponse update(Long id, UpdateBankAccountRequest request, Long currentUserId, String currentRole);

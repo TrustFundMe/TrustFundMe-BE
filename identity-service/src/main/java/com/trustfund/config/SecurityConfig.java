@@ -54,20 +54,19 @@ public class SecurityConfig {
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
                                 "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
+                                "/webjars/**")
+                        .permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
-                        .anyRequest().authenticated()
-                )
+                        .requestMatchers("/api/kyc/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/bank-accounts/**").hasAnyRole("ADMIN", "STAFF")
+                        .anyRequest().authenticated())
                 .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(ex -> ex
                         .authenticationEntryPoint(authenticationEntryPoint())
-                        .accessDeniedHandler(accessDeniedHandler())
-                )
+                        .accessDeniedHandler(accessDeniedHandler()))
                 .formLogin(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
                 .httpBasic(AbstractHttpConfigurer::disable)
@@ -80,14 +79,14 @@ public class SecurityConfig {
         return (HttpServletRequest request, HttpServletResponse response, AuthenticationException authException) -> {
             response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            
+
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("timestamp", LocalDateTime.now());
             errorResponse.put("status", HttpServletResponse.SC_UNAUTHORIZED);
             errorResponse.put("error", "Unauthorized");
             errorResponse.put("message", "Authentication required. Please provide a valid JWT token.");
             errorResponse.put("path", request.getRequestURI());
-            
+
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(response.getWriter(), errorResponse);
         };
@@ -95,18 +94,18 @@ public class SecurityConfig {
 
     @Bean
     public AccessDeniedHandler accessDeniedHandler() {
-        return (HttpServletRequest request, HttpServletResponse response, 
+        return (HttpServletRequest request, HttpServletResponse response,
                 org.springframework.security.access.AccessDeniedException accessDeniedException) -> {
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-            
+
             Map<String, Object> errorResponse = new HashMap<>();
             errorResponse.put("timestamp", LocalDateTime.now());
             errorResponse.put("status", HttpServletResponse.SC_FORBIDDEN);
             errorResponse.put("error", "Forbidden");
             errorResponse.put("message", "Access Denied: " + accessDeniedException.getMessage());
             errorResponse.put("path", request.getRequestURI());
-            
+
             ObjectMapper mapper = new ObjectMapper();
             mapper.writeValue(response.getWriter(), errorResponse);
         };
@@ -117,5 +116,3 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 }
-
-
