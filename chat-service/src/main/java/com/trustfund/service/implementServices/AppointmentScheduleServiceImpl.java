@@ -8,9 +8,13 @@ import com.trustfund.model.response.AppointmentScheduleResponse;
 import com.trustfund.repository.AppointmentScheduleRepository;
 import com.trustfund.service.interfaceServices.AppointmentScheduleService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -20,9 +24,24 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
 
     private final AppointmentScheduleRepository repository;
 
+    /** Phải đặt lịch trước tối thiểu 24 tiếng */
+    private static final long MIN_ADVANCE_HOURS = 24;
+
+    /** Phải xác nhận trước tối thiểu 24 tiếng so với giờ hẹn */
+    private static final long MAX_CONFIRM_HOURS_BEFORE = 24;
+
     @Override
     @Transactional
     public AppointmentScheduleResponse createAppointment(AppointmentScheduleRequest request) {
+        // Rule 1: Phải đặt lịch trước tối thiểu 24 tiếng
+        LocalDateTime now = LocalDateTime.now();
+        long hoursUntilStart = ChronoUnit.HOURS.between(now, request.getStartTime());
+        if (hoursUntilStart < MIN_ADVANCE_HOURS) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Lịch hẹn phải được đặt trước tối thiểu " + MIN_ADVANCE_HOURS + " tiếng. " +
+                            "Hiện tại còn " + hoursUntilStart + " tiếng đến thời điểm bắt đầu.");
+        }
+
         AppointmentSchedule appointment = AppointmentSchedule.builder()
                 .donorId(request.getDonorId())
                 .staffId(request.getStaffId())
@@ -72,6 +91,27 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
     public AppointmentScheduleResponse updateStatus(Long id, AppointmentStatus status) {
         AppointmentSchedule appointment = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Appointment not found with id: " + id));
+
+        // Rule 2: Chỉ được CONFIRM nếu còn tối thiểu 24 tiếng trước khi gặp
+        if (status == AppointmentStatus.CONFIRMED) {
+            LocalDateTime now = LocalDateTime.now();
+            long hoursUntilStart = ChronoUnit.HOURS.between(now, appointment.getStartTime());
+            if (hoursUntilStart < MAX_CONFIRM_HOURS_BEFORE) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Không thể xác nhận lịch hẹn. Phải xác nhận trước tối thiểu " + MAX_CONFIRM_HOURS_BEFORE
+                                + " tiếng. " +
+                                "Hiện tại chỉ còn " + hoursUntilStart + " tiếng đến buổi gặp.");
+            }
+        }
+
+        // Rule 3: Chỉ được COMPLETE sau khi qua giờ kết thúc
+        if (status == AppointmentStatus.COMPLETED) {
+            if (LocalDateTime.now().isBefore(appointment.getEndTime())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                        "Không thể hoàn thành lịch hẹn trước khi kết thúc. " +
+                                "Giờ kết thúc: " + appointment.getEndTime() + ".");
+            }
+        }
 
         appointment.setStatus(status);
         return mapToResponse(repository.save(appointment));

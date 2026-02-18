@@ -1,9 +1,11 @@
 package com.trustfund.service.impl;
 
-import com.trustfund.model.Campaign;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
+import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.request.CreateExpenditureRequest;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.CampaignService;
@@ -30,11 +32,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     @Transactional
     public Expenditure createExpenditure(CreateExpenditureRequest request) {
-        Campaign campaign = campaignService.getById(request.getCampaignId());
-        
-        // Ràng buộc: Đối với chiến dịch AUTHORIZED (Quỹ Ủy quyền), evidenceDueAt là bắt buộc
+        CampaignResponse campaign = campaignService.getById(request.getCampaignId());
+
+        // Ràng buộc: Đối với chiến dịch AUTHORIZED (Quỹ Ủy quyền), evidenceDueAt là bắt
+        // buộc
         if ("AUTHORIZED".equalsIgnoreCase(campaign.getType()) && request.getEvidenceDueAt() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
         }
 
         // Logic: AUTHORIZED -> PENDING_REVIEW, ITEMIZED -> APPROVED
@@ -105,15 +109,16 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public Expenditure updateExpenditureStatus(Long id, String status) {
         Expenditure expenditure = getExpenditureById(id);
         expenditure.setStatus(status);
-        
-        // Logic: Nếu là chi tiêu AUTHORIZED và được approved -> Tự động yêu cầu rút tiền
+
+        // Logic: Nếu là chi tiêu AUTHORIZED và được approved -> Tự động yêu cầu rút
+        // tiền
         if ("APPROVED".equalsIgnoreCase(status)) {
-            Campaign campaign = campaignService.getById(expenditure.getCampaignId());
+            CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 expenditure.setIsWithdrawalRequested(true);
             }
         }
-        
+
         return expenditureRepository.save(expenditure);
     }
 
@@ -121,23 +126,23 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public Expenditure requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt) {
         Expenditure expenditure = getExpenditureById(id);
-        
+
         if (expenditure.getIsWithdrawalRequested()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yêu cầu rút tiền đã được thực hiện trước đó");
         }
 
-        Campaign campaign = campaignService.getById(expenditure.getCampaignId());
-        
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+
         expenditure.setIsWithdrawalRequested(true);
         if (evidenceDueAt != null) {
             expenditure.setEvidenceDueAt(evidenceDueAt);
         }
-        
+
         // Đối với chiến dịch ITEMIZED, khi yêu cầu rút tiền thì đóng chi tiêu này lại
         if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
             expenditure.setStatus("CLOSED");
         }
-        
+
         return expenditureRepository.save(expenditure);
     }
 
@@ -148,13 +153,14 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public Expenditure updateExpenditureActuals(Long id, com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
+    public Expenditure updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request) {
         Expenditure expenditure = getExpenditureById(id);
 
-        for (com.trustfund.model.request.UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
+        for (UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
             ExpenditureItem item = expenditureItemRepository.findById(updateItem.getId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found: " + updateItem.getId()));
-            
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                            "Item not found: " + updateItem.getId()));
+
             if (!item.getExpenditure().getId().equals(id)) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Item does not belong to this expenditure");
             }
@@ -170,9 +176,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         // Recalculate totals
         List<ExpenditureItem> allItems = expenditureItemRepository.findByExpenditureId(id);
-        
+
         BigDecimal totalAmount = allItems.stream()
-                .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getActualQuantity() != null ? item.getActualQuantity() : 0)))
+                .map(item -> item.getPrice()
+                        .multiply(BigDecimal.valueOf(item.getActualQuantity() != null ? item.getActualQuantity() : 0)))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalExpectedAmount = expenditure.getTotalExpectedAmount(); // Keep original expected amount
