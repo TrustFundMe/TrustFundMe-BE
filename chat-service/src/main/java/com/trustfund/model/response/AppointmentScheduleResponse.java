@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 public class AppointmentScheduleResponse {
     private Long id;
     private Long donorId;
+    private String donorName;
     private Long staffId;
+    private String staffName;
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private AppointmentStatus status;
