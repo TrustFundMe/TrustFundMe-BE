@@ -20,6 +20,7 @@ public class CampaignResponse {
     private String category;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
+    private String type;
     private String status;
     private BigDecimal balance;
     private Long approvedByStaff;

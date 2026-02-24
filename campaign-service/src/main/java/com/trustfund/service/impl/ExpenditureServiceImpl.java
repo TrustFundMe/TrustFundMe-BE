@@ -1,11 +1,12 @@
 package com.trustfund.service.impl;
 
-import com.trustfund.model.Campaign;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
-import com.trustfund.model.request.CreateExpenditureItemRequest;
+import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.request.CreateExpenditureRequest;
-import com.trustfund.repository.CampaignRepository;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.service.CampaignService;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
@@ -25,14 +26,12 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     private final ExpenditureRepository expenditureRepository;
     private final ExpenditureItemRepository expenditureItemRepository;
-    private final CampaignRepository campaignRepository;
+    private final CampaignService campaignService;
 
     @Override
     @Transactional
     public Expenditure createExpenditure(CreateExpenditureRequest request) {
-        Campaign campaign = campaignRepository.findById(request.getCampaignId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Campaign not found: " + request.getCampaignId()));
+        CampaignResponse campaign = campaignService.getById(request.getCampaignId());
 
         // Ràng buộc: Đối với chiến dịch AUTHORIZED (Quỹ Ủy quyền), evidenceDueAt là bắt
         // buộc
@@ -113,9 +112,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         // Logic: Nếu là chi tiêu AUTHORIZED và được approved -> Tự động yêu cầu rút
         // tiền
         if ("APPROVED".equalsIgnoreCase(status)) {
-            Campaign campaign = campaignRepository.findById(expenditure.getCampaignId())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Campaign not found: " + expenditure.getCampaignId()));
+            CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 expenditure.setIsWithdrawalRequested(true);
             }
@@ -133,9 +130,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Yêu cầu rút tiền đã được thực hiện trước đó");
         }
 
-        Campaign campaign = campaignRepository.findById(expenditure.getCampaignId())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        "Campaign not found: " + expenditure.getCampaignId()));
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
 
         expenditure.setIsWithdrawalRequested(true);
         if (evidenceDueAt != null) {
@@ -157,11 +152,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public Expenditure updateExpenditureActuals(Long id,
-            com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
+    public Expenditure updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request) {
         Expenditure expenditure = getExpenditureById(id);
 
-        for (com.trustfund.model.request.UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
+        for (UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
             ExpenditureItem item = expenditureItemRepository.findById(updateItem.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                             "Item not found: " + updateItem.getId()));

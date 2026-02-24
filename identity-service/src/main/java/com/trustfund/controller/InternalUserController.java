@@ -68,4 +68,12 @@ public class InternalUserController {
         userService.upgradeToFundOwner(id);
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/{id}/name")
+    @Operation(summary = "Lấy full name của user theo ID (dùng nội bộ)")
+    public ResponseEntity<String> getUserFullName(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(u -> ResponseEntity.ok(u.getFullName()))
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

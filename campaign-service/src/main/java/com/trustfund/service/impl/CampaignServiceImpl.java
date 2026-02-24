@@ -167,6 +167,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .startDate(campaign.getStartDate())
                 .endDate(campaign.getEndDate())
                 .status(campaign.getStatus())
+                .type(campaign.getType())
                 .balance(campaign.getBalance())
                 .approvedByStaff(campaign.getApprovedByStaff())
                 .approvedAt(campaign.getApprovedAt())
