@@ -22,16 +22,18 @@ public class ChatWebSocketController {
     public MessageResponse sendMessage(
             @DestinationVariable Long conversationId,
             @Payload ChatMessageRequest request) {
-        // In a real scenario, senderId should be extracted from the authenticated user
-        // (Principal)
-        // For simplicity or if trusting the payload (internal/prototype), we use
-        // request.getSenderId()
-        // Ideally: Long senderId = Long.parseLong(principal.getName());
+
+        System.out.println("[WebSocket] Receiving message for conversation: " + conversationId);
+        System.out.println("[WebSocket] SenderID from Payload: " + request.getSenderId());
 
         SendMessageRequest sendRequest = SendMessageRequest.builder()
                 .content(request.getContent())
                 .build();
 
-        return chatService.sendMessage(conversationId, sendRequest, request.getSenderId());
+        // Use the role sent from the frontend if available
+        String role = request.getSenderRole() != null ? request.getSenderRole() : "ROLE_USER";
+        System.out.println("[WebSocket] User Role: " + role);
+
+        return chatService.sendMessage(conversationId, sendRequest, request.getSenderId(), role);
     }
 }

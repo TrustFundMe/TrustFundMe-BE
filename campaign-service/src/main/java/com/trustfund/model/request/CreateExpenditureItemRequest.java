@@ -23,7 +23,6 @@ public class CreateExpenditureItemRequest {
     private Integer quantity;
 
     @NotNull(message = "Giá không được để trống")
-    @NotNull(message = "Giá không được để trống")
     @DecimalMin(value = "0.0", message = "Giá không được nhỏ hơn 0")
     private BigDecimal price;
 

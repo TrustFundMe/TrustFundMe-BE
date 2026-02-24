@@ -13,4 +13,5 @@ public class ChatMessageRequest {
     private Long conversationId;
     private String content;
     private Long senderId; // Optional if we extract from Principal
+    private String senderRole;
 }

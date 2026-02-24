@@ -16,7 +16,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/conversations")
+@RequestMapping({ "/api/conversations", "/api/chat/conversations" })
 @RequiredArgsConstructor
 @Tag(name = "Chat", description = "Chat APIs for communication between Staff and Fund Owners")
 public class ChatController {
@@ -43,7 +43,7 @@ public class ChatController {
     @Operation(summary = "Get conversations", description = "Get list of conversations. Only STAFF can view all conversations.")
     public ResponseEntity<java.util.List<ConversationResponse>> getConversations() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long userId = Long.parseLong(authentication.getName());
+        // userId is not used when fetching all conversations for staff
 
         String currentRole = authentication.getAuthorities().stream()
                 .findFirst()
@@ -54,7 +54,18 @@ public class ChatController {
             throw new com.trustfund.exception.exceptions.ForbiddenException("Only staff can view conversations");
         }
 
-        return ResponseEntity.ok(chatService.getConversations(userId));
+        return ResponseEntity.ok(chatService.getAllConversations());
+    }
+
+    @GetMapping("/campaign/{campaignId}")
+    @Operation(summary = "Get conversation by campaign ID", description = "Find if a conversation exists for the current user and a specific campaign")
+    public ResponseEntity<ConversationResponse> getConversationByCampaignId(
+            @PathVariable("campaignId") Long campaignId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long userId = Long.parseLong(authentication.getName());
+
+        ConversationResponse response = chatService.getConversationByCampaignId(campaignId, userId);
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("/{id}")
@@ -63,7 +74,12 @@ public class ChatController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
 
-        ConversationResponse response = chatService.getConversationById(id, userId);
+        String currentRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .orElse("ROLE_FUND_OWNER");
+
+        ConversationResponse response = chatService.getConversationById(id, userId, currentRole);
         return ResponseEntity.ok(response);
     }
 
@@ -75,7 +91,12 @@ public class ChatController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long senderId = Long.parseLong(authentication.getName());
 
-        MessageResponse response = chatService.sendMessage(conversationId, request, senderId);
+        String currentRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .orElse("ROLE_FUND_OWNER");
+
+        MessageResponse response = chatService.sendMessage(conversationId, request, senderId, currentRole);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -86,6 +107,11 @@ public class ChatController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
 
-        return ResponseEntity.ok(chatService.getMessages(conversationId, userId));
+        String currentRole = authentication.getAuthorities().stream()
+                .findFirst()
+                .map(grantedAuthority -> grantedAuthority.getAuthority())
+                .orElse("ROLE_FUND_OWNER");
+
+        return ResponseEntity.ok(chatService.getMessages(conversationId, userId, currentRole));
     }
 }
