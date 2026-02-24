@@ -2,6 +2,7 @@ package com.trustfund.controller;
 
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -51,7 +52,8 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/actuals")
     @Operation(summary = "Cập nhật thực tế chi tiêu", description = "Cập nhật số lượng và đơn giá thực tế sau khi mua sắm.")
-    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
+    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id,
+            @Valid @RequestBody com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureActuals(id, request));
     }
 
@@ -67,5 +69,19 @@ public class ExpenditureController {
     @Operation(summary = "Lấy các hạng mục của chi tiêu", description = "Lấy danh sách các hạng mục (ExpenditureItems) thuộc về một khoản chi tiêu.")
     public List<ExpenditureItem> getItems(@PathVariable Long id) {
         return expenditureService.getExpenditureItems(id);
+    }
+
+    @PostMapping("/{id}/items")
+    @Operation(summary = "Thêm hạng mục vào khoản chi tiêu", description = "Thêm một danh sách các hạng mục mới vào một khoản chi tiêu đã tồn tại.")
+    public ResponseEntity<Expenditure> addItems(@PathVariable Long id,
+            @Valid @RequestBody List<CreateExpenditureItemRequest> items) {
+        return ResponseEntity.ok(expenditureService.addItemsToExpenditure(id, items));
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    @Operation(summary = "Xóa hạng mục chi tiêu", description = "Xóa một hạng mục chi tiêu cụ thể theo ID.")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
+        expenditureService.deleteExpenditureItem(itemId);
+        return ResponseEntity.noContent().build();
     }
 }
