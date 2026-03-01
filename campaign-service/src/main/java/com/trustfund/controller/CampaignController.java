@@ -70,6 +70,12 @@ public class CampaignController {
         return campaignService.getByStatus(status);
     }
 
+    @GetMapping("/category/{categoryId}")
+    @Operation(summary = "Get campaigns by category", description = "Retrieve all campaigns for a specific category (Public)")
+    public List<CampaignResponse> getByCategoryId(@PathVariable Long categoryId) {
+        return campaignService.getByCategoryId(categoryId);
+    }
+
     @PutMapping("/{id}/review")
     @Operation(summary = "Review campaign", description = "Staff or Admin reviews a campaign and provides feedback (APPROVED/REJECTED)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")

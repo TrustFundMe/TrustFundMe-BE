@@ -22,8 +22,9 @@ public class UpdateCampaignRequest {
     @Size(min = 50, max = 10000, message = "Mô tả phải từ 50 đến 10,000 ký tự")
     private String description;
 
-    @Size(max = 100)
-    private String category;
+    private Long mediaId;
+
+    private Long categoryId;
 
     private LocalDateTime startDate;
     private LocalDateTime endDate;

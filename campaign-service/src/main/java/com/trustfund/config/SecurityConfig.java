@@ -27,64 +27,63 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class SecurityConfig {
 
-    private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                .csrf(AbstractHttpConfigurer::disable)
-                .authorizeHttpRequests(auth -> auth
-                        .requestMatchers(
-                                "/swagger-ui.html",
-                                "/swagger-ui/**",
-                                "/swagger-ui/index.html",
-                                "/api-docs",
-                                "/api-docs/**",
-                                "/v3/api-docs",
-                                "/v3/api-docs/**",
-                                "/swagger-resources/**",
-                                "/webjars/**"
-                        ).permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
-                        // Campaigns endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/campaigns").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**").permitAll()
-                        .requestMatchers("/api/campaigns/**").authenticated()
-                        // Fundraising Goals endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**").permitAll()
-                        .requestMatchers("/api/fundraising-goals/**").authenticated()
-                        // Campaign follow endpoints
-                        .requestMatchers(HttpMethod.GET, "/api/campaign-follows/**").permitAll()
-                        .requestMatchers("/api/campaign-follows/**").authenticated()
-                        .anyRequest().authenticated()
-                )
-                .sessionManagement(sess -> sess
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-                .exceptionHandling(ex -> ex
-                        .accessDeniedHandler(accessDeniedHandler())
-                )
-                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
-        return http.build();
-    }
+        @Bean
+        public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+                http
+                                .csrf(AbstractHttpConfigurer::disable)
+                                .authorizeHttpRequests(auth -> auth
+                                                .requestMatchers(
+                                                                "/swagger-ui.html",
+                                                                "/swagger-ui/**",
+                                                                "/swagger-ui/index.html",
+                                                                "/api-docs",
+                                                                "/api-docs/**",
+                                                                "/v3/api-docs",
+                                                                "/v3/api-docs/**",
+                                                                "/swagger-resources/**",
+                                                                "/webjars/**")
+                                                .permitAll()
+                                                .requestMatchers("/actuator/**").permitAll()
+                                                // Campaigns endpoints
+                                                .requestMatchers(HttpMethod.GET, "/api/campaigns").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
+                                                .permitAll()
+                                                .requestMatchers("/api/campaigns/**").authenticated()
+                                                // Fundraising Goals endpoints
+                                                .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**")
+                                                .permitAll()
+                                                .requestMatchers("/api/fundraising-goals/**").authenticated()
+                                                // Campaign follow endpoints
+                                                .requestMatchers(HttpMethod.GET, "/api/campaign-follows/**").permitAll()
+                                                .requestMatchers("/api/campaign-follows/**").authenticated()
+                                                .anyRequest().authenticated())
+                                .sessionManagement(sess -> sess
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                .exceptionHandling(ex -> ex
+                                                .accessDeniedHandler(accessDeniedHandler()))
+                                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
+                return http.build();
+        }
 
-    @Bean
-    public AccessDeniedHandler accessDeniedHandler() {
-        return (HttpServletRequest request, HttpServletResponse response, 
-                org.springframework.security.access.AccessDeniedException accessDeniedException) -> {
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-            response.setContentType("application/json;charset=UTF-8");
-            
-            Map<String, Object> errorResponse = new HashMap<>();
-            errorResponse.put("timestamp", LocalDateTime.now());
-            errorResponse.put("status", 403);
-            errorResponse.put("error", "Forbidden");
-            errorResponse.put("message", "Access Denied: " + accessDeniedException.getMessage());
-            errorResponse.put("path", request.getRequestURI());
-            
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.writeValue(response.getWriter(), errorResponse);
-        };
-    }
+        @Bean
+        public AccessDeniedHandler accessDeniedHandler() {
+                return (HttpServletRequest request, HttpServletResponse response,
+                                org.springframework.security.access.AccessDeniedException accessDeniedException) -> {
+                        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                        response.setContentType("application/json;charset=UTF-8");
+
+                        Map<String, Object> errorResponse = new HashMap<>();
+                        errorResponse.put("timestamp", LocalDateTime.now());
+                        errorResponse.put("status", 403);
+                        errorResponse.put("error", "Forbidden");
+                        errorResponse.put("message", "Access Denied: " + accessDeniedException.getMessage());
+                        errorResponse.put("path", request.getRequestURI());
+
+                        ObjectMapper mapper = new ObjectMapper();
+                        mapper.writeValue(response.getWriter(), errorResponse);
+                };
+        }
 }

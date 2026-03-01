@@ -29,9 +29,10 @@ public class CreateCampaignRequest {
     @Size(min = 50, max = 10000, message = "Mô tả phải từ 50 đến 10,000 ký tự")
     private String description;
 
-    @NotBlank(message = "Danh mục không được để trống")
-    @Size(max = 100)
-    private String category;
+    private Long mediaId;
+
+    @NotNull(message = "CategoryId không được để trống")
+    private Long categoryId;
 
     private LocalDateTime startDate;
     private LocalDateTime endDate;

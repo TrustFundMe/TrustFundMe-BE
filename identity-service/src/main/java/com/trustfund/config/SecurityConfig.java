@@ -60,7 +60,12 @@ public class SecurityConfig {
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/kyc/**").hasAnyRole("ADMIN", "STAFF")
-                        .requestMatchers("/api/bank-accounts/**").hasAnyRole("ADMIN", "STAFF")
+                        // Bank accounts: only admin-only sub-paths are restricted; user CRUD is handled
+                        // in controller
+                        .requestMatchers(HttpMethod.GET, "/api/bank-accounts/all").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers(HttpMethod.GET, "/api/bank-accounts/pending").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers(HttpMethod.POST, "/api/bank-accounts/users/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/bank-accounts/**").authenticated()
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

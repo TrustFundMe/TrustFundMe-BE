@@ -22,5 +22,7 @@ public interface CampaignService {
 
     List<CampaignResponse> getByStatus(String status);
 
+    List<CampaignResponse> getByCategoryId(Long categoryId);
+
     CampaignResponse reviewCampaign(Long id, Long staffId, String status, String rejectionReason);
 }

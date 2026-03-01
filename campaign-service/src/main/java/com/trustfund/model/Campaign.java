@@ -40,11 +40,15 @@ public class Campaign {
     @Column(nullable = false, length = 255)
     private String title;
 
+    @Column(name = "media_id")
+    private Long mediaId;
+
     @Column(length = 5000)
     private String description;
 
-    @Column(length = 100)
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private CampaignCategory category;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;

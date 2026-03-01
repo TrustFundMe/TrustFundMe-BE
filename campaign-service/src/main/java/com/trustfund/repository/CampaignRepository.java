@@ -12,4 +12,6 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
     List<Campaign> findByFundOwnerId(Long fundOwnerId);
 
     List<Campaign> findByStatus(String status);
+
+    List<Campaign> findByCategoryId(Long categoryId);
 }
