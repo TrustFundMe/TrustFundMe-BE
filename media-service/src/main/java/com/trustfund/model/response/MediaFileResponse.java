@@ -17,6 +17,7 @@ public class MediaFileResponse {
     private Long postId;
     private Long campaignId;
     private Long conversationId;
+    private Long expenditureId;
     private MediaType mediaType;
     private String url;
     private String description;

@@ -51,6 +51,8 @@ CREATE TABLE campaigns (
     start_date DATETIME NULL,
     end_date DATETIME NULL,
     status VARCHAR(50) NULL,
+    rejection_reason VARCHAR(1000) NULL,
+    type VARCHAR(50) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_campaigns_fund_owner_id (fund_owner_id),
@@ -90,12 +92,14 @@ CREATE TABLE `expenditures` (
     `campaign_id` BIGINT NOT NULL,
     `evidence_due_at` DATETIME NULL,
     `evidence_status` VARCHAR(50) NULL,
-    `evidence_status` VARCHAR(50) NULL,
     `total_amount` DECIMAL(19, 4) NULL,
     `total_expected_amount` DECIMAL(19, 4) NULL,
     `variance` DECIMAL(19, 4) NULL,
+    `is_withdrawal_requested` BOOLEAN NOT NULL DEFAULT FALSE,
     `plan` VARCHAR(2000) NULL,
     `status` VARCHAR(50) NULL,
+    `disbursement_proof_url` VARCHAR(1000) NULL,
+    `disbursed_at` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE CASCADE,
@@ -367,10 +371,10 @@ ON DUPLICATE KEY UPDATE account_number = VALUES(account_number);
 USE trustfundme_campaign_db;
 
 -- Campaigns (fund_owner_id points to user id = 3)
-INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, category, start_date, end_date, status, created_at, updated_at)
+INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, category, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 'Humanitarian', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 'Agriculture', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NOW(), NOW())
+    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 'Humanitarian', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'FUNDRAISING', NOW(), NOW()),
+    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 'Agriculture', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'FUNDRAISING', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- Fundraising goals
@@ -381,12 +385,12 @@ VALUES
 ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount);
 
 -- Expenditures
-INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, plan, status, created_at, updated_at)
+INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, plan, status, is_withdrawal_requested, created_at, updated_at)
 VALUES
-    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'APPROVED', NOW(), NOW()),
-    (2, 2, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 'Mua cây giống lúa ngắn ngày đợt 1', 'PENDING_REVIEW', NOW(), NOW()),
-    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', NOW(), NOW()),
-    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 2000000.00, 'Mua thuốc men và vật tư y tế', 'PENDING_REVIEW', NOW(), NOW())
+    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'APPROVED', TRUE, NOW(), NOW()),
+    (2, 2, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 'Mua cây giống lúa ngắn ngày đợt 1', 'PENDING_REVIEW', FALSE, NOW(), NOW()),
+    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', TRUE, NOW(), NOW()),
+    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 2000000.00, 'Mua thuốc men và vật tư y tế', 'PENDING_REVIEW', FALSE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE plan = VALUES(plan);
 
 -- Expenditure Items

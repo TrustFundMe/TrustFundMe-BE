@@ -4,6 +4,8 @@ import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.model.request.UpdateDisbursementProofRequest;
 import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -52,8 +54,7 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/actuals")
     @Operation(summary = "Cập nhật thực tế chi tiêu", description = "Cập nhật số lượng và đơn giá thực tế sau khi mua sắm.")
-    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id,
-            @Valid @RequestBody com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
+    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id, @Valid @RequestBody UpdateExpenditureActualsRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureActuals(id, request));
     }
 
@@ -69,6 +70,12 @@ public class ExpenditureController {
     @Operation(summary = "Lấy các hạng mục của chi tiêu", description = "Lấy danh sách các hạng mục (ExpenditureItems) thuộc về một khoản chi tiêu.")
     public List<ExpenditureItem> getItems(@PathVariable Long id) {
         return expenditureService.getExpenditureItems(id);
+    }
+
+    @PutMapping("/{id}/disbursement-proof")
+    @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
+    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody UpdateDisbursementProofRequest request) {
+        return ResponseEntity.ok(expenditureService.updateDisbursementProof(id, request));
     }
 
     @PostMapping("/{id}/items")

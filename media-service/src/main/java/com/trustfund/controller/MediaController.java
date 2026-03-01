@@ -55,6 +55,7 @@ public class MediaController {
             @RequestParam("file") MultipartFile file,
             @RequestParam(required = false) Long postId,
             @RequestParam(required = false) Long campaignId,
+            @RequestParam(required = false) Long expenditureId,
             @RequestParam(required = false) MediaType mediaType,
             @RequestParam(required = false) String description) throws IOException, InterruptedException {
         if (file == null || file.isEmpty()) {
@@ -65,6 +66,7 @@ public class MediaController {
                 .file(file)
                 .postId(postId)
                 .campaignId(campaignId)
+                .expenditureId(expenditureId)
                 .mediaType(mediaType)
                 .description(description)
                 .build();
