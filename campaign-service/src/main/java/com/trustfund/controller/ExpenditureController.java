@@ -2,6 +2,7 @@ package com.trustfund.controller;
 
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.request.UpdateDisbursementProofRequest;
@@ -75,5 +76,19 @@ public class ExpenditureController {
     @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
     public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody UpdateDisbursementProofRequest request) {
         return ResponseEntity.ok(expenditureService.updateDisbursementProof(id, request));
+    }
+
+    @PostMapping("/{id}/items")
+    @Operation(summary = "Thêm hạng mục vào khoản chi tiêu", description = "Thêm một danh sách các hạng mục mới vào một khoản chi tiêu đã tồn tại.")
+    public ResponseEntity<Expenditure> addItems(@PathVariable Long id,
+            @Valid @RequestBody List<CreateExpenditureItemRequest> items) {
+        return ResponseEntity.ok(expenditureService.addItemsToExpenditure(id, items));
+    }
+
+    @DeleteMapping("/items/{itemId}")
+    @Operation(summary = "Xóa hạng mục chi tiêu", description = "Xóa một hạng mục chi tiêu cụ thể theo ID.")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
+        expenditureService.deleteExpenditureItem(itemId);
+        return ResponseEntity.noContent().build();
     }
 }

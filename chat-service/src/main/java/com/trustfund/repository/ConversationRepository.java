@@ -13,6 +13,9 @@ import java.util.Optional;
 @Repository
 public interface ConversationRepository extends JpaRepository<Conversation, Long> {
 
+       @Query("SELECT c FROM Conversation c ORDER BY c.lastMessageAt DESC")
+       java.util.List<Conversation> findAllOrderByLastMessageAtDesc();
+
        @Query("SELECT c FROM Conversation c WHERE " +
                      "(c.staffId = :staffId AND c.fundOwnerId = :fundOwnerId) OR " +
                      "(c.staffId = :fundOwnerId AND c.fundOwnerId = :staffId)")
@@ -22,6 +25,13 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
        @Query("SELECT c FROM Conversation c WHERE c.staffId = :userId OR c.fundOwnerId = :userId " +
                      "ORDER BY c.lastMessageAt DESC")
        java.util.List<Conversation> findByUserId(@Param("userId") Long userId);
+
+       @Query("SELECT c FROM Conversation c WHERE c.fundOwnerId = :fundOwnerId AND c.staffId IS NULL")
+       Optional<Conversation> findUnassignedConversation(@Param("fundOwnerId") Long fundOwnerId);
+
+       @Query("SELECT c FROM Conversation c WHERE c.fundOwnerId = :fundOwnerId AND c.campaignId = :campaignId ORDER BY c.createdAt DESC")
+       java.util.List<Conversation> findByFundOwnerIdAndCampaignId(@Param("fundOwnerId") Long fundOwnerId,
+                     @Param("campaignId") Long campaignId);
 
        @Query("SELECT c FROM Conversation c WHERE c.id = :id AND (c.staffId = :userId OR c.fundOwnerId = :userId)")
        Optional<Conversation> findByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);

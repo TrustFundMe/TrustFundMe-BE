@@ -8,11 +8,15 @@ import com.trustfund.model.response.MessageResponse;
 public interface ChatService {
     ConversationResponse createConversation(CreateConversationRequest request, Long userId, String role);
 
-    ConversationResponse getConversationById(Long conversationId, Long userId);
+    ConversationResponse getConversationById(Long conversationId, Long userId, String role);
+
+    ConversationResponse getConversationByCampaignId(Long campaignId, Long userId);
 
     java.util.List<ConversationResponse> getConversations(Long userId);
 
-    MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId);
+    java.util.List<ConversationResponse> getAllConversations();
 
-    java.util.List<MessageResponse> getMessages(Long conversationId, Long userId);
+    MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId, String role);
+
+    java.util.List<MessageResponse> getMessages(Long conversationId, Long userId, String role);
 }

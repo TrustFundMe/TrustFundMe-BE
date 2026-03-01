@@ -41,18 +41,7 @@ public class ChatServiceImpl implements ChatService {
             // Assume Fund Owner or Donor
             fundOwnerId = userId;
             staffId = request.getStaffId();
-            if (staffId == null) {
-                // Default staff ID or throw exception
-                throw new BadRequestException("Staff ID is required");
-            }
-        }
-
-        // Check if conversation already exists
-        var existingConversation = conversationRepository.findByStaffIdAndFundOwnerId(
-                staffId, fundOwnerId);
-
-        if (existingConversation.isPresent()) {
-            return toConversationResponse(existingConversation.get());
+            // User can create conversation without specifying staffId
         }
 
         Conversation conversation = Conversation.builder()
@@ -62,15 +51,39 @@ public class ChatServiceImpl implements ChatService {
                 .build();
 
         Conversation saved = conversationRepository.save(conversation);
+
+        // Save a bot welcome message for every newly created conversation
+        Message welcomeMessage = Message.builder()
+                .conversationId(saved.getId())
+                .senderId(0L) // 0L = bot sentinel ID
+                .content("Xin chào bạn cần hỗ trợ gì ạ? Chúng tôi sẽ hỗ trợ giải đáp trong thời gian ngắn nhất")
+                .isRead(false)
+                .build();
+        messageRepository.save(welcomeMessage);
+
         return toConversationResponse(saved);
     }
 
     @Override
-    public ConversationResponse getConversationById(Long conversationId, Long userId) {
-        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
+    public ConversationResponse getConversationById(Long conversationId, Long userId, String role) {
+        if ("ROLE_STAFF".equals(role)) {
+            conversationRepository.findById(conversationId)
+                    .orElseThrow(() -> new NotFoundException("Conversation not found"));
+        } else {
+            conversationRepository.findByIdAndUserId(conversationId, userId)
+                    .orElseThrow(() -> new NotFoundException("Conversation not found"));
+        }
 
-        return toConversationResponse(conversation);
+        return toConversationResponse(conversationRepository.findById(conversationId).get());
+    }
+
+    @Override
+    public ConversationResponse getConversationByCampaignId(Long campaignId, Long userId) {
+        return conversationRepository.findByFundOwnerIdAndCampaignId(userId, campaignId)
+                .stream()
+                .findFirst()
+                .map(this::toConversationResponse)
+                .orElseThrow(() -> new NotFoundException("Conversation not found for this campaign"));
     }
 
     @Override
@@ -82,24 +95,55 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
+    public java.util.List<ConversationResponse> getAllConversations() {
+        return conversationRepository.findAllOrderByLastMessageAtDesc()
+                .stream()
+                .map(this::toConversationResponse)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
     @Transactional
-    public MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId) {
+    public MessageResponse sendMessage(Long conversationId, SendMessageRequest request, Long senderId, String role) {
         Conversation conversation = conversationRepository.findById(conversationId)
                 .orElseThrow(() -> new NotFoundException("Conversation not found"));
 
-        // Verify sender is part of the conversation
-        if (!conversation.getStaffId().equals(senderId) && !conversation.getFundOwnerId().equals(senderId)) {
+        System.out.println("[ChatService] Processing message: senderId=" + senderId + ", role=" + role);
+        System.out.println("[ChatService] Conversation#" + conversationId + ": staffId=" + conversation.getStaffId()
+                + ", fundOwnerId=" + conversation.getFundOwnerId());
+
+        // If conversation has no staff and sender is staff, assign this staff
+        if (conversation.getStaffId() == null && "ROLE_STAFF".equals(role)) {
+            System.out
+                    .println("[ChatService] Assigning staff member " + senderId + " to conversation " + conversationId);
+            conversation.setStaffId(senderId);
+            conversationRepository.save(conversation);
+        }
+
+        // Verify sender is part of the conversation (Staff members can reply to any
+        // conversation)
+        boolean isStaff = "ROLE_STAFF".equals(role);
+        boolean isAssignedStaff = senderId.equals(conversation.getStaffId());
+        boolean isFundOwner = senderId.equals(conversation.getFundOwnerId());
+
+        if (!isStaff && !isAssignedStaff && !isFundOwner) {
+            System.err.println(
+                    "[ChatService] FORBIDDEN: Sender " + senderId + " (" + role + ") is not part of conversation "
+                            + conversationId);
             throw new ForbiddenException("You are not part of this conversation");
         }
 
+        // Create and save message
         Message message = Message.builder()
                 .conversationId(conversationId)
                 .senderId(senderId)
                 .content(request.getContent())
+                .createdAt(LocalDateTime.now())
                 .isRead(false)
                 .build();
 
         Message saved = messageRepository.save(message);
+        System.out.println("[ChatService] SUCCESS: Message saved. ID: " + saved.getId() + " Sender: " + senderId);
 
         // Update conversation's last message time
         conversation.setLastMessageAt(LocalDateTime.now());
@@ -109,9 +153,14 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public java.util.List<MessageResponse> getMessages(Long conversationId, Long userId) {
-        Conversation conversation = conversationRepository.findByIdAndUserId(conversationId, userId)
-                .orElseThrow(() -> new NotFoundException("Conversation not found"));
+    public java.util.List<MessageResponse> getMessages(Long conversationId, Long userId, String role) {
+        if ("ROLE_STAFF".equals(role)) {
+            conversationRepository.findById(conversationId)
+                    .orElseThrow(() -> new NotFoundException("Conversation not found"));
+        } else {
+            conversationRepository.findByIdAndUserId(conversationId, userId)
+                    .orElseThrow(() -> new NotFoundException("Conversation not found"));
+        }
 
         return messageRepository.findByConversationIdOrderByCreatedAtAsc(conversationId)
                 .stream()

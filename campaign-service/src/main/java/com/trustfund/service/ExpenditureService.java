@@ -2,6 +2,7 @@ package com.trustfund.service;
 
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 
@@ -23,4 +24,8 @@ public interface ExpenditureService {
     Expenditure requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt); // Updated method
 
     List<ExpenditureItem> getExpenditureItems(Long expenditureId);
+
+    Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
+
+    void deleteExpenditureItem(Long itemId);
 }

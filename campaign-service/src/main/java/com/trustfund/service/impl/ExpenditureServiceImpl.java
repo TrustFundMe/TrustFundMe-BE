@@ -6,9 +6,9 @@ import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.service.CampaignService;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
-import com.trustfund.service.CampaignService;
 import com.trustfund.service.ExpenditureService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -200,6 +199,63 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public Expenditure updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request) {
         Expenditure expenditure = getExpenditureById(id);
         expenditure.setDisbursementProofUrl(request.getProofUrl());
+        return expenditureRepository.save(expenditure);
+    }
+
+    @Override
+    @Transactional
+    public Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> itemsRequest) {
+        Expenditure expenditure = getExpenditureById(expenditureId);
+
+        List<ExpenditureItem> items = itemsRequest.stream()
+                .map(itemReq -> ExpenditureItem.builder()
+                        .expenditure(expenditure)
+                        .category(itemReq.getCategory())
+                        .quantity(itemReq.getQuantity())
+                        .actualQuantity(0)
+                        .price(BigDecimal.ZERO)
+                        .expectedPrice(itemReq.getExpectedPrice())
+                        .note(itemReq.getNote())
+                        .build())
+                .collect(Collectors.toList());
+
+        expenditureItemRepository.saveAll(items);
+        return recalculateExpenditureTotals(expenditureId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteExpenditureItem(Long itemId) {
+        ExpenditureItem item = expenditureItemRepository.findById(itemId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found: " + itemId));
+
+        Long expenditureId = item.getExpenditure().getId();
+        expenditureItemRepository.delete(item);
+        recalculateExpenditureTotals(expenditureId);
+    }
+
+    private Expenditure recalculateExpenditureTotals(Long expenditureId) {
+        Expenditure expenditure = getExpenditureById(expenditureId);
+        List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(expenditureId);
+
+        BigDecimal totalExpectedAmount = items.stream()
+                .map(item -> item.getExpectedPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal totalAmount = items.stream()
+                .map(item -> {
+                    BigDecimal price = item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
+                    Integer qty = item.getActualQuantity() != null ? item.getActualQuantity() : 0;
+                    return price.multiply(BigDecimal.valueOf(qty));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal variance = totalExpectedAmount.subtract(totalAmount);
+
+        expenditure.setTotalExpectedAmount(totalExpectedAmount);
+        expenditure.setTotalAmount(totalAmount);
+        expenditure.setVariance(variance);
+
         return expenditureRepository.save(expenditure);
     }
 }

@@ -20,7 +20,7 @@ public class Conversation {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "staff_id", nullable = false)
+    @Column(name = "staff_id")
     private Long staffId;
 
     @Column(name = "fund_owner_id", nullable = false)
