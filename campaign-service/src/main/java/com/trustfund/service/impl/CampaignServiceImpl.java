@@ -124,21 +124,13 @@ public class CampaignServiceImpl implements CampaignService {
         if ("APPROVED".equalsIgnoreCase(status)) {
             UserVerificationStatusResponse verificationStatus = identityServiceClient
                     .getVerificationStatus(campaign.getFundOwnerId());
-            if (verificationStatus == null || !verificationStatus.isKycVerified()
-                    || !verificationStatus.isBankVerified()) {
-                String missing = "";
-                if (verificationStatus == null)
-                    missing = "Verification data";
-                else if (!verificationStatus.isKycVerified() && !verificationStatus.isBankVerified())
-                    missing = "KYC and Bank Account";
-                else if (!verificationStatus.isKycVerified())
-                    missing = "KYC";
-                else
-                    missing = "Bank Account";
-
+            if (verificationStatus == null || !verificationStatus.isKycVerified()) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "Cannot approve campaign. Owner's " + missing + " is not verified.");
+                        "Cannot approve campaign. Owner's KYC is not verified.");
             }
+            
+            // Tự động nâng cấp role của user lên FUND_OWNER
+            identityServiceClient.upgradeUserRole(campaign.getFundOwnerId());
         }
 
         if ("REJECTED".equalsIgnoreCase(status) && (rejectionReason == null || rejectionReason.isBlank())) {
