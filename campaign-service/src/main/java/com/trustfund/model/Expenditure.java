@@ -51,6 +51,12 @@ public class Expenditure {
     @Column(name = "status", length = 50)
     private String status;
 
+    @Column(name = "disbursement_proof_url", length = 1000)
+    private String disbursementProofUrl;
+
+    @Column(name = "disbursed_at")
+    private LocalDateTime disbursedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

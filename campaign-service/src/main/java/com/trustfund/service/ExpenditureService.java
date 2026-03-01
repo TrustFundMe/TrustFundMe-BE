@@ -18,6 +18,8 @@ public interface ExpenditureService {
 
     Expenditure updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request); // Added method
 
+    Expenditure updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request); // Updated method
+
     Expenditure requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt); // Updated method
 
     List<ExpenditureItem> getExpenditureItems(Long expenditureId);

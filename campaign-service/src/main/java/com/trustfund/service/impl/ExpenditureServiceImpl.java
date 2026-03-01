@@ -119,6 +119,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
         }
 
+        if ("DISBURSED".equalsIgnoreCase(status)) {
+            expenditure.setDisbursedAt(java.time.LocalDateTime.now());
+        }
+
         return expenditureRepository.save(expenditure);
     }
 
@@ -188,6 +192,14 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         expenditure.setTotalAmount(totalAmount);
         expenditure.setVariance(variance);
 
+        return expenditureRepository.save(expenditure);
+    }
+
+    @Override
+    @Transactional
+    public Expenditure updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request) {
+        Expenditure expenditure = getExpenditureById(id);
+        expenditure.setDisbursementProofUrl(request.getProofUrl());
         return expenditureRepository.save(expenditure);
     }
 }

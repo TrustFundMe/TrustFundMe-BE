@@ -68,4 +68,10 @@ public class ExpenditureController {
     public List<ExpenditureItem> getItems(@PathVariable Long id) {
         return expenditureService.getExpenditureItems(id);
     }
+
+    @PutMapping("/{id}/disbursement-proof")
+    @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
+    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.UpdateDisbursementProofRequest request) {
+        return ResponseEntity.ok(expenditureService.updateDisbursementProof(id, request));
+    }
 }

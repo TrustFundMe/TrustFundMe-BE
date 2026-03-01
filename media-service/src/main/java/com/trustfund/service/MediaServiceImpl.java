@@ -36,6 +36,7 @@ public class MediaServiceImpl implements MediaService {
                 .postId(request.getPostId())
                 .campaignId(request.getCampaignId())
                 .conversationId(request.getConversationId())
+                .expenditureId(request.getExpenditureId())
                 .mediaType(finalMediaType)
                 .url(storedFile.publicUrl())
                 .description(request.getDescription())
@@ -98,6 +99,8 @@ public class MediaServiceImpl implements MediaService {
             media.setCampaignId(request.getCampaignId());
         if (request.getConversationId() != null)
             media.setConversationId(request.getConversationId());
+        if (request.getExpenditureId() != null)
+            media.setExpenditureId(request.getExpenditureId());
         if (request.getDescription() != null)
             media.setDescription(request.getDescription());
 
@@ -158,6 +161,7 @@ public class MediaServiceImpl implements MediaService {
                 .postId(media.getPostId())
                 .campaignId(media.getCampaignId())
                 .conversationId(media.getConversationId())
+                .expenditureId(media.getExpenditureId())
                 .mediaType(media.getMediaType())
                 .url(media.getUrl())
                 .description(media.getDescription())
