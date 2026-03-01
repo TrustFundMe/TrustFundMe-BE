@@ -3,6 +3,8 @@ package com.trustfund.controller;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
 import com.trustfund.model.request.CreateExpenditureRequest;
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.model.request.UpdateDisbursementProofRequest;
 import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,7 +53,7 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/actuals")
     @Operation(summary = "Cập nhật thực tế chi tiêu", description = "Cập nhật số lượng và đơn giá thực tế sau khi mua sắm.")
-    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.UpdateExpenditureActualsRequest request) {
+    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id, @Valid @RequestBody UpdateExpenditureActualsRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureActuals(id, request));
     }
 
@@ -71,7 +73,7 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/disbursement-proof")
     @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
-    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.UpdateDisbursementProofRequest request) {
+    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody UpdateDisbursementProofRequest request) {
         return ResponseEntity.ok(expenditureService.updateDisbursementProof(id, request));
     }
 }

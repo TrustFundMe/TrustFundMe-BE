@@ -3,7 +3,7 @@ package com.trustfund.service;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
 import com.trustfund.model.request.CreateExpenditureRequest;
-import com.trustfund.model.request.UpdateExpenditureActualsRequest; // Added import
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 
 import java.util.List;
 
