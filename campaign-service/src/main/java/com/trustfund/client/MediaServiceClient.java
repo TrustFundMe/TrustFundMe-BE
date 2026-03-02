@@ -22,19 +22,19 @@ public class MediaServiceClient {
     /**
      * Resolves the media URL from media ID by calling media-service.
      */
-    public String getMediaUrl(Long mediaId) {
-        if (mediaId == null)
+    public String getMediaUrl(Long coverImage) {
+        if (coverImage == null)
             return null;
 
-        String url = mediaServiceUrl + "/api/media/" + mediaId;
+        String url = mediaServiceUrl + "/api/media/" + coverImage;
         try {
-            log.debug("Fetching media URL for mediaId {} from {}", mediaId, url);
+            log.debug("Fetching media URL for coverImage {} from {}", coverImage, url);
             Map<String, Object> response = restTemplate.getForObject(url, Map.class);
             if (response != null && response.containsKey("url")) {
                 return (String) response.get("url");
             }
         } catch (Exception e) {
-            log.error("Failed to fetch media URL for mediaId {}: {}", mediaId, e.getMessage());
+            log.error("Failed to fetch media URL for coverImage {}: {}", coverImage, e.getMessage());
         }
         return null; // Graceful fallback
     }

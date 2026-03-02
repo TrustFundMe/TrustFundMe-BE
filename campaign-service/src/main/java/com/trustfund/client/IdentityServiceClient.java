@@ -1,5 +1,6 @@
 package com.trustfund.client;
 
+import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -77,6 +78,23 @@ public class IdentityServiceClient {
         } catch (Exception e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
                     "Unable to upgrade user role. Please ensure Identity Service is running.");
+        }
+    }
+
+    /**
+     * Lấy thông tin user từ identity-service.
+     */
+    public UserInfoResponse getUserInfo(Long userId) {
+        if (userId == null)
+            return null;
+
+        String url = identityServiceUrl + "/api/internal/users/" + userId;
+        try {
+            log.debug("Fetching user info for user {} from {}", userId, url);
+            return restTemplate.getForObject(url, UserInfoResponse.class);
+        } catch (Exception e) {
+            log.error("Failed to fetch user info for user {}: {}", userId, e.getMessage());
+            return null;
         }
     }
 }

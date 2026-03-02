@@ -40,8 +40,8 @@ public class Campaign {
     @Column(nullable = false, length = 255)
     private String title;
 
-    @Column(name = "media_id")
-    private Long mediaId;
+    @Column(name = "cover_image")
+    private Long coverImage;
 
     @Column(length = 5000)
     private String description;

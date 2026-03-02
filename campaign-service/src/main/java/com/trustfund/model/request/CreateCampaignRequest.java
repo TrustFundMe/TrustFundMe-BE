@@ -29,7 +29,7 @@ public class CreateCampaignRequest {
     @Size(min = 50, max = 10000, message = "Mô tả phải từ 50 đến 10,000 ký tự")
     private String description;
 
-    private Long mediaId;
+    private Long coverImage;
 
     @NotNull(message = "CategoryId không được để trống")
     private Long categoryId;
