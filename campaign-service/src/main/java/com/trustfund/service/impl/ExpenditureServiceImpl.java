@@ -115,6 +115,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 expenditure.setIsWithdrawalRequested(true);
+                expenditure.setStatus("WITHDRAWAL_REQUESTED"); // Move to withdrawal request state for admin
             }
         }
 
@@ -141,10 +142,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             expenditure.setEvidenceDueAt(evidenceDueAt);
         }
 
-        // Đối với chiến dịch ITEMIZED, khi yêu cầu rút tiền thì đóng chi tiêu này lại
-        if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
-            expenditure.setStatus("CLOSED");
-        }
+        
+        expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
         return expenditureRepository.save(expenditure);
     }
