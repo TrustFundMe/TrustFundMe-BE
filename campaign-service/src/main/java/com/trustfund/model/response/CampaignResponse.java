@@ -16,7 +16,7 @@ public class CampaignResponse {
     private Long id;
     private Long fundOwnerId;
     private String title;
-    private Long mediaId;
+    private Long coverImage;
     private String coverImageUrl;
     private String description;
     private Long categoryId;

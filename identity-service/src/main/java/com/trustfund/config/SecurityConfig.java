@@ -41,9 +41,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/files/**").permitAll()
-                        .requestMatchers("/api/users/check-email").permitAll() // Public endpoint to check email
+                        .requestMatchers(HttpMethod.GET, "/api/users/check-email").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/users/*").permitAll()
                         .requestMatchers(HttpMethod.PUT, "/api/users/*").hasAnyRole("ADMIN", "STAFF", "USER")
-                        .requestMatchers(HttpMethod.GET, "/api/users/*").hasAnyRole("ADMIN", "STAFF", "USER")
                         .requestMatchers("/login").permitAll() // Prevent redirect to login page
                         .requestMatchers(
                                 "/swagger-ui.html",

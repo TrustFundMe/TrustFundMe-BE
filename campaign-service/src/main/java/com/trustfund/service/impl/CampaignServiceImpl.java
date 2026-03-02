@@ -64,7 +64,7 @@ public class CampaignServiceImpl implements CampaignService {
                 .title(request.getTitle())
                 .description(request.getDescription())
                 .category(category)
-                .mediaId(request.getMediaId())
+                .coverImage(request.getCoverImage())
                 .startDate(request.getStartDate())
                 .endDate(request.getEndDate())
                 .balance(java.math.BigDecimal.ZERO)
@@ -93,8 +93,8 @@ public class CampaignServiceImpl implements CampaignService {
             campaign.setTitle(request.getTitle());
         if (request.getDescription() != null)
             campaign.setDescription(request.getDescription());
-        if (request.getMediaId() != null)
-            campaign.setMediaId(request.getMediaId());
+        if (request.getCoverImage() != null)
+            campaign.setCoverImage(request.getCoverImage());
         if (request.getCategoryId() != null) {
             CampaignCategory category = categoryRepository.findById(request.getCategoryId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category id"));
@@ -155,7 +155,7 @@ public class CampaignServiceImpl implements CampaignService {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                         "Cannot approve campaign. Owner's KYC is not verified.");
             }
-            
+
             // Tự động nâng cấp role của user lên FUND_OWNER
             identityServiceClient.upgradeUserRole(campaign.getFundOwnerId());
         }
@@ -179,15 +179,15 @@ public class CampaignServiceImpl implements CampaignService {
 
         // Resolve cover image URL
         String coverImageUrl = null;
-        if (campaign.getMediaId() != null) {
-            coverImageUrl = mediaServiceClient.getMediaUrl(campaign.getMediaId());
+        if (campaign.getCoverImage() != null) {
+            coverImageUrl = mediaServiceClient.getMediaUrl(campaign.getCoverImage());
         }
 
         return CampaignResponse.builder()
                 .id(campaign.getId())
                 .fundOwnerId(campaign.getFundOwnerId())
                 .title(campaign.getTitle())
-                .mediaId(campaign.getMediaId())
+                .coverImage(campaign.getCoverImage())
                 .coverImageUrl(coverImageUrl)
                 .description(campaign.getDescription())
                 .categoryId(campaign.getCategory() != null ? campaign.getCategory().getId() : null)

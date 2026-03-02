@@ -37,6 +37,15 @@ FLUSH PRIVILEGES;
 -- =======================================
 USE trustfundme_campaign_db;
 
+-- campaign_categories
+CREATE TABLE campaign_categories (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,
+    description VARCHAR(500) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
 -- campaigns
 CREATE TABLE campaigns (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -46,8 +55,9 @@ CREATE TABLE campaigns (
     thank_message VARCHAR(2000) NULL,
     balance DECIMAL(19, 4) NOT NULL DEFAULT 0,
     title VARCHAR(255) NOT NULL,
+    cover_image BIGINT NULL,
     description VARCHAR(5000) NULL,
-    category VARCHAR(100) NULL,
+    category_id BIGINT NULL,
     start_date DATETIME NULL,
     end_date DATETIME NULL,
     status VARCHAR(50) NULL,
@@ -55,6 +65,7 @@ CREATE TABLE campaigns (
     type VARCHAR(50) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES campaign_categories(id) ON DELETE SET NULL,
     INDEX idx_campaigns_fund_owner_id (fund_owner_id),
     INDEX idx_campaigns_status (status),
     INDEX idx_campaigns_created_at (created_at)
@@ -345,6 +356,28 @@ CREATE TABLE IF NOT EXISTS appointment_schedules (
     INDEX idx_staff_id (staff_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- Sample Chat Data
+INSERT INTO conversations (id, staff_id, fund_owner_id, campaign_id, last_message_at)
+VALUES
+    (1, 2, 3, 1, NOW()),
+    (2, 2, 5, NULL, NOW())
+ON DUPLICATE KEY UPDATE last_message_at = VALUES(last_message_at);
+
+INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_at)
+VALUES
+    (1, 1, 3, 'Chào staff, tôi muốn hỏi về việc rút tiền đợt 1 cho chiến dịch cứu trợ miền Trung.', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+    (2, 1, 2, 'Chào bạn, chúng tôi đã nhận được yêu cầu. Đang tiến hành kiểm tra chứng từ.', TRUE, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+    (3, 1, 3, 'Cảm ơn bạn, tôi đã đính kèm thêm hóa đơn VAT rồi nhé.', FALSE, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+    (4, 2, 5, 'Chào admin, làm sao để tôi có thể trở thành tình nguyện viên?', TRUE, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (5, 2, 2, 'Bạn có thể nhấn vào nút "Become Volunteer" ở trang chủ nhé!', TRUE, DATE_SUB(NOW(), INTERVAL 1 DAY))
+ON DUPLICATE KEY UPDATE content = VALUES(content);
+
+INSERT INTO appointment_schedules (id, donor_id, staff_id, start_time, end_time, status, location, purpose, created_at, updated_at)
+VALUES
+    (1, 5, 2, '2024-03-10 09:00:00', '2024-03-10 10:00:00', 'PENDING', 'Trung tâm cứu trợ ABC', 'Trao đổi về việc ủng hộ nhu yếu phẩm', NOW(), NOW()),
+    (2, 6, 2, '2024-03-11 14:00:00', '2024-03-11 15:00:00', 'CONFIRMED', 'Văn phòng TrustFundMe', 'Ký hợp đồng ủng hộ dài hạn', NOW(), NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
 -- =======================================
 -- 4. Sample data
 -- =======================================
@@ -370,11 +403,21 @@ ON DUPLICATE KEY UPDATE account_number = VALUES(account_number);
 -- Switch back to campaign DB for sample campaign data
 USE trustfundme_campaign_db;
 
--- Campaigns (fund_owner_id points to user id = 3)
-INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, description, category, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
+-- Campaign categories
+INSERT INTO campaign_categories (id, name, description)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 'Humanitarian', NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 'Agriculture', NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'FUNDRAISING', NOW(), NOW())
+    (1, 'Humanitarian', 'Cứu trợ nhân đạo, khẩn cấp'),
+    (2, 'Education', 'Hỗ trợ giáo dục, trường học'),
+    (3, 'Health', 'Chăm sóc sức khỏe, y tế'),
+    (4, 'Agriculture', 'Phát triển nông nghiệp'),
+    (5, 'Environment', 'Bảo vệ môi trường')
+ON DUPLICATE KEY UPDATE name = VALUES(name);
+
+-- Campaigns (fund_owner_id points to user id = 3)
+INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, cover_image, description, category_id, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
+VALUES
+    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', NULL, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- Fundraising goals

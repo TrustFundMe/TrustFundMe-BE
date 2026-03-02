@@ -31,8 +31,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER')")
-    @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID", security = @SecurityRequirement(name = "bearerAuth"))
+    @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID")
     public ResponseEntity<UserInfo> getUserById(@PathVariable Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
