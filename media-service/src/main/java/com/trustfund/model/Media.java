@@ -41,6 +41,10 @@ public class Media {
     @Column(length = 2000)
     private String description;
 
+    @Column(length = 20)
+    @Builder.Default
+    private String status = "PENDING";
+
     @Column(name = "file_name")
     private String fileName;
 

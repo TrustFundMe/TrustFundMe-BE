@@ -21,6 +21,7 @@ public class MediaFileResponse {
     private MediaType mediaType;
     private String url;
     private String description;
+    private String status;
     private String fileName;
     private String contentType;
     private Long sizeBytes;

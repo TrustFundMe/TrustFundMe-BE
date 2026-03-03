@@ -132,6 +132,13 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.updateMedia(id, request));
     }
 
+    @PatchMapping("/{id}/status")
+    @Operation(summary = "Update media status", description = "Update status (APPROVED/REJECTED/PENDING) for a media record")
+    public ResponseEntity<MediaFileResponse> updateStatus(@PathVariable Long id,
+            @RequestParam String status) {
+        return ResponseEntity.ok(mediaService.updateMediaStatus(id, status));
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete media by ID", description = "Delete media from storage and database")
     public ResponseEntity<Void> delete(@PathVariable Long id) throws IOException, InterruptedException {

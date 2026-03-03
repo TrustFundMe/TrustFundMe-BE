@@ -17,7 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
     password VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     phone_number VARCHAR(255),
-    avatar_url VARCHAR(500),
+    avatar_url VARCHAR(1000),
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at DATETIME NOT NULL,

@@ -14,5 +14,9 @@ public interface UserKYCRepository extends JpaRepository<UserKYC, Long> {
 
     boolean existsByUserId(Long userId);
 
+    boolean existsByIdNumber(String idNumber);
+
+    Optional<UserKYC> findByIdNumber(String idNumber);
+
     Page<UserKYC> findByStatus(KYCStatus status, Pageable pageable);
 }

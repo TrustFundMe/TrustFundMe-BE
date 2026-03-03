@@ -69,6 +69,13 @@ public class InternalUserController {
         return ResponseEntity.ok().build();
     }
 
+    @PutMapping("/{id}/upgrade-to-fund-donor")
+    @Operation(summary = "Nâng cấp role user lên FUND_DONOR (dùng sau khi KYC được duyệt)")
+    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable Long id) {
+        userService.upgradeToFundDonor(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/{id}/name")
     @Operation(summary = "Lấy full name của user theo ID (dùng nội bộ)")
     public ResponseEntity<String> getUserFullName(@PathVariable Long id) {

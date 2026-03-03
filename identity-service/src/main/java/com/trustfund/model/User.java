@@ -31,7 +31,7 @@ public class User {
     @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
-    @Column(name = "avatar_url", length = 500)
+    @Column(name = "avatar_url", length = 1000)
     private String avatarUrl;
 
     @Enumerated(EnumType.STRING)
@@ -66,6 +66,7 @@ public class User {
     public enum Role {
         USER,
         FUND_OWNER,
+        FUND_DONOR,
         STAFF,
         ADMIN
     }

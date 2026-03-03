@@ -12,12 +12,16 @@ import com.trustfund.service.interfaceServices.UserKYCService;
 import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.exception.exceptions.BadRequestException;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class UserKYCServiceImpl implements UserKYCService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserKYCServiceImpl.class);
 
     private final UserKYCRepository userKYCRepository;
     private final UserRepository userRepository;
@@ -33,26 +37,24 @@ public class UserKYCServiceImpl implements UserKYCService {
             throw new BadRequestException("KYC already submitted");
         }
 
-        UserKYC userKYC = UserKYC.builder()
-                .user(user)
-                .idType(request.getIdType())
-                .idNumber(request.getIdNumber())
-                .issueDate(request.getIssueDate())
-                .expiryDate(request.getExpiryDate())
-                .issuePlace(request.getIssuePlace())
-                .idImageFront(request.getIdImageFront())
-                .idImageBack(request.getIdImageBack())
-                .selfieImage(request.getSelfieImage())
-                .status(KYCStatus.APPROVED) // Auto-approve when STAFF submits
-                .build();
+        UserKYC userKYC = new UserKYC();
+        userKYC.setUser(user);
+        userKYC.setIdType(request.getIdType());
+        userKYC.setIdNumber(request.getIdNumber());
+        userKYC.setIssueDate(request.getIssueDate());
+        userKYC.setExpiryDate(request.getExpiryDate());
+        userKYC.setIssuePlace(request.getIssuePlace());
+        userKYC.setIdImageFront(request.getIdImageFront());
+        userKYC.setIdImageBack(request.getIdImageBack());
+        userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setStatus(KYCStatus.APPROVED);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
 
-        // Auto-verify user and promote to FUND_OWNER if Bank is also verified
-        if (shouldPromoteToFundOwner(userId)) {
+        if (User.Role.USER.equals(user.getRole())) {
             user.setRole(User.Role.FUND_OWNER);
+            userRepository.save(user);
         }
-        userRepository.save(user);
 
         return mapToResponse(savedKYC);
     }
@@ -81,6 +83,13 @@ public class UserKYCServiceImpl implements UserKYCService {
             throw new BadRequestException("Cannot resubmit APPROVED KYC");
         }
 
+        // Check for duplicate ID number (only if ID number changed)
+        if (!userKYC.getIdNumber().equals(request.getIdNumber())) {
+            if (userKYCRepository.existsByIdNumber(request.getIdNumber())) {
+                throw new BadRequestException("CCCD/ID number already exists in system");
+            }
+        }
+
         userKYC.setIdType(request.getIdType());
         userKYC.setIdNumber(request.getIdNumber());
         userKYC.setIssueDate(request.getIssueDate());
@@ -94,12 +103,12 @@ public class UserKYCServiceImpl implements UserKYCService {
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
 
-        // Auto-verify user and promote to FUND_OWNER if Bank is also verified
+        // Then promote to FUND_OWNER after KYC is updated
         User user = userKYC.getUser();
-        if (shouldPromoteToFundOwner(user.getId())) {
+        if (User.Role.USER.equals(user.getRole())) {
             user.setRole(User.Role.FUND_OWNER);
+            userRepository.save(user);
         }
-        userRepository.save(user);
 
         return mapToResponse(savedKYC);
     }
@@ -135,8 +144,8 @@ public class UserKYCServiceImpl implements UserKYCService {
             User user = userKYC.getUser();
             user.setVerified(true);
 
-            // Check if user should be promoted to FUND_OWNER
-            if (shouldPromoteToFundOwner(user.getId())) {
+            // Promote to FUND_OWNER for users with role USER
+            if (User.Role.USER.equals(user.getRole())) {
                 user.setRole(User.Role.FUND_OWNER);
             }
 

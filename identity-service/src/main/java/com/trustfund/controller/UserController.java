@@ -67,6 +67,14 @@ public class UserController {
         return ResponseEntity.ok(userService.unbanUser(id));
     }
 
+    @PutMapping("/{id}/upgrade-to-fund-donor")
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Upgrade user to FUND_DONOR", description = "Upgrade user role to FUND_DONOR after KYC verification (Admin/Staff only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable Long id) {
+        userService.upgradeToFundDonor(id);
+        return ResponseEntity.ok().build();
+    }
+
     @GetMapping("/check-email")
     @Operation(summary = "Check email existence", description = "Check if email already exists in database (public endpoint for sign-in vs sign-up flow)")
     public ResponseEntity<CheckEmailResponse> checkEmail(@RequestParam String email) {

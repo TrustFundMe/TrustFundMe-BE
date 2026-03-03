@@ -146,7 +146,7 @@ CREATE TABLE users (
     password VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
     phone_number VARCHAR(255),
-    avatar_url VARCHAR(500),
+    avatar_url VARCHAR(1000),
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     verified BOOLEAN NOT NULL DEFAULT FALSE,
@@ -220,12 +220,14 @@ CREATE TABLE IF NOT EXISTS media (
     media_type VARCHAR(50) NOT NULL,
     url VARCHAR(1000) NOT NULL,
     description VARCHAR(2000) NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
     file_name VARCHAR(255) NULL,
     content_type VARCHAR(100) NULL,
     size_bytes BIGINT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_media_post_id (post_id),
-    INDEX idx_media_campaign_id (campaign_id)
+    INDEX idx_media_campaign_id (campaign_id),
+    INDEX idx_media_status (status)
 );
 
 -- =======================================
@@ -390,7 +392,8 @@ VALUES
     (3, 'owner@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Fund Owner',   '0900000003', 'https://ui-avatars.com/api/?name=Fund+Owner&background=random', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
     (4, 'user@example.com',     '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Normal User',  '0900000004', 'https://ui-avatars.com/api/?name=Normal+User&background=random', 'USER', TRUE, FALSE, NOW(), NOW()),
     (5, 'alice@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Alice Nguyen', '0900000005', 'https://ui-avatars.com/api/?name=Alice+Nguyen&background=random', 'USER', TRUE, TRUE, NOW(), NOW()),
-    (6, 'bob@example.com',      '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Bob Tran',     '0900000006', 'https://ui-avatars.com/api/?name=Bob+Tran&background=random', 'USER', TRUE, TRUE, NOW(), NOW())
+    (6, 'bob@example.com',      '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Bob Tran',     '0900000006', 'https://ui-avatars.com/api/?name=Bob+Tran&background=random', 'USER', TRUE, TRUE, NOW(), NOW()),
+    (300, 'unverified@test.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Unverified Tester', '0900000300', 'https://ui-avatars.com/api/?name=Unverified+Tester&background=random', 'USER', TRUE, FALSE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE email = VALUES(email);
 
 -- Bank accounts (link to sample users)

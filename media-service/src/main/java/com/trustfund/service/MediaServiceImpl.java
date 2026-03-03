@@ -109,6 +109,17 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public MediaFileResponse updateMediaStatus(Long id, String status) {
+        Media media = mediaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Media not found with id: " + id));
+
+        media.setStatus(status);
+
+        Media updatedMedia = mediaRepository.save(media);
+        return mapToResponse(updatedMedia);
+    }
+
+    @Override
     @Transactional
     public void deleteMedia(Long id) throws IOException, InterruptedException {
         Media media = mediaRepository.findById(id)
@@ -165,6 +176,7 @@ public class MediaServiceImpl implements MediaService {
                 .mediaType(media.getMediaType())
                 .url(media.getUrl())
                 .description(media.getDescription())
+                .status(media.getStatus())
                 .fileName(media.getFileName())
                 .contentType(media.getContentType())
                 .sizeBytes(media.getSizeBytes())
