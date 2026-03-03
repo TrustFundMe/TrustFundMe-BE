@@ -183,6 +183,11 @@ public class CampaignServiceImpl implements CampaignService {
             coverImageUrl = mediaServiceClient.getMediaUrl(campaign.getCoverImage());
         }
 
+        // Fallback: if coverImageUrl is still null, try to get the first image of the campaign
+        if (coverImageUrl == null) {
+            coverImageUrl = mediaServiceClient.getFirstImageByCampaignId(campaign.getId());
+        }
+
         return CampaignResponse.builder()
                 .id(campaign.getId())
                 .fundOwnerId(campaign.getFundOwnerId())

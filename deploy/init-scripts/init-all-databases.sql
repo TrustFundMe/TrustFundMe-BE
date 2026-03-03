@@ -415,42 +415,69 @@ VALUES
 ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 
 -- Campaigns (fund_owner_id points to user id = 3)
+-- Campaign types: ITEMIZED (quỹ theo khoản mục, tự APPROVED khi tạo chi tiêu)
+--                 AUTHORIZED (quỹ ủy quyền, cần staff duyệt chi tiêu)
+-- Campaign statuses: PENDING_APPROVAL (mới gửi duyệt), ACTIVE (đang gây quỹ), DRAFT (nháp)
 INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, cover_image, description, category_id, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (3, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_REVIEW', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (4, 3, NULL, NULL, NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'ACTIVE', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (5, 3, NULL, NULL, NULL, 0.00, 'Trồng 1000 cây xanh phủ xanh đồi trọc', NULL, 'Chung tay đóng góp cây giống để phục hồi rừng đầu nguồn, bảo vệ môi trường bền vững.', 5, NOW(), DATE_ADD(NOW(), INTERVAL 120 DAY), 'PENDING', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (6, 3, NULL, NULL, NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'ACTIVE', NULL, 'FUNDRAISING', NOW(), NOW()),
-    (7, 3, NULL, NULL, NULL, 0.00, 'Học bổng Chắp cánh ước mơ 2024', NULL, 'Trao học bổng cho học sinh nghèo vượt khó tại các tỉnh miền núi phía Bắc.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 45 DAY), 'PENDING_REVIEW', NULL, 'FUNDRAISING', NOW(), NOW())
-ON DUPLICATE KEY UPDATE title = VALUES(title), category_id = VALUES(category_id), status = VALUES(status), description = VALUES(description);
+    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'ITEMIZED', NOW(), NOW()),
+    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW()),
+    (3, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
+    (4, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'ACTIVE', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (5, 3, NULL, NULL, NULL, 0.00, 'Trồng 1000 cây xanh phủ xanh đồi trọc', NULL, 'Chung tay đóng góp cây giống để phục hồi rừng đầu nguồn, bảo vệ môi trường bền vững.', 5, NOW(), DATE_ADD(NOW(), INTERVAL 120 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
+    (6, 3, 2, NOW(), NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'ACTIVE', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (7, 3, NULL, NULL, NULL, 0.00, 'Học bổng Chắp cánh ước mơ 2024', NULL, 'Trao học bổng cho học sinh nghèo vượt khó tại các tỉnh miền núi phía Bắc.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 45 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW())
+ON DUPLICATE KEY UPDATE title = VALUES(title), category_id = VALUES(category_id), status = VALUES(status), type = VALUES(type), description = VALUES(description);
 
--- Fundraising goals
+-- Fundraising goals (mỗi chiến dịch có 1 mục tiêu gây quỹ)
 INSERT INTO fundraising_goals (id, campaign_id, target_amount, description, is_active, created_at, updated_at)
 VALUES
     (1, 1, 100000000.00, 'Ngân sách cho 2000 phần quà cứu trợ (mì tôm, nước, thuốc)', TRUE, NOW(), NOW()),
-    (2, 2, 50000000.00, 'Hỗ trợ 500 hộ dân cây giống lúa và ngô', TRUE, NOW(), NOW())
-ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount);
+    (2, 2, 50000000.00, 'Hỗ trợ 500 hộ dân cây giống lúa và ngô', TRUE, NOW(), NOW()),
+    (3, 3, 200000000.00, 'Xây dựng 1 điểm trường mầm non kiên cố 2 phòng học', TRUE, NOW(), NOW()),
+    (4, 4, 500000000.00, 'Hỗ trợ chi phí điều trị cho 50 bệnh nhi trong 1 năm', TRUE, NOW(), NOW()),
+    (5, 5, 30000000.00, 'Mua 1000 cây giống và thuê nhân công trồng rừng', TRUE, NOW(), NOW()),
+    (6, 6, 80000000.00, 'Chi phí vận hành mái ấm cho 100 thú cưng trong 6 tháng', TRUE, NOW(), NOW()),
+    (7, 7, 150000000.00, 'Trao 30 suất học bổng 5 triệu/suất cho học sinh vượt khó', TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VALUES(description);
+
 
 -- Expenditures
-INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, plan, status, is_withdrawal_requested, created_at, updated_at)
+-- Expenditure statuses:
+--   APPROVED         → ITEMIZED campaign: tự approved khi fund owner tạo
+--   PENDING_REVIEW   → AUTHORIZED campaign: cần staff duyệt
+--   WITHDRAWAL_REQUESTED → Sau khi fund owner bấm "Yêu cầu rút tiền"
+--   DISBURSED        → Sau khi admin xác nhận đã chuyển tiền
+INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, created_at, updated_at)
 VALUES
-    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'APPROVED', TRUE, NOW(), NOW()),
-    (2, 2, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 'Mua cây giống lúa ngắn ngày đợt 1', 'PENDING_REVIEW', FALSE, NOW(), NOW()),
-    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', TRUE, NOW(), NOW()),
-    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 2000000.00, 'Mua thuốc men và vật tư y tế', 'PENDING_REVIEW', FALSE, NOW(), NOW())
-ON DUPLICATE KEY UPDATE plan = VALUES(plan);
+    -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu tự APPROVED, fund owner đã yêu cầu rút tiền
+    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NOW(), NOW()),
+    -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu mới tạo, chờ fund owner yêu cầu rút
+    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 0.00, 3000000.00, 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', FALSE, NOW(), NOW()),
+    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 0.00, 2000000.00, 2000000.00, 'Mua thuốc men và vật tư y tế', 'APPROVED', FALSE, NOW(), NOW()),
+    -- Campaign 4 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, đã DISBURSED
+    (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, NOW(), NOW()),
+    -- Campaign 6 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, chờ duyệt
+    (5, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount);
 
 -- Expenditure Items
-INSERT INTO expenditure_items (expenditure_id, category, quantity, price, note, created_at, updated_at)
+-- exp 1 (Campaign 1 - ITEMIZED): đã WITHDRAWAL_REQUESTED
+-- exp 2 (Campaign 4 - AUTHORIZED): đã DISBURSED
+-- exp 3 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
+-- exp 4 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
+-- exp 5 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
+INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, price, expected_price, note, created_at, updated_at)
 VALUES
-    (1, 'Mì tôm', 500, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
-    (1, 'Nước sạch', 1000, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
-    (1, 'Lương khô', 200, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
-    (2, 'Giống lúa KH5', 500, 10000.00, 'Kg giống lúa năng suất cao', NOW(), NOW()),
-    (3, 'Thuê vận tải', 1, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
-    (4, 'Thuốc men', 50, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW());
+    (1, 'Mì tôm', 500, 0, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
+    (1, 'Nước sạch', 1000, 0, 0.00, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
+    (1, 'Lương khô', 200, 0, 0.00, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
+    (2, 'Máy đo huyết áp', 10, 10, 500000.00, 500000.00, 'Máy Omron tự động', NOW(), NOW()),
+    (3, 'Thuê vận tải', 1, 0, 0.00, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
+    (4, 'Thuốc men', 50, 0, 0.00, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW()),
+    (5, 'Thức ăn hạt', 100, 0, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
+    (5, 'Thuốc thú y', 20, 0, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW());
+
 
 -- Campaign follows (user 4 follows campaign 1)
 INSERT INTO campaign_follows (campaign_id, user_id, followed_at)

@@ -33,9 +33,28 @@ public class MediaServiceClient {
             if (response != null && response.containsKey("url")) {
                 return (String) response.get("url");
             }
+            log.warn("Media response for ID {} did not contain a URL. Response: {}", coverImage, response);
         } catch (Exception e) {
-            log.error("Failed to fetch media URL for coverImage {}: {}", coverImage, e.getMessage());
+            log.error("Failed to fetch media URL for coverImage {} at {}: {}", coverImage, url, e.getMessage());
         }
-        return null; // Graceful fallback
+        return null;
+    }
+
+    /**
+     * Lấy URL ảnh đầu tiên của chiến dịch làm ảnh bìa dự phòng.
+     */
+    public String getFirstImageByCampaignId(Long campaignId) {
+        if (campaignId == null) return null;
+        String url = mediaServiceUrl + "/api/media/campaigns/" + campaignId + "/first-image";
+        try {
+            log.debug("Fetching fallback cover image for campaign {} from {}", campaignId, url);
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            if (response != null && response.containsKey("url")) {
+                return (String) response.get("url");
+            }
+        } catch (Exception e) {
+            log.warn("No fallback cover image found for campaign {}: {}", campaignId, e.getMessage());
+        }
+        return null;
     }
 }
