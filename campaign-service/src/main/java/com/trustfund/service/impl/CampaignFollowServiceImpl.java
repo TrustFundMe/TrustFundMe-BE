@@ -1,8 +1,10 @@
 package com.trustfund.service.impl;
 
+import com.trustfund.client.IdentityServiceClient;
 import com.trustfund.model.CampaignFollow;
 import com.trustfund.model.CampaignFollowId;
 import com.trustfund.model.response.CampaignFollowerResponse;
+import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.repository.CampaignFollowRepository;
 import com.trustfund.repository.CampaignRepository;
 import com.trustfund.service.CampaignFollowService;
@@ -21,6 +23,7 @@ public class CampaignFollowServiceImpl implements CampaignFollowService {
 
     private final CampaignFollowRepository campaignFollowRepository;
     private final CampaignRepository campaignRepository;
+    private final IdentityServiceClient identityServiceClient;
 
     @Override
     @Transactional
@@ -71,10 +74,17 @@ public class CampaignFollowServiceImpl implements CampaignFollowService {
     public List<CampaignFollowerResponse> getFollowersByCampaignId(Long campaignId) {
         return campaignFollowRepository.findById_CampaignIdOrderByFollowedAtDesc(campaignId)
                 .stream()
-                .map(cf -> CampaignFollowerResponse.builder()
-                        .userId(cf.getId().getUserId())
-                        .followedAt(cf.getFollowedAt())
-                        .build())
+                .map(cf -> {
+                    Long userId = cf.getId().getUserId();
+                    UserInfoResponse userInfo = identityServiceClient.getUserInfo(userId);
+
+                    return CampaignFollowerResponse.builder()
+                            .userId(userId)
+                            .userName(userInfo != null ? userInfo.getFullName() : "Người dùng")
+                            .avatarUrl(userInfo != null ? userInfo.getAvatarUrl() : null)
+                            .followedAt(cf.getFollowedAt())
+                            .build();
+                })
                 .collect(Collectors.toList());
     }
 }

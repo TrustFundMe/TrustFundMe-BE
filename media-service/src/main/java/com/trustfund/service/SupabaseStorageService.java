@@ -14,6 +14,8 @@ import java.nio.charset.StandardCharsets;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 import java.util.UUID;
 
 @Service
@@ -49,8 +51,12 @@ public class SupabaseStorageService {
         } else {
             // Enhanced logging to help debug 403 errors
             System.err.println("Supabase upload failed! Status: " + statusCode + ", URL: " + uploadUrl);
-            throw new RuntimeException("Supabase upload failed with status code: " + statusCode
-                    + ". This might be due to Storage Policies (RLS) or allowed mime-types.");
+            
+            HttpStatus status = HttpStatus.resolve(statusCode);
+            if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
+            
+            throw new ResponseStatusException(status, 
+                "Supabase upload failed with status " + statusCode + ". Check Storage Policies (RLS) or bucket permissions.");
         }
     }
 
