@@ -33,6 +33,44 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public Expenditure createExpenditure(CreateExpenditureRequest request) {
         CampaignResponse campaign = campaignService.getById(request.getCampaignId());
 
+        // === VALIDATION: Kiểm tra điều kiện tạo expenditure mới ===
+        List<Expenditure> existingExps = expenditureRepository.findByCampaignId(request.getCampaignId());
+
+        if (!existingExps.isEmpty()) {
+            if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
+                // Quỹ ủy quyền: chỉ được tạo mới khi expenditure hiện tại đã DISBURSED+bằng chứng HOẶC REJECTED
+                boolean canCreate = existingExps.stream().anyMatch(e ->
+                    ("DISBURSED".equalsIgnoreCase(e.getStatus()) && e.getDisbursementProofUrl() != null && !e.getDisbursementProofUrl().isBlank())
+                    || "REJECTED".equalsIgnoreCase(e.getStatus())
+                );
+                // Nếu không có expenditure nào đủ điều kiện, kiểm tra tất cả còn đang active
+                boolean hasActiveExp = existingExps.stream().anyMatch(e ->
+                    !"DISBURSED".equalsIgnoreCase(e.getStatus()) && !"REJECTED".equalsIgnoreCase(e.getStatus())
+                );
+                if (hasActiveExp) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Quỹ ủy quyền chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân và có bằng chứng, hoặc bị từ chối.");
+                }
+            } else if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+                // Quỹ vật phẩm: chỉ được tạo mới khi expenditure hiện tại đã DISBURSED+bằng chứng
+                boolean hasActiveExp = existingExps.stream().anyMatch(e ->
+                    !"DISBURSED".equalsIgnoreCase(e.getStatus())
+                );
+                boolean lastHasProof = existingExps.stream()
+                    .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
+                    .allMatch(e -> e.getDisbursementProofUrl() != null && !e.getDisbursementProofUrl().isBlank());
+                if (hasActiveExp) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Quỹ vật phẩm chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân và có bằng chứng.");
+                }
+                if (!lastHasProof) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "Vui lòng nộp bằng chứng cho khoản chi đã giải ngân trước khi tạo khoản chi mới.");
+                }
+            }
+        }
+        // === END VALIDATION ===
+
         // Ràng buộc: Đối với chiến dịch AUTHORIZED (Quỹ Ủy quyền), evidenceDueAt là bắt
         // buộc
         if ("AUTHORIZED".equalsIgnoreCase(campaign.getType()) && request.getEvidenceDueAt() == null) {
@@ -45,6 +83,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
             initialStatus = "PENDING_REVIEW";
         }
+
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         BigDecimal totalExpectedAmount = BigDecimal.ZERO;
