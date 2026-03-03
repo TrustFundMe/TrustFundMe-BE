@@ -47,9 +47,23 @@ public class MediaServiceImpl implements MediaService {
 
         System.out.println(">>> MediaServiceImpl: Saving media - Type: " + finalMediaType + ", URL Length: "
                 + (storedFile.publicUrl() != null ? storedFile.publicUrl().length() : 0));
-        Media savedMedia = mediaRepository.save(media);
-
-        return mapToResponse(savedMedia);
+        
+        try {
+            Media savedMedia = mediaRepository.save(media);
+            System.out.println(">>> MediaServiceImpl: DB Save successful, ID: " + savedMedia.getId());
+            return mapToResponse(savedMedia);
+        } catch (Exception e) {
+            System.err.println(">>> MediaServiceImpl: DB Save FAILED!");
+            System.err.println(">>> Error type: " + e.getClass().getName());
+            System.err.println(">>> Error message: " + e.getMessage());
+            
+            // Check for specific database errors if possible
+            if (e.getCause() != null) {
+                System.err.println(">>> Root cause: " + e.getCause().getMessage());
+            }
+            
+            throw new RuntimeException("Lỗi lưu thông tin media vào database: " + e.getMessage(), e);
+        }
     }
 
     @Override

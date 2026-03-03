@@ -109,6 +109,8 @@ CREATE TABLE `expenditures` (
     `is_withdrawal_requested` BOOLEAN NOT NULL DEFAULT FALSE,
     `plan` VARCHAR(2000) NULL,
     `status` VARCHAR(50) NULL,
+    `staff_review_id` BIGINT NULL,
+    `reject_reason` VARCHAR(1000) NULL,
     `disbursement_proof_url` VARCHAR(1000) NULL,
     `disbursed_at` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -451,18 +453,20 @@ ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VAL
 --   PENDING_REVIEW   → AUTHORIZED campaign: cần staff duyệt
 --   WITHDRAWAL_REQUESTED → Sau khi fund owner bấm "Yêu cầu rút tiền"
 --   DISBURSED        → Sau khi admin xác nhận đã chuyển tiền
-INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, created_at, updated_at)
+INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, staff_review_id, reject_reason, created_at, updated_at)
 VALUES
     -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu tự APPROVED, fund owner đã yêu cầu rút tiền
-    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NOW(), NOW()),
+    (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NULL, NULL, NOW(), NOW()),
     -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu mới tạo, chờ fund owner yêu cầu rút
-    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 0.00, 3000000.00, 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', FALSE, NOW(), NOW()),
-    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 0.00, 2000000.00, 2000000.00, 'Mua thuốc men và vật tư y tế', 'APPROVED', FALSE, NOW(), NOW()),
+    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 0.00, 3000000.00, 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', FALSE, NULL, NULL, NOW(), NOW()),
+    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 0.00, 2000000.00, 2000000.00, 'Mua thuốc men và vật tư y tế', 'APPROVED', FALSE, NULL, NULL, NOW(), NOW()),
     -- Campaign 4 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, đã DISBURSED
-    (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, NOW(), NOW()),
+    (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
     -- Campaign 6 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, chờ duyệt
-    (5, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NOW(), NOW())
-ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount);
+    (5, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW()),
+    -- NEW SAMPLE: Bị từ chối
+    (6, 4, NULL, NULL, 0.00, 1000000.00, 1000000.00, 'Yêu cầu mua thực phẩm bổ sung', 'REJECTED', FALSE, 2, 'Hạng mục này không nằm trong danh mục hỗ trợ y tế khẩn cấp của chiến dịch.', NOW(), NOW())
+ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount), staff_review_id = VALUES(staff_review_id), reject_reason = VALUES(reject_reason);
 
 -- Expenditure Items
 -- exp 1 (Campaign 1 - ITEMIZED): đã WITHDRAWAL_REQUESTED
@@ -479,7 +483,8 @@ VALUES
     (3, 'Thuê vận tải', 1, 0, 0.00, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
     (4, 'Thuốc men', 50, 0, 0.00, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW()),
     (5, 'Thức ăn hạt', 100, 0, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
-    (5, 'Thuốc thú y', 20, 0, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW());
+    (5, 'Thuốc thú y', 20, 0, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW()),
+    (6, 'Thực phẩm bổ sung', 20, 0, 0.00, 50000.00, 'Sữa bột và vitamin', NOW(), NOW());
 
 
 -- Campaign follows (user 4 follows campaign 1)

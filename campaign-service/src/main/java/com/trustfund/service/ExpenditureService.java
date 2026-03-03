@@ -15,7 +15,7 @@ public interface ExpenditureService {
 
     Expenditure getExpenditureById(Long id);
 
-    Expenditure updateExpenditureStatus(Long id, String status);
+    Expenditure updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request);
 
     Expenditure updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request); // Added method
 

@@ -58,7 +58,13 @@ public class MediaController {
             @RequestParam(required = false) Long expenditureId,
             @RequestParam(required = false) MediaType mediaType,
             @RequestParam(required = false) String description) throws IOException, InterruptedException {
+        
+        System.out.println(">>> MediaController: Uploading file: " + (file != null ? file.getOriginalFilename() : "NULL") 
+                + ", size: " + (file != null ? file.getSize() : 0)
+                + ", type: " + mediaType + ", campaignId: " + campaignId);
+
         if (file == null || file.isEmpty()) {
+            System.out.println(">>> MediaController: Upload failed - File is empty");
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
         }
 
@@ -71,7 +77,15 @@ public class MediaController {
                 .description(description)
                 .build();
 
-        return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.uploadMedia(request));
+        try {
+            MediaFileResponse response = mediaService.uploadMedia(request);
+            System.out.println(">>> MediaController: Upload success, ID: " + response.getId());
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
+        } catch (Exception e) {
+            System.err.println(">>> MediaController: Upload FAILED: " + e.getMessage());
+            e.printStackTrace();
+            throw e;
+        }
     }
 
     @PostMapping(value = "/upload/conversation", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)

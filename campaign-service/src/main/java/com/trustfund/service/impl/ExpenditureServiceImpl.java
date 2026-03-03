@@ -144,9 +144,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public Expenditure updateExpenditureStatus(Long id, String status) {
+    public Expenditure updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request) {
         Expenditure expenditure = getExpenditureById(id);
+        String status = request.getStatus();
         expenditure.setStatus(status);
+        expenditure.setStaffReviewId(request.getStaffId());
+        
+        if ("REJECTED".equalsIgnoreCase(status)) {
+            expenditure.setRejectReason(request.getReasonReject());
+        }
 
         // Logic: Nếu là chi tiêu AUTHORIZED và được approved -> Tự động yêu cầu rút
         // tiền

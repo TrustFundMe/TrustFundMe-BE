@@ -28,8 +28,8 @@ public class UserKYCController {
     @Operation(summary = "Submit KYC for User (Staff Only)", description = "Staff inputs KYC data for a user to verify them")
     public ResponseEntity<KYCResponse> submitKYC(@PathVariable Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
-        // Access control: Ensure logged-in user is STAFF or ADMIN handled by Security
-        // Config or Gateway
+        System.out.println(">>> UserKYCController: Submitting KYC for user: " + userId);
+        System.out.println(">>> Payload: " + request);
         return ResponseEntity.ok(userKYCService.submitKYC(userId, request));
     }
 
@@ -38,6 +38,8 @@ public class UserKYCController {
     @Operation(summary = "Update KYC for User (Staff Only)", description = "Staff updates/resubmits KYC data for a user")
     public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
+        System.out.println(">>> UserKYCController: Resubmitting KYC for user: " + userId);
+        System.out.println(">>> Payload: " + request);
         return ResponseEntity.ok(userKYCService.resubmitKYC(userId, request));
     }
 
