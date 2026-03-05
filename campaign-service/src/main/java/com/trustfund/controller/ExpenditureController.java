@@ -1,7 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.Expenditure;
-import com.trustfund.model.ExpenditureItem;
+import com.trustfund.model.response.ExpenditureItemResponse;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
@@ -35,8 +35,15 @@ public class ExpenditureController {
 
     @GetMapping("/campaign/{campaignId}")
     @Operation(summary = "Lấy danh sách chi tiêu của chiến dịch", description = "Lấy toàn bộ các khoản chi tiêu thuộc về một chiến dịch.")
-    public List<Expenditure> getByCampaignId(@PathVariable Long campaignId) {
-        return expenditureService.getExpendituresByCampaign(campaignId);
+    public ResponseEntity<List<Expenditure>> getByCampaignId(@PathVariable("campaignId") Long campaignId) {
+        return ResponseEntity.ok(expenditureService.getExpendituresByCampaign(campaignId));
+    }
+
+    @GetMapping("/campaign/{campaignId}/items")
+    @Operation(summary = "Lấy toàn bộ hạng mục chi tiêu của chiến dịch", description = "Lấy tất cả các ExpenditureItem thuộc về các Expenditure của một chiến dịch.")
+    public ResponseEntity<List<ExpenditureItemResponse>> getItemsByCampaignId(
+            @PathVariable("campaignId") Long campaignId) {
+        return ResponseEntity.ok(expenditureService.getExpenditureItemsByCampaign(campaignId));
     }
 
     @GetMapping("/{id}")
@@ -54,27 +61,29 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/actuals")
     @Operation(summary = "Cập nhật thực tế chi tiêu", description = "Cập nhật số lượng và đơn giá thực tế sau khi mua sắm.")
-    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id, @Valid @RequestBody UpdateExpenditureActualsRequest request) {
+    public ResponseEntity<Expenditure> updateActuals(@PathVariable Long id,
+            @Valid @RequestBody UpdateExpenditureActualsRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureActuals(id, request));
     }
 
     @PostMapping("/{id}/request-withdrawal")
     @Operation(summary = "Yêu cầu rút tiền", description = "Đánh dấu yêu cầu rút tiền cho khoản chi. Nếu là quỹ mục tiêu sẽ đóng luôn đợt chi này.")
     public ResponseEntity<Expenditure> requestWithdrawal(
-            @PathVariable Long id, 
+            @PathVariable Long id,
             @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt) {
         return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt));
     }
 
     @GetMapping("/{id}/items")
     @Operation(summary = "Lấy các hạng mục của chi tiêu", description = "Lấy danh sách các hạng mục (ExpenditureItems) thuộc về một khoản chi tiêu.")
-    public List<ExpenditureItem> getItems(@PathVariable Long id) {
-        return expenditureService.getExpenditureItems(id);
+    public ResponseEntity<List<ExpenditureItemResponse>> getItems(@PathVariable Long id) {
+        return ResponseEntity.ok(expenditureService.getExpenditureItems(id));
     }
 
     @PutMapping("/{id}/disbursement-proof")
     @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
-    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id, @Valid @RequestBody UpdateDisbursementProofRequest request) {
+    public ResponseEntity<Expenditure> updateDisbursementProof(@PathVariable Long id,
+            @Valid @RequestBody UpdateDisbursementProofRequest request) {
         return ResponseEntity.ok(expenditureService.updateDisbursementProof(id, request));
     }
 

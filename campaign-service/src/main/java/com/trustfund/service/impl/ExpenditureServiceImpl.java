@@ -3,6 +3,7 @@ package com.trustfund.service.impl;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.ExpenditureItem;
 import com.trustfund.model.response.CampaignResponse;
+import com.trustfund.model.response.ExpenditureItemResponse;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
@@ -158,6 +159,28 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    public List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId) {
+        return expenditureItemRepository.findByExpenditureCampaignId(campaignId).stream()
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
+    }
+
+    private ExpenditureItemResponse mapToItemResponse(ExpenditureItem item) {
+        return ExpenditureItemResponse.builder()
+                .id(item.getId())
+                .expenditureId(item.getExpenditure().getId())
+                .category(item.getCategory())
+                .quantity(item.getQuantity())
+                .actualQuantity(item.getActualQuantity())
+                .price(item.getPrice())
+                .expectedPrice(item.getExpectedPrice())
+                .note(item.getNote())
+                .createdAt(item.getCreatedAt())
+                .updatedAt(item.getUpdatedAt())
+                .build();
+    }
+
+    @Override
     public Expenditure getExpenditureById(Long id) {
         return expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
@@ -244,8 +267,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
-    public List<ExpenditureItem> getExpenditureItems(Long expenditureId) {
-        return expenditureItemRepository.findByExpenditureId(expenditureId);
+    public List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId) {
+        return expenditureItemRepository.findByExpenditureId(expenditureId).stream()
+                .map(this::mapToItemResponse)
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -290,7 +315,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public Expenditure updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request) {
+    public Expenditure updateDisbursementProof(Long id,
+            com.trustfund.model.request.UpdateDisbursementProofRequest request) {
         Expenditure expenditure = getExpenditureById(id);
         expenditure.setDisbursementProofUrl(request.getProofUrl());
         return expenditureRepository.save(expenditure);

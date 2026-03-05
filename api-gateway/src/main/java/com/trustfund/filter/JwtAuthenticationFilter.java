@@ -101,6 +101,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        // PayOS Webhook - must be public
+        if (path.equals("/api/payments/webhook")) {
+            return true;
+        }
+
         return false;
     }
 

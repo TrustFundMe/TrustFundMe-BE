@@ -3,7 +3,7 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 chcp 65001 | Out-Null
 
-Write-Host "Opening 5 PowerShell windows to run services..." -ForegroundColor Yellow
+Write-Host "Opening 8 PowerShell windows to run services..." -ForegroundColor Yellow
 Write-Host "Note: Each service will run in a separate window" -ForegroundColor Yellow
 
 # Open Discovery Server
@@ -45,7 +45,13 @@ Start-Sleep -Seconds 5
 # Open Chat Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-chat-service.ps1`""
 
-Write-Host "Opened 7 PowerShell windows!" -ForegroundColor Green
+# Wait 5 seconds
+Start-Sleep -Seconds 5
+
+# Open Payment Service
+Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-payment-service.ps1`""
+
+Write-Host "Opened 8 PowerShell windows!" -ForegroundColor Green
 Write-Host "1. Discovery Server (port 8761)" -ForegroundColor Cyan
 Write-Host "2. API Gateway (port 8080)" -ForegroundColor Cyan
 Write-Host "3. Identity Service (port 8081)" -ForegroundColor Cyan
@@ -53,3 +59,4 @@ Write-Host "4. Campaign Service (port 8082)" -ForegroundColor Cyan
 Write-Host "5. Media Service (port 8083)" -ForegroundColor Cyan
 Write-Host "6. Feed Service (port 8084)" -ForegroundColor Cyan
 Write-Host "7. Chat Service (port 8086)" -ForegroundColor Cyan
+Write-Host "8. Payment Service (port 8087)" -ForegroundColor Cyan
