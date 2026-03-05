@@ -50,6 +50,12 @@ public class Expenditure {
 
     @Column(name = "status", length = 50)
     private String status;
+    
+    @Column(name = "staff_review_id")
+    private Long staffReviewId;
+    
+    @Column(name = "reject_reason", length = 1000)
+    private String rejectReason;
 
     @Column(name = "disbursement_proof_url", length = 1000)
     private String disbursementProofUrl;

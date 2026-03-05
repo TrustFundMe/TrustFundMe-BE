@@ -173,6 +173,22 @@ public class UserServiceImpl implements UserService {
         }
     }
 
+    @Override
+    @Transactional
+    public void upgradeToFundDonor(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
+
+        // Chỉ nâng cấp nếu đang là USER thường
+        if (User.Role.USER.equals(user.getRole())) {
+            user.setRole(User.Role.FUND_DONOR);
+            userRepository.save(user);
+            log.info("Upgraded user with id: {} to FUND_DONOR", id);
+        } else {
+            log.info("User with id: {} already has role: {} - skipping upgrade", id, user.getRole());
+        }
+    }
+
     private void deleteOldAvatarFile(String avatarUrl) {
         if (avatarUrl == null || avatarUrl.trim().isEmpty()) {
             return;

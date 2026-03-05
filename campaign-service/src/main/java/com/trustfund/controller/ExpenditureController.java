@@ -48,8 +48,8 @@ public class ExpenditureController {
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái chi tiêu", description = "Cập nhật trạng thái duyệt của khoản chi tiêu (Yêu cầu quyền Staff hoặc Admin).")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<Expenditure> updateStatus(@PathVariable Long id, @RequestParam String status) {
-        return ResponseEntity.ok(expenditureService.updateExpenditureStatus(id, status));
+    public ResponseEntity<Expenditure> updateStatus(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.ReviewExpenditureRequest request) {
+        return ResponseEntity.ok(expenditureService.updateExpenditureStatus(id, request));
     }
 
     @PutMapping("/{id}/actuals")

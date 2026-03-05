@@ -22,4 +22,6 @@ public interface UserService {
     CheckEmailResponse checkEmail(String email);
 
     void upgradeToFundOwner(Long id);
+
+    void upgradeToFundDonor(Long id);
 }

@@ -4,6 +4,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Future;
+import jakarta.validation.constraints.FutureOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -26,7 +27,7 @@ public class SubmitKYCRequest {
     private LocalDate issueDate;
 
     @NotNull(message = "Expiry date is required")
-    @Future(message = "Expiry date must be in the future")
+    @FutureOrPresent(message = "Expiry date must be in the present or future")
     private LocalDate expiryDate;
 
     @NotBlank(message = "Issue place is required")

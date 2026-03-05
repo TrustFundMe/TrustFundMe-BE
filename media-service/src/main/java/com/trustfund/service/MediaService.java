@@ -20,5 +20,7 @@ public interface MediaService {
 
     MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request);
 
+    MediaFileResponse updateMediaStatus(Long id, String status);
+
     void deleteMedia(Long id) throws IOException, InterruptedException;
 }
