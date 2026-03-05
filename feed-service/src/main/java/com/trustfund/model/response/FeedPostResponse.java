@@ -27,6 +27,9 @@ public class FeedPostResponse {
     private Long parentPostId;
     private Integer replyCount;
     private Integer viewCount;
+    private Integer likeCount;
+    private Integer commentCount;
+    private Boolean isLiked;
     private Boolean isPinned;
     private Boolean isLocked;
 

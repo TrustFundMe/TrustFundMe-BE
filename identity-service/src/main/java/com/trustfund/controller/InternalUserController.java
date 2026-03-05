@@ -2,6 +2,7 @@ package com.trustfund.controller;
 
 import com.trustfund.model.BankAccount;
 import com.trustfund.model.User;
+import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
 import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
@@ -30,6 +31,19 @@ public class InternalUserController {
     private final UserRepository userRepository;
     private final BankAccountRepository bankAccountRepository;
     private final UserKYCRepository userKYCRepository; // Added dependency
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Lấy thông tin user theo ID (dùng nội bộ bởi các service khác)")
+    public ResponseEntity<UserInfoResponse> getUserInfo(@PathVariable Long id) {
+        return userRepository.findById(id)
+                .map(u -> ResponseEntity.ok(UserInfoResponse.builder()
+                        .id(u.getId())
+                        .fullName(u.getFullName())
+                        .avatarUrl(u.getAvatarUrl())
+                        .email(u.getEmail())
+                        .build()))
+                .orElse(ResponseEntity.notFound().build());
+    }
 
     @GetMapping("/{id}/exists")
     @Operation(summary = "Kiểm tra user có tồn tại không (dùng bởi campaign-service khi tạo campaign)")

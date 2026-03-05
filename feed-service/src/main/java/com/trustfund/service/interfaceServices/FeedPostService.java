@@ -21,4 +21,11 @@ public interface FeedPostService {
     FeedPostResponse update(Long id, Long currentUserId, UpdateFeedPostRequest request);
 
     void delete(Long id, Long currentUserId);
+
+    FeedPostResponse toggleLike(Long postId, Long currentUserId);
+
+    // Admin APIs
+    org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable);
+
+    void deleteByAdmin(Long id);
 }

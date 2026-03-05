@@ -19,7 +19,8 @@ function Add-MavenToPath {
         "$env:ProgramFiles\Apache\maven\bin",
         "$env:ProgramFiles(x86)\Apache\maven\bin",
         "$env:ProgramFiles\maven\bin",
-        "$env:LOCALAPPDATA\Programs\Apache\maven\bin"
+        "$env:LOCALAPPDATA\Programs\Apache\maven\bin",
+        "$env:ProgramFiles\NetBeans-13\netbeans\java\maven\bin"
     )
     
     # Try Chocolatey paths (with wildcard for version)
@@ -28,6 +29,14 @@ function Add-MavenToPath {
         $mavenBin = Join-Path $chocoPath.FullName "bin"
         if (Test-Path (Join-Path $mavenBin "mvn.cmd")) {
             $commonMavenPaths += $mavenBin
+        }
+        # Chocolatey maven package usually extracts to apache-maven-x.x.x
+        $subDirs = Get-ChildItem -Path $chocoPath.FullName -Filter "apache-maven*" -Directory -ErrorAction SilentlyContinue
+        foreach ($subDir in $subDirs) {
+            $subMavenBin = Join-Path $subDir.FullName "bin"
+            if (Test-Path (Join-Path $subMavenBin "mvn.cmd")) {
+                $commonMavenPaths += $subMavenBin
+            }
         }
     }
     
