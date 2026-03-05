@@ -56,14 +56,6 @@ public class FeedPost {
     @Builder.Default
     private Integer viewCount = 0;
 
-    @Column(name = "like_count")
-    @Builder.Default
-    private Integer likeCount = 0;
-
-    @Column(name = "comment_count")
-    @Builder.Default
-    private Integer commentCount = 0;
-
     @Column(name = "is_pinned")
     @Builder.Default
     private Boolean isPinned = false;

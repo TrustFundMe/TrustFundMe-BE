@@ -23,14 +23,11 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/feed-posts")
+@RequiredArgsConstructor
 @Tag(name = "Feed Posts", description = "Feed post APIs")
 public class FeedPostController {
 
     private final FeedPostService feedPostService;
-    
-    public FeedPostController(FeedPostService feedPostService) {
-        this.feedPostService = feedPostService;
-    }
 
     @PostMapping
     @Operation(summary = "Create feed post", description = "Create a new feed post for the authenticated user")
@@ -143,42 +140,6 @@ public class FeedPostController {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
         feedPostService.delete(id, currentUserId);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/{id}/like")
-    @Operation(summary = "Toggle like", description = "Like or unlike a feed post")
-    public ResponseEntity<FeedPostResponse> toggleLike(@PathVariable("id") Long id) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long currentUserId = Long.parseLong(authentication.getName());
-
-        FeedPostResponse response = feedPostService.toggleLike(id, currentUserId);
-        return ResponseEntity.ok(response);
-    }
-
-    // Admin APIs
-
-    @GetMapping("/admin")
-    @Operation(summary = "Get all feed posts (Admin)", description = "Get list of all feed posts without visibility filtering")
-    public ResponseEntity<Page<FeedPostResponse>> getAllFeedPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
-
-        String[] sortParts = sort.split(",");
-        String sortField = sortParts[0];
-        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc"))
-                ? Sort.Direction.ASC
-                : Sort.Direction.DESC;
-
-        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
-        return ResponseEntity.ok(feedPostService.getAllFeedPosts(pageable));
-    }
-
-    @DeleteMapping("/admin/{id}")
-    @Operation(summary = "Delete feed post (Admin)", description = "Force delete a feed post by admin")
-    public ResponseEntity<Void> deleteByAdmin(@PathVariable("id") Long id) {
-        feedPostService.deleteByAdmin(id);
         return ResponseEntity.noContent().build();
     }
 }

@@ -8,8 +8,6 @@ import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
 import com.trustfund.model.response.ForumAttachmentResponse;
 import com.trustfund.repository.FeedPostRepository;
-import com.trustfund.repository.FeedPostLikeRepository;
-import com.trustfund.repository.FeedPostCommentRepository;
 import com.trustfund.repository.ForumAttachmentRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
@@ -24,8 +22,6 @@ public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
     private final ForumAttachmentRepository forumAttachmentRepository;
-    private final FeedPostLikeRepository feedPostLikeRepository;
-    private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
 
     @Override
@@ -53,7 +49,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 forumAttachmentRepository.save(forumAtt);
             }
         }
-        return toResponse(saved, authorId);
+        return toResponse(saved);
     }
 
     @Override
@@ -70,7 +66,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         incrementViewCountIfEligible(id, currentUserId, ipAddress);
 
         if (visibility.equals("PUBLIC")) {
-            return toResponse(post, currentUserId);
+            return toResponse(post);
         }
 
         if (currentUserId == null) {
@@ -81,12 +77,12 @@ public class FeedPostServiceImpl implements FeedPostService {
             if (!currentUserId.equals(post.getAuthorId())) {
                 throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to view this feed post");
             }
-            return toResponse(post, currentUserId);
+            return toResponse(post);
         }
 
         if (visibility.equals("FOLLOWERS")) {
             // TODO: check follow status
-            return toResponse(post, currentUserId);
+            return toResponse(post);
         }
 
         throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
@@ -106,7 +102,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId,
             org.springframework.data.domain.Pageable pageable) {
         return feedPostRepository.findVisibleActivePosts(currentUserId, pageable)
-                .map(post -> toResponse(post, currentUserId));
+                .map(this::toResponse);
     }
 
     @Override
@@ -132,7 +128,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         post.setStatus(status);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved);
     }
 
     @Override
@@ -167,7 +163,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         post.setVisibility(visibility);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved);
     }
 
     @Override
@@ -198,7 +194,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved);
     }
 
     @Override
@@ -250,7 +246,7 @@ public class FeedPostServiceImpl implements FeedPostService {
             }
         }
 
-        return toResponse(saved, currentUserId);
+        return toResponse(saved);
     }
 
     @Override
@@ -267,62 +263,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         feedPostRepository.delete(post);
     }
 
-    @Override
-    @org.springframework.transaction.annotation.Transactional
-    public FeedPostResponse toggleLike(Long postId, Long currentUserId) {
-        FeedPost post = feedPostRepository.findById(postId)
-                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
-        
-        if (currentUserId == null) {
-            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
-        }
-
-        boolean exists = feedPostLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
-        if (exists) {
-            feedPostLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
-            if (post.getLikeCount() != null && post.getLikeCount() > 0) {
-                post.setLikeCount(post.getLikeCount() - 1);
-            } else {
-                post.setLikeCount(0); // Ensure it doesn't go negative
-            }
-        } else {
-            post.setLikeCount(post.getLikeCount() == null ? 1 : post.getLikeCount() + 1);
-            com.trustfund.model.FeedPostLike newLike = com.trustfund.model.FeedPostLike.builder()
-                    .postId(postId)
-                    .userId(currentUserId)
-                    .build();
-            feedPostLikeRepository.save(newLike);
-        }
-
-        feedPostRepository.save(post);
-        return toResponse(post, currentUserId);
-    }
-
-    @Override
-    public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable) {
-        org.springframework.data.domain.Page<FeedPost> posts = feedPostRepository.findAll(pageable);
-        return posts.map(post -> toResponse(post, null));
-    }
-
-    @Override
-    @org.springframework.transaction.annotation.Transactional
-    public void deleteByAdmin(Long id) {
-        FeedPost post = feedPostRepository.findById(id)
-                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
-
-        // Delete attachments
-        forumAttachmentRepository.deleteByPostId(id);
-
-        // Delete likes
-        feedPostLikeRepository.deleteByPostId(id);
-
-        // Delete comments
-        feedPostCommentRepository.deleteByPostId(id);
-
-        feedPostRepository.delete(post);
-    }
-
-    private FeedPostResponse toResponse(FeedPost entity, Long currentUserId) {
+    private FeedPostResponse toResponse(FeedPost entity) {
         java.util.List<ForumAttachment> attachments = forumAttachmentRepository
                 .findByPostIdOrderByDisplayOrderAsc(entity.getId());
         Set<String> seenUrls = new HashSet<>();
@@ -344,11 +285,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                         .build())
                 .collect(java.util.stream.Collectors.toList());
 
-        boolean isLiked = false;
-        if (currentUserId != null) {
-            isLiked = feedPostLikeRepository.existsByPostIdAndUserId(entity.getId(), currentUserId);
-        }
-
         return FeedPostResponse.builder()
                 .id(entity.getId())
                 .budgetId(entity.getBudgetId())
@@ -362,9 +298,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .parentPostId(entity.getParentPostId())
                 .replyCount(entity.getReplyCount())
                 .viewCount(entity.getViewCount())
-                .likeCount(entity.getLikeCount())
-                .commentCount(entity.getCommentCount())
-                .isLiked(isLiked)
                 .isPinned(entity.getIsPinned())
                 .isLocked(entity.getIsLocked())
                 .attachments(attachmentResponses)
