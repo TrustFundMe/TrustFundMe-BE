@@ -53,7 +53,9 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
 
         feedPostCommentRepository.save(comment);
 
-        post.setCommentCount(post.getCommentCount() == null ? 1 : post.getCommentCount() + 1);
+        int newCount = (post.getCommentCount() == null ? 0 : post.getCommentCount()) + 1;
+        post.setCommentCount(newCount);
+        post.setReplyCount(newCount);
         feedPostRepository.save(post);
 
         return toResponse(comment, authorId);
@@ -117,8 +119,9 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
 
         if (post != null) {
             int totalDeleted = (int) (1 + replyCount);
-            int newCount = (post.getCommentCount() != null) ? post.getCommentCount() - totalDeleted : 0;
-            post.setCommentCount(Math.max(0, newCount));
+            int newCount = Math.max(0, (post.getCommentCount() != null ? post.getCommentCount() : 0) - totalDeleted);
+            post.setCommentCount(newCount);
+            post.setReplyCount(newCount);
             feedPostRepository.save(post);
         }
     }
