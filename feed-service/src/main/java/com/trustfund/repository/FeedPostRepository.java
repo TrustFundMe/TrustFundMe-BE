@@ -18,6 +18,7 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
           p.visibility IN ('PUBLIC', 'FOLLOWERS')
           OR (p.visibility = 'PRIVATE' AND p.authorId = :currentUserId)
         )
+      ORDER BY p.isPinned DESC, p.updatedAt DESC
       """)
   Page<FeedPost> findVisibleActivePosts(@Param("currentUserId") Long currentUserId, Pageable pageable);
 

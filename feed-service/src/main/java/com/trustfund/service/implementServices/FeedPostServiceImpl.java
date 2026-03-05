@@ -1,5 +1,6 @@
 package com.trustfund.service.implementServices;
 
+import com.trustfund.client.UserInfoClient;
 import com.trustfund.model.FeedPost;
 import com.trustfund.model.ForumAttachment;
 import com.trustfund.model.request.CreateFeedPostRequest;
@@ -27,6 +28,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
+    private final UserInfoClient userInfoClient;
 
     @Override
     public FeedPostResponse create(CreateFeedPostRequest request, Long authorId) {
@@ -322,6 +324,57 @@ public class FeedPostServiceImpl implements FeedPostService {
         feedPostRepository.delete(post);
     }
 
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public int syncAllCommentCounts() {
+        java.util.List<FeedPost> all = feedPostRepository.findAll();
+        int fixed = 0;
+        for (FeedPost post : all) {
+            int actual = feedPostCommentRepository.countByPostId(post.getId());
+            if (!Integer.valueOf(actual).equals(post.getCommentCount()) ||
+                !Integer.valueOf(actual).equals(post.getReplyCount())) {
+                post.setCommentCount(actual);
+                post.setReplyCount(actual);
+                feedPostRepository.save(post);
+                fixed++;
+            }
+        }
+        return fixed;
+    }
+
+    @Override
+    public FeedPostResponse togglePin(Long id) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+        post.setIsPinned(post.getIsPinned() == null ? true : !post.getIsPinned());
+        feedPostRepository.save(post);
+        return toResponse(post, null);
+    }
+
+    @Override
+    public FeedPostResponse toggleLock(Long id) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+        post.setIsLocked(post.getIsLocked() == null ? true : !post.getIsLocked());
+        feedPostRepository.save(post);
+        return toResponse(post, null);
+    }
+
+    @Override
+    public FeedPostResponse updateStatusByAdmin(Long id, String status) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+        if (status == null || status.isBlank()) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
+        }
+        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
+        }
+        post.setStatus(status);
+        feedPostRepository.save(post);
+        return toResponse(post, null);
+    }
+
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId) {
         java.util.List<ForumAttachment> attachments = forumAttachmentRepository
                 .findByPostIdOrderByDisplayOrderAsc(entity.getId());
@@ -349,10 +402,14 @@ public class FeedPostServiceImpl implements FeedPostService {
             isLiked = feedPostLikeRepository.existsByPostIdAndUserId(entity.getId(), currentUserId);
         }
 
+        UserInfoClient.UserInfo authorInfo = userInfoClient.getUserInfo(entity.getAuthorId());
+
         return FeedPostResponse.builder()
                 .id(entity.getId())
                 .budgetId(entity.getBudgetId())
                 .authorId(entity.getAuthorId())
+                .authorName(authorInfo.fullName())
+                .authorAvatar(authorInfo.avatarUrl())
                 .type(entity.getType())
                 .visibility(entity.getVisibility())
                 .title(entity.getTitle())

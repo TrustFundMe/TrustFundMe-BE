@@ -28,4 +28,12 @@ public interface FeedPostService {
     org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable);
 
     void deleteByAdmin(Long id);
+
+    FeedPostResponse togglePin(Long id);
+
+    FeedPostResponse toggleLock(Long id);
+
+    FeedPostResponse updateStatusByAdmin(Long id, String status);
+
+    int syncAllCommentCounts();
 }

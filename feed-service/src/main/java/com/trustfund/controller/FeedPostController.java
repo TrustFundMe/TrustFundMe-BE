@@ -10,9 +10,9 @@ import com.trustfund.service.interfaceServices.FeedPostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
@@ -159,6 +159,7 @@ public class FeedPostController {
     // Admin APIs
 
     @GetMapping("/admin")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get all feed posts (Admin)", description = "Get list of all feed posts without visibility filtering")
     public ResponseEntity<Page<FeedPostResponse>> getAllFeedPosts(
             @RequestParam(defaultValue = "0") int page,
@@ -176,9 +177,40 @@ public class FeedPostController {
     }
 
     @DeleteMapping("/admin/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Delete feed post (Admin)", description = "Force delete a feed post by admin")
     public ResponseEntity<Void> deleteByAdmin(@PathVariable("id") Long id) {
         feedPostService.deleteByAdmin(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/admin/{id}/pin")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Pin/Unpin feed post (Admin)", description = "Toggle pin status of a feed post")
+    public ResponseEntity<FeedPostResponse> togglePin(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(feedPostService.togglePin(id));
+    }
+
+    @PatchMapping("/admin/{id}/lock")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Lock/Unlock feed post (Admin)", description = "Toggle lock status of a feed post")
+    public ResponseEntity<FeedPostResponse> toggleLock(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(feedPostService.toggleLock(id));
+    }
+
+    @PatchMapping("/admin/{id}/status")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Update feed post status (Admin)", description = "Force update status of any feed post")
+    public ResponseEntity<FeedPostResponse> updateStatusByAdmin(@PathVariable("id") Long id,
+                                                                @Valid @RequestBody UpdateFeedPostStatusRequest request) {
+        return ResponseEntity.ok(feedPostService.updateStatusByAdmin(id, request.getStatus()));
+    }
+
+    @PostMapping("/admin/sync-counts")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Sync comment counts (Admin)", description = "Recalculate and fix commentCount/replyCount for all posts")
+    public ResponseEntity<java.util.Map<String, Object>> syncCommentCounts() {
+        int fixed = feedPostService.syncAllCommentCounts();
+        return ResponseEntity.ok(java.util.Map.of("fixed", fixed, "message", "Comment counts synced successfully"));
     }
 }

@@ -17,6 +17,8 @@ public class FeedPostResponse {
     private Long id;
     private Long budgetId;
     private Long authorId;
+    private String authorName;
+    private String authorAvatar;
     private String type;
     private String visibility;
     private String title;
