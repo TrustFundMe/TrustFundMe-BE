@@ -33,7 +33,7 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
         if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                request.getAccountNumber(), request.getBankCode(), user.getId())) {
+                request.getAccountNumber().trim(), request.getBankCode().trim(), user.getId())) {
             throw new BadRequestException("Bank account already exists for another user");
         }
 
@@ -149,6 +149,11 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .orElseThrow(() -> new NotFoundException("Bank account not found"));
 
         checkBankPermission(bankAccount, currentUserId, currentRole, false);
+        
+        if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
+                request.getAccountNumber().trim(), request.getBankCode().trim(), currentUserId)) {
+            throw new BadRequestException("Bank account already exists for another user");
+        }
 
         bankAccount.setBankCode(request.getBankCode());
         bankAccount.setAccountNumber(request.getAccountNumber());
@@ -237,7 +242,7 @@ public class BankAccountServiceImpl implements BankAccountService {
 
         // Check if account number + bank code exists for ANY other user
         if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                request.getAccountNumber(), request.getBankCode(), userId)) {
+                request.getAccountNumber().trim(), request.getBankCode().trim(), userId)) {
             throw new BadRequestException("Bank account already exists for another user");
         }
 
