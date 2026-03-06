@@ -26,8 +26,12 @@ public class Donation {
     private Long campaignId;
 
     @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "transaction_id", referencedColumnName = "id")
+    @JoinColumn(name = "payment_id", referencedColumnName = "id")
     private Payment payment;
+
+    @Builder.Default
+    @Column(name = "is_anonymous")
+    private Boolean isAnonymous = false;
 
     @Column(name = "donation_amount", precision = 19, scale = 4)
     private BigDecimal donationAmount;

@@ -94,6 +94,19 @@ public class ExpenditureController {
         return ResponseEntity.ok(expenditureService.addItemsToExpenditure(id, items));
     }
 
+    @GetMapping("/items/{itemId}")
+    @Operation(summary = "Lấy chi tiết hạng mục chi tiêu", description = "Lấy thông tin chi tiết của một hạng mục chi tiêu theo ID.")
+    public ResponseEntity<ExpenditureItemResponse> getItemById(@PathVariable Long itemId) {
+        return ResponseEntity.ok(expenditureService.getExpenditureItemById(itemId));
+    }
+
+    @PutMapping("/items/{itemId}/update-quantity")
+    @Operation(summary = "Cập nhật số lượng vật phẩm (từ hệ thống thanh toán)", description = "Cập nhật số lượng đã nhận và còn lại của một hạng mục.")
+    public ResponseEntity<Void> updateQuantity(@PathVariable Long itemId, @RequestParam Integer amount) {
+        expenditureService.updateExpenditureItemQuantity(itemId, amount);
+        return ResponseEntity.ok().build();
+    }
+
     @DeleteMapping("/items/{itemId}")
     @Operation(summary = "Xóa hạng mục chi tiêu", description = "Xóa một hạng mục chi tiêu cụ thể theo ID.")
     public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {

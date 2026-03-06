@@ -18,6 +18,7 @@ public class ExpenditureItemResponse {
     private String category;
     private Integer quantity;
     private Integer actualQuantity;
+    private Integer quantityLeft;
     private BigDecimal price;
     private BigDecimal expectedPrice;
     private String note;

@@ -7,7 +7,7 @@
 Mở một terminal mới và chạy lệnh sau:
 
 ```bash
-.\cloudflared-windows-amd64.exe tunnel --url http://localhost:8080
+cloudflared-windows-amd64.exe tunnel --url http://localhost:8080
 ```
 https://south-steven-enter-through.trycloudflare.com/api/payments/webhook
 

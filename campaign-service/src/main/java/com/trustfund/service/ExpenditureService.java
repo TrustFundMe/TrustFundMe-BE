@@ -28,6 +28,10 @@ public interface ExpenditureService {
 
     List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
 
+    ExpenditureItemResponse getExpenditureItemById(Long id); // New method
+
+    void updateExpenditureItemQuantity(Long id, Integer amountToAdd); // New method
+
     Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
     void deleteExpenditureItem(Long itemId);

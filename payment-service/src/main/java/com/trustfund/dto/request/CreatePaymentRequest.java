@@ -11,6 +11,7 @@ public class CreatePaymentRequest {
     private BigDecimal donationAmount;
     private BigDecimal tipAmount;
     private String description;
+    private Boolean isAnonymous;
     private List<DonationItemRequest> items;
 
     @Data

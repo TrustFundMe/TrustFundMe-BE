@@ -87,8 +87,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         // Campaign Service - Only GET methods are public
         if (path.startsWith("/api/campaigns") ||
                 path.startsWith("/api/fundraising-goals") ||
-                path.startsWith("/api/campaign-follows")) {
+                path.startsWith("/api/campaign-follows") ||
+                path.startsWith("/api/campaign-categories") ||
+                path.startsWith("/api/expenditures")) {
             return method == HttpMethod.GET;
+        }
+
+        // Payment Service - Create donation and fetch donation details are public for
+        // guests
+        if (path.equals("/api/payments/create") || path.startsWith("/api/payments/donation/")) {
+            return method == HttpMethod.POST || method == HttpMethod.GET;
         }
 
         // Users endpoint - check-email is public

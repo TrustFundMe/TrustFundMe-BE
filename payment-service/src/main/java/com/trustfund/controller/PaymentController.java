@@ -8,7 +8,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
-import java.util.Objects;
 
 @Slf4j
 @RestController
@@ -63,6 +62,16 @@ public class PaymentController {
             return ResponseEntity.ok(Map.of("message", "Payment verified and synchronized"));
         } catch (Exception e) {
             log.error("Payment verification failed", e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/expenditure-item/{id}/check")
+    public ResponseEntity<?> checkExpenditureItem(@PathVariable Long id,
+            @RequestParam(required = false) Integer quantity) {
+        try {
+            return ResponseEntity.ok(donationService.checkExpenditureItemLimit(id, quantity));
+        } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
