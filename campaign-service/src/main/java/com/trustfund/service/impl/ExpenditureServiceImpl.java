@@ -10,7 +10,10 @@ import com.trustfund.service.CampaignService;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
+import com.trustfund.client.IdentityServiceClient;
+import com.trustfund.model.response.BankAccountResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,11 +25,13 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class ExpenditureServiceImpl implements ExpenditureService {
 
     private final ExpenditureRepository expenditureRepository;
     private final ExpenditureItemRepository expenditureItemRepository;
     private final CampaignService campaignService;
+    private final IdentityServiceClient identityServiceClient;
 
     @Override
     @Transactional
@@ -111,6 +116,22 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .status(initialStatus)
                 .build();
 
+        // Tự động lấy và lưu thông tin ngân hàng của chủ quỹ tại thời điểm tạo expenditure
+        log.info("Fetching bank details for campaign owner: {}", campaign.getFundOwnerId());
+        try {
+            BankAccountResponse bankRes = identityServiceClient.getPrimaryBankAccount(campaign.getFundOwnerId());
+            if (bankRes != null) {
+                expenditure.setBankCode(bankRes.getBankCode());
+                expenditure.setAccountNumber(bankRes.getAccountNumber());
+                expenditure.setAccountHolderName(bankRes.getAccountHolderName());
+                log.info("Recorded bank details for expenditure of campaign {}: {}", campaign.getId(), bankRes.getAccountNumber());
+            } else {
+                log.warn("No bank details found for campaign owner: {}", campaign.getFundOwnerId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch bank details for expenditure of campaign {}: {}", campaign.getId(), e.getMessage());
+        }
+
         final Expenditure savedExpenditure = expenditureRepository.save(expenditure);
 
         if (request.getItems() != null && !request.getItems().isEmpty()) {
@@ -161,6 +182,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 expenditure.setIsWithdrawalRequested(true);
                 expenditure.setStatus("WITHDRAWAL_REQUESTED"); // Move to withdrawal request state for admin
+                
+                // Tự động lấy và lưu thông tin ngân hàng cho quỹ ủy quyền
+                try {
+                    BankAccountResponse bankRes = identityServiceClient.getPrimaryBankAccount(campaign.getFundOwnerId());
+                    if (bankRes != null) {
+                        expenditure.setBankCode(bankRes.getBankCode());
+                        expenditure.setAccountNumber(bankRes.getAccountNumber());
+                        expenditure.setAccountHolderName(bankRes.getAccountHolderName());
+                        log.info("Recorded bank details for authorized expenditure {} upgrade: {}", id, bankRes.getAccountNumber());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to fetch bank details for authorized expenditure {}: {}", id, e.getMessage());
+                }
             }
         }
 
@@ -189,6 +223,22 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
+
+        // Khi yêu cầu rút tiền, cập nhật/ghi đè thông tin ngân hàng mới nhất của chủ quỹ
+        log.info("Refreshing bank details for withdrawal request: {}", id);
+        try {
+            BankAccountResponse bankRes = identityServiceClient.getPrimaryBankAccount(campaign.getFundOwnerId());
+            if (bankRes != null) {
+                expenditure.setBankCode(bankRes.getBankCode());
+                expenditure.setAccountNumber(bankRes.getAccountNumber());
+                expenditure.setAccountHolderName(bankRes.getAccountHolderName());
+                log.info("Updated bank details for withdrawal request of expenditure {}: {}", id, bankRes.getAccountNumber());
+            } else {
+                log.warn("No bank details found for withdrawal request: {}", id);
+            }
+        } catch (Exception e) {
+            log.error("Failed to update bank details for withdrawal request of expenditure {}: {}", id, e.getMessage());
+        }
 
         return expenditureRepository.save(expenditure);
     }

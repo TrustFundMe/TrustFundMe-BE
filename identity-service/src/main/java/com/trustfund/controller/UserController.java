@@ -37,7 +37,7 @@ public class UserController {
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER', 'FUND_OWNER', 'FUND_DONOR')")
     @Operation(summary = "Update user", description = "Update user information by user ID (User can only update their own profile)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> updateUser(
             @PathVariable Long id,
