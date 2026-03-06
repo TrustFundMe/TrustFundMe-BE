@@ -28,4 +28,10 @@ public interface ExpenditureService {
     Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
     void deleteExpenditureItem(Long itemId);
+
+    /**
+     * Cập nhật kế hoạch thu chi khi bị từ chối.
+     * Chỉ cho phép khi expenditure đang ở trạng thái REJECTED.
+     */
+    Expenditure updateRejectedExpenditure(Long id, com.trustfund.model.request.UpdateExpenditureRequest request);
 }

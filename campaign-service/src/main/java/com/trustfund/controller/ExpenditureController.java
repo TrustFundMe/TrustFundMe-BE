@@ -6,6 +6,7 @@ import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.request.UpdateDisbursementProofRequest;
+import com.trustfund.model.request.UpdateExpenditureRequest;
 import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,7 +49,17 @@ public class ExpenditureController {
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái chi tiêu", description = "Cập nhật trạng thái duyệt của khoản chi tiêu (Yêu cầu quyền Staff hoặc Admin).")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<Expenditure> updateStatus(@PathVariable Long id, @Valid @RequestBody com.trustfund.model.request.ReviewExpenditureRequest request) {
+    public ResponseEntity<Expenditure> updateStatus(
+            @PathVariable Long id, 
+            @RequestParam String status,
+            @RequestParam(required = false) Long staffId,
+            @RequestParam(required = false) String reasonReject) {
+        com.trustfund.model.request.ReviewExpenditureRequest request = 
+            com.trustfund.model.request.ReviewExpenditureRequest.builder()
+                .status(status)
+                .staffId(staffId)
+                .reasonReject(reasonReject)
+                .build();
         return ResponseEntity.ok(expenditureService.updateExpenditureStatus(id, request));
     }
 
@@ -90,5 +101,13 @@ public class ExpenditureController {
     public ResponseEntity<Void> deleteItem(@PathVariable Long itemId) {
         expenditureService.deleteExpenditureItem(itemId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật kế hoạch thu chi bị từ chối", description = "Cập nhật lại kế hoạch thu chi khi bị staff từ chối. Chỉ áp dụng khi expenditure đang ở trạng thái REJECTED.")
+    public ResponseEntity<Expenditure> updateRejected(
+            @PathVariable Long id, 
+            @Valid @RequestBody UpdateExpenditureRequest request) {
+        return ResponseEntity.ok(expenditureService.updateRejectedExpenditure(id, request));
     }
 }
