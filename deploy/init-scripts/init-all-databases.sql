@@ -12,6 +12,7 @@ DROP DATABASE IF EXISTS trustfundme_feed_db;
 DROP DATABASE IF EXISTS trustfundme_moderation_db;
 DROP DATABASE IF EXISTS trustfundme_flag_db;
 DROP DATABASE IF EXISTS trustfundme_chat_db;
+DROP DATABASE IF EXISTS trustfundme_payment_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -19,6 +20,7 @@ CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_flag_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_chat_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_payment_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -30,6 +32,7 @@ GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_flag_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_chat_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_payment_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -127,6 +130,7 @@ CREATE TABLE `expenditure_items` (
     `category` VARCHAR(255) NULL,
     `quantity` INT NULL,
     `actual_quantity` INT NULL,
+    `quantity_left` INT NULL,
     `price` DECIMAL(19, 4) NULL,
     `expected_price` DECIMAL(19, 4) NULL,
     `note` VARCHAR(1000) NULL,
@@ -474,17 +478,17 @@ ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expe
 -- exp 3 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
 -- exp 4 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
 -- exp 5 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
-INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, price, expected_price, note, created_at, updated_at)
+INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, quantity_left, price, expected_price, note, created_at, updated_at)
 VALUES
-    (1, 'Mì tôm', 500, 0, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
-    (1, 'Nước sạch', 1000, 0, 0.00, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
-    (1, 'Lương khô', 200, 0, 0.00, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
-    (2, 'Máy đo huyết áp', 10, 10, 500000.00, 500000.00, 'Máy Omron tự động', NOW(), NOW()),
-    (3, 'Thuê vận tải', 1, 0, 0.00, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
-    (4, 'Thuốc men', 50, 0, 0.00, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW()),
-    (5, 'Thức ăn hạt', 100, 0, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
-    (5, 'Thuốc thú y', 20, 0, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW()),
-    (6, 'Thực phẩm bổ sung', 20, 0, 0.00, 50000.00, 'Sữa bột và vitamin', NOW(), NOW());
+    (1, 'Mì tôm', 500, 0, 500, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
+    (1, 'Nước sạch', 1000, 0, 1000, 0.00, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
+    (1, 'Lương khô', 200, 0, 200, 0.00, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
+    (2, 'Máy đo huyết áp', 10, 10, 0, 500000.00, 500000.00, 'Máy Omron tự động', NOW(), NOW()),
+    (3, 'Thuê vận tải', 1, 0, 1, 0.00, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
+    (4, 'Thuốc men', 50, 0, 50, 0.00, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW()),
+    (5, 'Thức ăn hạt', 100, 0, 100, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
+    (5, 'Thuốc thú y', 20, 0, 20, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW()),
+    (6, 'Thực phẩm bổ sung', 20, 0, 20, 0.00, 50000.00, 'Sữa bột và vitamin', NOW(), NOW());
 
 
 -- Campaign follows (user 4 follows campaign 1)
@@ -521,4 +525,48 @@ VALUES
     -- News Category
     (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
+
+-- =======================================
+-- 6. Schema: payment-service (DB: trustfundme_payment_db)
+-- =======================================
+USE trustfundme_payment_db;
+
+-- payments
+CREATE TABLE IF NOT EXISTS `payments` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `description` VARCHAR(255) NULL,
+    `amount` DECIMAL(19, 4) NOT NULL,
+    `qr_code` VARCHAR(1000) NULL,
+    `payment_link_id` VARCHAR(255) UNIQUE NULL,
+    `status` VARCHAR(50) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- donations
+CREATE TABLE IF NOT EXISTS `donations` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `donor_id` BIGINT NULL,
+    `campaign_id` BIGINT NULL,
+    `payment_id` BIGINT NULL,
+    `donation_amount` DECIMAL(19, 4) NULL,
+    `tip_amount` DECIMAL(19, 4) NULL,
+    `total_amount` DECIMAL(19, 4) NULL,
+    `status` VARCHAR(50) NULL,
+    `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`payment_id`) REFERENCES `payments`(`id`) ON DELETE CASCADE
+);
+
+-- donation_items
+CREATE TABLE IF NOT EXISTS `donation_items` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `donation_id` BIGINT NOT NULL,
+    `expenditure_item_id` BIGINT NULL,
+    `quantity` INT NULL,
+    `amount` DECIMAL(19, 4) NULL,
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`donation_id`) REFERENCES `donations`(`id`) ON DELETE CASCADE
+);
 

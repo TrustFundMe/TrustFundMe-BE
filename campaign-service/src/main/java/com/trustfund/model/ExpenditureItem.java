@@ -39,6 +39,9 @@ public class ExpenditureItem {
     @Column(name = "actual_quantity")
     private Integer actualQuantity;
 
+    @Column(name = "quantity_left")
+    private Integer quantityLeft;
+
     @Column(name = "price", precision = 19, scale = 4)
     private BigDecimal price;
 
