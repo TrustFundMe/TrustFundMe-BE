@@ -47,6 +47,9 @@ public class User {
     @Builder.Default
     private Boolean verified = false;
 
+    @Column(name = "ban_reason", length = 1000)
+    private String banReason;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

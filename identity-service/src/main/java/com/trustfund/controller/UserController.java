@@ -56,8 +56,9 @@ public class UserController {
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Ban user", description = "Ban/deactivate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<UserInfo> banUser(@PathVariable Long id) {
-        return ResponseEntity.ok(userService.banUser(id));
+    public ResponseEntity<UserInfo> banUser(@PathVariable Long id, @RequestBody(required = false) java.util.Map<String, String> body) {
+        String reason = body != null ? body.get("reason") : null;
+        return ResponseEntity.ok(userService.banUser(id, reason));
     }
 
     @PutMapping("/{id}/unban")
