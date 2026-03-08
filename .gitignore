@@ -1,4 +1,4 @@
-# Maven
+﻿# Maven
 target/
 pom.xml.tag
 pom.xml.releaseBackup
@@ -37,7 +37,7 @@ logs/
 application-local.properties
 application-dev.properties
 
-# Environment variables - KHÔNG BAO GIỜ commit file .env vào git!
+# Environment variables
 .env
 .env.local
 .env.*.local
@@ -47,17 +47,8 @@ application-dev.properties
 build/
 !gradle/wrapper/gradle-wrapper.jar
 
-# Maven target (đã có ở trên nhưng để chắc chắn)
+# Maven target recursive
 **/target/
-**/pom.xml.tag
-**/pom.xml.releaseBackup
-**/pom.xml.versionsBackup
-**/pom.xml.next
-**/release.properties
-**/dependency-reduced-pom.xml
-**/buildNumber.properties
-**/.mvn/timing.properties
-**/.mvn/wrapper/maven-wrapper.jar
 
 # Compiled class files
 *.class
@@ -71,10 +62,7 @@ build/
 *.tar.gz
 *.rar
 
-# Virtual machine crash logs
-hs_err_pid*
-replay_pid*
-
 # Node
 node_modules/
+**/node_modules/
 npm-debug.log*
