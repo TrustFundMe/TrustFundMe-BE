@@ -75,4 +75,6 @@ build/
 hs_err_pid*
 replay_pid*
 
-
+# Node
+node_modules/
+npm-debug.log*

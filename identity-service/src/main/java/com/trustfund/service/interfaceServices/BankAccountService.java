@@ -29,4 +29,6 @@ public interface BankAccountService {
     void delete(Long id, Long currentUserId, String currentRole);
 
     List<BankAccountResponse> getByUserId(Long userId);
+
+    boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId);
 }

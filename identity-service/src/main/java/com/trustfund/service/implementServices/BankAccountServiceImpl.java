@@ -287,4 +287,10 @@ public class BankAccountServiceImpl implements BankAccountService {
         return bankAccountRepository.findByStatus("PENDING", pageable)
                 .map(this::toBankAccountResponse);
     }
+
+    @Override
+    public boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId) {
+        return bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
+                accountNumber.trim(), bankCode.trim(), currentUserId);
+    }
 }

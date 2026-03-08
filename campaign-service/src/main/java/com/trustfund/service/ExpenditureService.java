@@ -30,7 +30,7 @@ public interface ExpenditureService {
 
     ExpenditureItemResponse getExpenditureItemById(Long id); // New method
 
-    void updateExpenditureItemQuantity(Long id, Integer amountToAdd); // New method
+    void updateExpenditureItemQuantity(Long id, Integer amount); // New method
 
     Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 

@@ -18,11 +18,15 @@ import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
 import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
 import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.web.client.RestTemplate;
+import com.trustfund.dto.response.CampaignProgressResponse;
+import com.trustfund.dto.response.RecentDonorResponse;
 
 @Slf4j
 @Service
@@ -76,7 +80,14 @@ public class DonationService {
                         donationItemRepository.saveAll(items);
                 }
 
-                long orderCode = donation.getId();
+                // Generate unique orderCode using the current time substring and the donation
+                // ID
+                long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(4)
+                                + String.format("%04d", donation.getId() % 10000));
+
+                payment.setOrderCode(orderCode);
+                paymentRepository.save(payment);
+
                 long totalAmountLong = donation.getTotalAmount().longValue();
 
                 List<PaymentLinkItem> payosItems = List.of(
@@ -100,8 +111,9 @@ public class DonationService {
                                 .orderCode(orderCode)
                                 .amount(totalAmountLong)
                                 .description(paymentDescription)
-                                .returnUrl(frontendUrl + "/donation/success?id=" + donation.getId())
-                                .cancelUrl(frontendUrl + "/donation/cancel?id=" + donation.getId() + "&campaignId="
+                                .returnUrl(frontendUrl + "/donation/success?donationId=" + donation.getId())
+                                .cancelUrl(frontendUrl + "/donation/cancel?donationId=" + donation.getId()
+                                                + "&campaignId="
                                                 + donation.getCampaignId())
                                 .items(payosItems)
                                 .build();
@@ -146,28 +158,7 @@ public class DonationService {
                                 donationRepository.save(donation);
 
                                 if (!"PAID".equals(oldDonationStatus) && "PAID".equals(status)) {
-                                        log.info("🚀 TRIGGERING quantity update for donation: {}", donation.getId());
-                                        List<DonationItem> items = donationItemRepository
-                                                        .findByDonationId(donation.getId());
-                                        log.info("Found {} items for donation {}", items.size(), donation.getId());
-
-                                        for (DonationItem item : items) {
-                                                try {
-                                                        String updateUrl = campaignServiceUrl
-                                                                        + "/api/expenditures/items/"
-                                                                        + item.getExpenditureItemId()
-                                                                        + "/update-quantity?amount="
-                                                                        + item.getQuantity();
-                                                        log.info("Calling campaign-service: PUT {}", updateUrl);
-                                                        restTemplate.put(updateUrl, null);
-                                                        log.info("✅ SUCCESS: Updated Item {} (amount {})",
-                                                                        item.getExpenditureItemId(),
-                                                                        item.getQuantity());
-                                                } catch (Exception e) {
-                                                        log.error("❌ FAILED to update Item {}: {}",
-                                                                        item.getExpenditureItemId(), e.getMessage());
-                                                }
-                                        }
+                                        processQuantityUpdate(donation);
                                 } else {
                                         log.info("No quantity update needed: status transition {} -> {}",
                                                         oldDonationStatus, status);
@@ -186,9 +177,12 @@ public class DonationService {
 
                 if (donation.getPayment() != null) {
                         try {
-                                // Check real status from PayOS API using donation ID as orderCode
+                                if (donation.getPayment().getOrderCode() == null) {
+                                        throw new RuntimeException("Payment orderCode is missing");
+                                }
+                                // Check real status from PayOS API using the payment's orderCode
                                 vn.payos.model.v2.paymentRequests.PaymentLink payosData = payOS.paymentRequests()
-                                                .get(donation.getId());
+                                                .get(donation.getPayment().getOrderCode());
                                 String realStatus = payosData.getStatus().toString();
 
                                 log.info("🔍 PayOS Status for Donation {}: {}", donationId, realStatus);
@@ -197,11 +191,16 @@ public class DonationService {
                                 if (!realStatus.equals(donation.getStatus())) {
                                         log.info("🔄 Syncing status for Donation {}: {} -> {}", donationId,
                                                         donation.getStatus(), realStatus);
+                                        String oldStatus = donation.getStatus();
                                         donation.setStatus(realStatus);
                                         if (donation.getPayment() != null) {
                                                 donation.getPayment().setStatus(realStatus);
                                         }
                                         donationRepository.save(donation);
+
+                                        if (!"PAID".equals(oldStatus) && "PAID".equals(realStatus)) {
+                                                processQuantityUpdate(donation);
+                                        }
                                 }
                         } catch (Exception e) {
                                 log.error("❌ Failed to verify payment with PayOS for donation {}: {}", donationId,
@@ -233,28 +232,172 @@ public class DonationService {
                                 throw new RuntimeException("Expenditure item not found in campaign service");
                         }
 
-                        Integer quantityFromDB = (Integer) itemData.get("quantity");
+                        // Just read directly what campaign-service tells us is the quantityLeft
                         Integer quantityLeftFromDB = (Integer) itemData.get("quantityLeft");
+                        int quantityLeft = (quantityLeftFromDB != null) ? quantityLeftFromDB : 0;
 
-                        // Fallback logic for quantities
-                        int originalQuantity = (quantityFromDB != null) ? quantityFromDB : 0;
-                        int quantityLeft = (quantityLeftFromDB != null) ? quantityLeftFromDB : originalQuantity;
+                        log.info("➔ Pre-payment Check limits: Item {} has quantity_left = {}", expenditureItemId,
+                                        quantityLeft);
 
                         int requested = (requestedQuantity != null) ? requestedQuantity : 1;
-
-                        // Correct logic: Only block if requested > quantityLeft
                         boolean canDonateMore = requested <= quantityLeft;
 
                         Map<String, Object> response = new HashMap<>();
                         response.put("canDonateMore", canDonateMore);
-                        response.put("currentTotal", originalQuantity - quantityLeft);
                         response.put("quantityLeft", quantityLeft);
                         response.put("message", canDonateMore ? "Có thể nhận thêm"
-                                        : "Số lượng vượt giới hạn cho phép. Còn lại: " + quantityLeft);
+                                        : "Số lượng quyên góp vượt quá giới hạn cho phép. Hiện tại chỉ còn lại: "
+                                                        + quantityLeft);
                         return response;
                 } catch (Exception e) {
                         log.error("Error checking expenditure item limit", e);
                         throw new RuntimeException("Could not verify expenditure item limit: " + e.getMessage());
                 }
+        }
+
+        private void processQuantityUpdate(Donation donation) {
+                log.info("🚀 TRIGGERING quantity update for donation: {}", donation.getId());
+                List<DonationItem> items = donationItemRepository.findByDonationId(donation.getId());
+                log.info("Found {} items for donation {}", items.size(), donation.getId());
+
+                for (DonationItem item : items) {
+                        try {
+                                int amountToDeduct = item.getQuantity();
+                                log.info("➔ Preparing to deduct quantity for item ID {}. Exact amount to deduct: {}",
+                                                item.getExpenditureItemId(), amountToDeduct);
+
+                                String updateUrl = campaignServiceUrl
+                                                + "/api/expenditures/items/"
+                                                + item.getExpenditureItemId()
+                                                + "/update-quantity?amount="
+                                                + amountToDeduct;
+
+                                log.info("➔ Calling campaign-service: PUT {}", updateUrl);
+                                restTemplate.put(updateUrl, null);
+                                log.info("✅ SUCCESS: Deducted {} from quantityLeft for ExpenditureItem {}",
+                                                amountToDeduct, item.getExpenditureItemId());
+                        } catch (Exception e) {
+                                log.error("❌ FAILED to deduct quantity for ExpenditureItem {}: {}",
+                                                item.getExpenditureItemId(), e.getMessage());
+                        }
+                }
+        }
+
+        @Transactional(readOnly = true)
+        public CampaignProgressResponse getCampaignProgress(Long campaignId) {
+                log.info("📊 Getting campaign progress for campaignId: {}", campaignId);
+
+                // 1. Total raised from paid donations
+                BigDecimal raised = donationRepository.sumTotalAmountByCampaignId(campaignId);
+                if (raised == null)
+                        raised = BigDecimal.ZERO;
+
+                // 2. Get goal amount from campaign-service
+                BigDecimal goal = BigDecimal.ZERO;
+                try {
+                        String goalUrl = campaignServiceUrl + "/api/fundraising-goals/campaign/" + campaignId;
+                        log.info("➔ Fetching all goals from: {}", goalUrl);
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> goals = restTemplate.getForObject(goalUrl, List.class);
+                        if (goals != null && !goals.isEmpty()) {
+                                log.info("✅ Goals fetched: count={}", goals.size());
+                                // Find the active goal
+                                for (Map<String, Object> g : goals) {
+                                        if (Boolean.TRUE.equals(g.get("active"))
+                                                        || Boolean.TRUE.equals(g.get("isActive"))) {
+                                                if (g.get("targetAmount") != null) {
+                                                        goal = new BigDecimal(g.get("targetAmount").toString());
+                                                        log.info("✅ Found active goal: id={}, targetAmount={}",
+                                                                        g.get("id"), goal);
+                                                        break;
+                                                }
+                                        }
+                                }
+                        } else {
+                                log.warn("⚠️ No goals found for campaignId: {}", campaignId);
+                        }
+                } catch (Exception e) {
+                        log.warn("⚠️ Could not fetch goals from campaign-service: {}", e.getMessage());
+                }
+
+                // 3. Calculate percentage
+                int pct = 0;
+                if (goal.compareTo(BigDecimal.valueOf(0)) > 0) {
+                        double raisedVal = raised.doubleValue();
+                        double goalVal = goal.doubleValue();
+                        double ratio = raisedVal / goalVal;
+                        double calc = ratio * 100;
+                        pct = (int) Math.round(calc);
+
+                        log.info("📊 Calculation: ratio = {}, calc = {}, pct before 100 limit = {}", ratio, calc, pct);
+
+                        if (pct > 100)
+                                pct = 100;
+                        if (pct == 0 && raisedVal > 0)
+                                pct = 1;
+                }
+
+                log.info("📊 FINAL PROGRESS API for campaign {}: raised={}, goal={}, pct={}%", campaignId, raised, goal,
+                                pct);
+
+                return CampaignProgressResponse.builder()
+                                .campaignId(campaignId)
+                                .raisedAmount(raised)
+                                .goalAmount(goal)
+                                .progressPercentage(pct)
+                                .build();
+        }
+
+        @Transactional(readOnly = true)
+        public List<RecentDonorResponse> getRecentDonors(Long campaignId, int limit) {
+                log.info("👥 Getting recent {} donors for campaignId: {}", limit, campaignId);
+                List<Donation> recent = donationRepository.findRecentPaidDonationsByCampaignId(
+                                campaignId, PageRequest.of(0, limit));
+
+                return recent.stream().map(d -> {
+                        log.info("👥 Processing donor: id={}, donorId={}, is_anonymous_raw={}",
+                                        d.getId(), d.getDonorId(), d.getIsAnonymous());
+
+                        // Strict check as user requested: is_anonymous == 1 OR donorId == null (guest)
+                        boolean anon = d.getDonorId() == null || Boolean.TRUE.equals(d.getIsAnonymous());
+                        log.info("👥 Donor {} anonymity determined: {}", d.getId(), anon);
+
+                        String name = "Người ủng hộ ẩn danh";
+
+                        String avatar = null;
+
+                        if (!anon && d.getDonorId() != null) {
+                                try {
+                                        // Use internal API as identified in identity-service
+                                        String userUrl = "http://identity-service/api/internal/users/" + d.getDonorId();
+                                        log.info("➔ Fetching internal donor info from: {}", userUrl);
+                                        @SuppressWarnings("unchecked")
+                                        Map<String, Object> userData = restTemplate.getForObject(userUrl, Map.class);
+                                        if (userData != null) {
+                                                log.info("✅ Internal donor info fetched: {}", userData);
+                                                // Response from InternalUserController.getUserInfo is the object itself
+                                                if (userData.get("fullName") != null) {
+                                                        name = userData.get("fullName").toString();
+                                                }
+                                                if (userData.get("avatarUrl") != null) {
+                                                        avatar = userData.get("avatarUrl").toString();
+                                                }
+                                        }
+                                } catch (Exception e) {
+                                        log.warn("⚠️ Could not fetch user info from identity-service internal API for donorId {}: {}",
+                                                        d.getDonorId(), e.getMessage());
+                                }
+                        }
+
+                        return RecentDonorResponse.builder()
+                                        .donationId(d.getId())
+                                        .donorId(anon ? null : d.getDonorId())
+                                        .donorName(name)
+                                        .donorAvatar(avatar)
+                                        .amount(d.getTotalAmount())
+                                        .createdAt(d.getCreatedAt())
+                                        .anonymous(anon)
+                                        .build();
+                }).collect(Collectors.toList());
         }
 }

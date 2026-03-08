@@ -361,16 +361,22 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public void updateExpenditureItemQuantity(Long id, Integer amountToAdd) {
+    public void updateExpenditureItemQuantity(Long id, Integer amountToDeduct) {
+        log.info("➔ System requested to deduct {} from quantityLeft for ExpenditureItem {}", amountToDeduct, id);
+
         ExpenditureItem item = expenditureItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found: " + id));
 
-        int newLeft = (item.getQuantityLeft() != null ? item.getQuantityLeft() : item.getQuantity()) - amountToAdd;
+        int currentLeft = item.getQuantityLeft() != null ? item.getQuantityLeft() : item.getQuantity();
+        log.info("➔ Current quantityLeft for Item {} is {}", id, currentLeft);
+
+        int newLeft = currentLeft - amountToDeduct;
 
         item.setQuantityLeft(Math.max(0, newLeft));
 
         expenditureItemRepository.save(item);
-        log.info("Updated ExpenditureItem {} quantityLeft to: {}", id, item.getQuantityLeft());
+        log.info("✅ SUCCESS: Updated ExpenditureItem {} quantityLeft from {} to: {}", id, currentLeft,
+                item.getQuantityLeft());
     }
 
     @Override

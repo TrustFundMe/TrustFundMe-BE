@@ -75,4 +75,23 @@ public class PaymentController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/campaign/{campaignId}/progress")
+    public ResponseEntity<?> getCampaignProgress(@PathVariable Long campaignId) {
+        try {
+            return ResponseEntity.ok(donationService.getCampaignProgress(campaignId));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/campaign/{campaignId}/recent-donations")
+    public ResponseEntity<?> getRecentDonors(@PathVariable Long campaignId,
+            @RequestParam(defaultValue = "3") int limit) {
+        try {
+            return ResponseEntity.ok(donationService.getRecentDonors(campaignId, limit));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

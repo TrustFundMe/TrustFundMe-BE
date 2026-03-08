@@ -108,6 +108,13 @@
             <version>2.0.1</version>
         </dependency>
 
+        <!-- Pusher Java Client -->
+        <dependency>
+            <groupId>com.pusher</groupId>
+            <artifactId>pusher-java-client</artifactId>
+            <version>2.4.4</version>
+        </dependency>
+
     </dependencies>
 
     <dependencyManagement>

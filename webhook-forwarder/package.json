@@ -1,0 +1,12 @@
+{
+  "name": "payos-webhook-forwarder",
+  "version": "1.0.0",
+  "description": "Forward PayOS webhooks to Pusher",
+  "main": "api/webhook.js",
+  "scripts": {
+    "start": "node api/webhook.js"
+  },
+  "dependencies": {
+    "pusher": "^5.2.0"
+  }
+}

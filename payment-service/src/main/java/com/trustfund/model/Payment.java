@@ -27,6 +27,9 @@ public class Payment {
     @Column(name = "qr_code", length = 1000)
     private String qrCode;
 
+    @Column(name = "order_code", unique = true)
+    private Long orderCode;
+
     @Column(name = "payment_link_id", unique = true)
     private String paymentLinkId;
 
