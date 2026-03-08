@@ -18,5 +18,7 @@ public interface FlagService {
 
     Page<FlagResponse> getFlagsByUserId(Long userId, Pageable pageable);
 
+    Page<FlagResponse> getAllFlags(String status, Pageable pageable);
+
     FlagResponse reviewFlag(Long flagId, Long adminId, String status);
 }

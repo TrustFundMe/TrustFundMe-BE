@@ -23,6 +23,17 @@ public class FlagServiceImpl implements FlagService {
             throw new RuntimeException("Either postId or campaignId must be provided");
         }
 
+        // ── Duplicate guard ──────────────────────────────────────────────────
+        if (request.getCampaignId() != null &&
+                flagRepository.existsByUserIdAndCampaignId(userId, request.getCampaignId())) {
+            throw new IllegalStateException("Bạn đã tố cáo chiến dịch này rồi.");
+        }
+        if (request.getPostId() != null &&
+                flagRepository.existsByUserIdAndPostId(userId, request.getPostId())) {
+            throw new IllegalStateException("Bạn đã tố cáo bài viết này rồi.");
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         Flag flag = Flag.builder()
                 .userId(userId)
                 .postId(request.getPostId())
@@ -64,6 +75,14 @@ public class FlagServiceImpl implements FlagService {
     public Page<FlagResponse> getFlagsByUserId(Long userId, Pageable pageable) {
         return flagRepository.findByUserId(userId, pageable)
                 .map(this::mapToResponse);
+    }
+
+    @Override
+    public Page<FlagResponse> getAllFlags(String status, Pageable pageable) {
+        if (status == null || status.equalsIgnoreCase("ALL")) {
+            return flagRepository.findAll(pageable).map(this::mapToResponse);
+        }
+        return flagRepository.findByStatus(status, pageable).map(this::mapToResponse);
     }
 
     @Override

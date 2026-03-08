@@ -41,8 +41,12 @@ public class FundraisingGoalServiceImpl implements FundraisingGoalService {
     @Transactional
     public FundraisingGoal create(CreateFundraisingGoalRequest request) {
         // Verify campaign exists
-        campaignRepository.findById(request.getCampaignId())
+        com.trustfund.model.Campaign campaign = campaignRepository.findById(request.getCampaignId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found with id: " + request.getCampaignId()));
+
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể tạo mục tiêu mới.");
+        }
 
         boolean shouldBeActive = request.getIsActive() != null ? request.getIsActive() : true;
 
@@ -69,6 +73,13 @@ public class FundraisingGoalServiceImpl implements FundraisingGoalService {
     @Transactional
     public FundraisingGoal update(Long id, UpdateFundraisingGoalRequest request) {
         FundraisingGoal fundraisingGoal = getById(id);
+
+        com.trustfund.model.Campaign campaign = campaignRepository.findById(fundraisingGoal.getCampaignId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found"));
+
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể chỉnh sửa mục tiêu.");
+        }
 
         if (request.getTargetAmount() != null) {
             fundraisingGoal.setTargetAmount(request.getTargetAmount());
@@ -99,6 +110,14 @@ public class FundraisingGoalServiceImpl implements FundraisingGoalService {
     @Transactional
     public void delete(Long id) {
         FundraisingGoal fundraisingGoal = getById(id);
+
+        com.trustfund.model.Campaign campaign = campaignRepository.findById(fundraisingGoal.getCampaignId())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found"));
+
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể xóa mục tiêu.");
+        }
+
         fundraisingGoalRepository.delete(fundraisingGoal);
     }
 }

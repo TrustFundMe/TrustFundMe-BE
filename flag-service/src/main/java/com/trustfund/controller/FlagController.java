@@ -26,8 +26,8 @@ public class FlagController {
     private final FlagService flagService;
 
     @PostMapping
-    @PreAuthorize("hasRole('USER')")
-    @Operation(summary = "Submit a report (Flag)", description = "User reports a postId or campaignId with a reason. Only ROLE_USER can report.")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Submit a report (Flag)", description = "Any authenticated user (DONOR, FUND_OWNER, USER, etc.) can report a campaign or post.")
     public ResponseEntity<FlagResponse> submitFlag(@Valid @RequestBody FlagRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
@@ -41,6 +41,17 @@ public class FlagController {
         return ResponseEntity.ok(flagService.getFlagById(id));
     }
 
+    @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Get all reports (with status filter)", description = "Admin/Staff list all reports, optionally filtered by status (PENDING, RESOLVED, DISMISSED)")
+    public ResponseEntity<Page<FlagResponse>> getFlags(
+            @RequestParam(required = false) String status,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        return ResponseEntity.ok(flagService.getAllFlags(status, pageable));
+    }
+
     @GetMapping("/pending")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get pending reports", description = "Admin/Staff list all reports with PENDING status")
@@ -48,7 +59,7 @@ public class FlagController {
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
-        return ResponseEntity.ok(flagService.getPendingFlags(pageable));
+        return ResponseEntity.ok(flagService.getAllFlags("PENDING", pageable));
     }
 
     @GetMapping("/posts/{postId}")
