@@ -352,4 +352,12 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         return expenditureRepository.save(expenditure);
     }
+
+    @Override
+    @Transactional
+    public Expenditure updateEvidenceStatus(Long id, String status) {
+        Expenditure expenditure = getExpenditureById(id);
+        expenditure.setEvidenceStatus(status);
+        return expenditureRepository.save(expenditure);
+    }
 }

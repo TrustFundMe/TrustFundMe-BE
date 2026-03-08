@@ -28,4 +28,6 @@ public interface ExpenditureService {
     Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
     void deleteExpenditureItem(Long itemId);
+
+    Expenditure updateEvidenceStatus(Long id, String status);
 }
