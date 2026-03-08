@@ -15,4 +15,10 @@ public interface FlagRepository extends JpaRepository<Flag, Long> {
     Page<Flag> findByCampaignId(Long campaignId, Pageable pageable);
 
     Page<Flag> findByUserId(Long userId, Pageable pageable);
+
+    /** Duplicate guard: check if the user already flagged this campaign */
+    boolean existsByUserIdAndCampaignId(Long userId, Long campaignId);
+
+    /** Duplicate guard: check if the user already flagged this post */
+    boolean existsByUserIdAndPostId(Long userId, Long postId);
 }

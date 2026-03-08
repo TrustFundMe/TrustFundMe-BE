@@ -15,7 +15,7 @@ public interface UserService {
 
     void deleteUser(Long id);
 
-    UserInfo banUser(Long id);
+    UserInfo banUser(Long id, String reason);
 
     UserInfo unbanUser(Long id);
 

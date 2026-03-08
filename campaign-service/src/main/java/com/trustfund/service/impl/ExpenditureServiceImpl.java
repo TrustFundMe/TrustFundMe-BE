@@ -40,6 +40,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public Expenditure createExpenditure(CreateExpenditureRequest request) {
         CampaignResponse campaign = campaignService.getById(request.getCampaignId());
 
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể yêu cầu chi tiêu.");
+        }
+
         // === VALIDATION: Kiểm tra điều kiện tạo expenditure mới ===
         List<Expenditure> existingExps = expenditureRepository.findByCampaignId(request.getCampaignId());
 
@@ -415,4 +419,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return expenditureRepository.save(expenditure);
     }
 
+    @Override
+    @Transactional
+    public Expenditure updateEvidenceStatus(Long id, String status) {
+        Expenditure expenditure = getExpenditureById(id);
+        expenditure.setEvidenceStatus(status);
+        return expenditureRepository.save(expenditure);
+    }
 }

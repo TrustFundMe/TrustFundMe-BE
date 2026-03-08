@@ -113,4 +113,10 @@ public class ExpenditureController {
         expenditureService.deleteExpenditureItem(itemId);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/evidence-status")
+    @Operation(summary = "Cập nhật trạng thái minh chứng", description = "Cập nhật trạng thái của bằng chứng chi tiêu (Ví dụ: SUBMITTED).")
+    public ResponseEntity<Expenditure> updateEvidenceStatus(@PathVariable Long id, @RequestParam String status) {
+        return ResponseEntity.ok(expenditureService.updateEvidenceStatus(id, status));
+    }
 }
