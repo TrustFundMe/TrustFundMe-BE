@@ -49,6 +49,10 @@ public class SecurityConfig {
                                                 // Campaigns endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/campaigns/category/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/campaign-categories/**")
+                                                .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
                                                 .permitAll()
                                                 .requestMatchers("/api/campaigns/**").authenticated()
@@ -60,9 +64,11 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/campaign-follows/**").permitAll()
                                                 .requestMatchers("/api/campaign-follows/**").authenticated()
                                                 // Expenditures endpoints
+                                                .requestMatchers(HttpMethod.GET, "/api/expenditures/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/{id}").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**")
                                                 .permitAll()
+                                                .requestMatchers("/api/expenditures/items/**").permitAll()
                                                 .anyRequest().authenticated())
                                 .sessionManagement(sess -> sess
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

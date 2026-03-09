@@ -27,7 +27,7 @@ public class SupabaseStorageService {
 
     public StoredFile uploadFile(MultipartFile file) throws IOException, InterruptedException {
         String uniqueFilename = UUID.randomUUID() + "-" + file.getOriginalFilename();
-        String encodedFilename = URLEncoder.encode(uniqueFilename, StandardCharsets.UTF_8);
+        String encodedFilename = URLEncoder.encode(uniqueFilename, StandardCharsets.UTF_8).replace("+", "%20");
         String uploadUrl = supabaseConfig.getUploadUrl() + "/" + encodedFilename;
 
         String contentType = file.getContentType();

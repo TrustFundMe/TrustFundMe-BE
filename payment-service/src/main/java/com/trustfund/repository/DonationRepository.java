@@ -1,0 +1,27 @@
+package com.trustfund.repository;
+
+import com.trustfund.model.Donation;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+import java.math.BigDecimal;
+import java.util.List;
+
+@Repository
+public interface DonationRepository extends JpaRepository<Donation, Long> {
+    List<Donation> findByDonorId(Long donorId);
+
+    List<Donation> findByCampaignId(Long campaignId);
+
+    java.util.Optional<Donation> findByPayment(com.trustfund.model.Payment payment);
+
+    java.util.List<Donation> findAllByStatusAndCreatedAtBefore(String status, java.time.LocalDateTime threshold);
+
+    @Query("SELECT COALESCE(SUM(d.totalAmount), 0) FROM Donation d WHERE d.campaignId = :campaignId AND d.status = 'PAID'")
+    BigDecimal sumTotalAmountByCampaignId(@Param("campaignId") Long campaignId);
+
+    @Query("SELECT d FROM Donation d WHERE d.campaignId = :campaignId AND d.status = 'PAID' ORDER BY d.createdAt DESC")
+    List<Donation> findRecentPaidDonationsByCampaignId(@Param("campaignId") Long campaignId,
+            org.springframework.data.domain.Pageable pageable);
+}

@@ -23,6 +23,8 @@ public class UserInfo {
     private Boolean verified;
     @JsonProperty("isActive")
     private Boolean isActive;
+    @JsonProperty("banReason")
+    private String banReason;
 
     public static UserInfo fromUser(User user) {
         return UserInfo.builder()
@@ -34,6 +36,7 @@ public class UserInfo {
                 .role(user.getRole())
                 .verified(user.getVerified())
                 .isActive(user.getIsActive())
+                .banReason(user.getBanReason())
                 .build();
     }
 }

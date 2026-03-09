@@ -60,6 +60,15 @@ public class Expenditure {
     @Column(name = "disbursement_proof_url", length = 1000)
     private String disbursementProofUrl;
 
+    @Column(name = "bank_code", length = 50)
+    private String bankCode;
+
+    @Column(name = "account_number", length = 50)
+    private String accountNumber;
+
+    @Column(name = "account_holder_name", length = 255)
+    private String accountHolderName;
+
     @Column(name = "disbursed_at")
     private LocalDateTime disbursedAt;
 
