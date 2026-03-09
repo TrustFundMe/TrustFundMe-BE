@@ -89,6 +89,10 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found"));
 
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể chỉnh sửa.");
+        }
+
         if (request.getTitle() != null)
             campaign.setTitle(request.getTitle());
         if (request.getDescription() != null)
@@ -101,19 +105,13 @@ public class CampaignServiceImpl implements CampaignService {
             campaign.setCategory(category);
         }
         if (request.getStatus() != null)
-            campaign.setStatus(request.getStatus());
+            campaign.setStatus(request.getStatus().toUpperCase());
         if (request.getStartDate() != null)
             campaign.setStartDate(request.getStartDate());
         if (request.getEndDate() != null)
             campaign.setEndDate(request.getEndDate());
         if (request.getThankMessage() != null)
             campaign.setThankMessage(request.getThankMessage());
-        // Removed approvedByStaff and approvedAt as they are not updated via this
-        // method
-        // if (request.getApprovedByStaff() != null)
-        // campaign.setApprovedByStaff(request.getApprovedByStaff());
-        // if (request.getApprovedAt() != null)
-        // campaign.setApprovedAt(request.getApprovedAt());
 
         Campaign updated = campaignRepository.save(campaign);
         return toCampaignResponse(updated);

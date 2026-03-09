@@ -98,9 +98,10 @@ public class AuthServiceImpl implements AuthService {
             throw new UnauthorizedException("Invalid email or password");
         }
 
-        if (!user.getIsActive()) {
-            throw new UnauthorizedException("Account is deactivated");
-        }
+        // Allow login even if account is deactivated - the frontend will handle showing the restricted view
+        // if (!user.getIsActive()) {
+        //     throw new UnauthorizedException("Account is deactivated");
+        // }
 
         String accessToken = jwtUtil.generateToken(
                 user.getId().toString(),
@@ -109,7 +110,7 @@ public class AuthServiceImpl implements AuthService {
         );
         String refreshToken = jwtUtil.generateRefreshToken(user.getId().toString());
 
-        log.info("User logged in successfully: {}", user.getEmail());
+        log.info("User logged in successfully (Active: {}): {}", user.getIsActive(), user.getEmail());
 
         return AuthResponse.builder()
                 .accessToken(accessToken)
@@ -126,9 +127,10 @@ public class AuthServiceImpl implements AuthService {
             User user = userRepository.findById(Long.parseLong(userId))
                     .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
 
-            if (!user.getIsActive()) {
-                throw new UnauthorizedException("Account is deactivated");
-            }
+            // Allow refresh even if account is deactivated
+            // if (!user.getIsActive()) {
+            //     throw new UnauthorizedException("Account is deactivated");
+            // }
 
             String newAccessToken = jwtUtil.generateToken(
                     user.getId().toString(),
@@ -339,11 +341,12 @@ public class AuthServiceImpl implements AuthService {
                         .build();
                 user = userRepository.save(user);
                 log.info("New user registered via Google: {}", email);
-            } else {
-                if (!user.getIsActive()) {
-                    throw new UnauthorizedException("Account is deactivated");
-                }
             }
+
+            // Allow Google login even if account is deactivated - the frontend will handle showing the restricted view
+            // if (!user.getIsActive()) {
+            //     throw new UnauthorizedException("Account is deactivated");
+            // }
 
             // Generate tokens
             String accessToken = jwtUtil.generateToken(

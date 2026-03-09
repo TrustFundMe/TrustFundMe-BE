@@ -116,12 +116,13 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    public UserInfo banUser(Long id) {
+    public UserInfo banUser(Long id, String reason) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
         user.setIsActive(false);
+        user.setBanReason(reason);
         user = userRepository.save(user);
-        log.info("Banned user with id: {}", id);
+        log.info("Banned user with id: {} for reason: {}", id, reason);
         return UserInfo.fromUser(user);
     }
 

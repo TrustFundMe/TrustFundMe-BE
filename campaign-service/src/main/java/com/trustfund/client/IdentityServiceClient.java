@@ -97,4 +97,21 @@ public class IdentityServiceClient {
             return null;
         }
     }
+
+    /**
+     * Lấy tài khoản ngân hàng chính của user từ identity-service.
+     */
+    public com.trustfund.model.response.BankAccountResponse getPrimaryBankAccount(Long userId) {
+        if (userId == null)
+            return null;
+
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/primary-bank";
+        try {
+            log.debug("Fetching primary bank account for user {} from {}", userId, url);
+            return restTemplate.getForObject(url, com.trustfund.model.response.BankAccountResponse.class);
+        } catch (Exception e) {
+            log.error("Failed to fetch primary bank account for user {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
 }

@@ -97,4 +97,29 @@ public class InternalUserController {
                 .map(u -> ResponseEntity.ok(u.getFullName()))
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @GetMapping("/{id}/primary-bank")
+    @Operation(summary = "Lấy tài khoản ngân hàng chính của user (ưu tiên đã duyệt)")
+    public ResponseEntity<com.trustfund.model.response.BankAccountResponse> getPrimaryBankAccount(@PathVariable Long id) {
+        java.util.List<com.trustfund.model.BankAccount> accounts = bankAccountRepository.findByUser_Id(id);
+        if (accounts.isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Ưu tiên lấy cái APPROVED, nếu không có thì lấy cái đầu tiên tìm thấy
+        com.trustfund.model.BankAccount bestAcc = accounts.stream()
+                .filter(acc -> "APPROVED".equals(acc.getStatus()))
+                .findFirst()
+                .orElse(accounts.get(0));
+
+        return ResponseEntity.ok(com.trustfund.model.response.BankAccountResponse.builder()
+                .id(bestAcc.getId())
+                .userId(bestAcc.getUser().getId())
+                .bankCode(bestAcc.getBankCode())
+                .accountNumber(bestAcc.getAccountNumber())
+                .accountHolderName(bestAcc.getAccountHolderName())
+                .isVerified(bestAcc.getIsVerified())
+                .status(bestAcc.getStatus())
+                .build());
+    }
 }

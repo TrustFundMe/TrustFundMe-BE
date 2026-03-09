@@ -37,14 +37,16 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        // GET feed posts and forum categories are public
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/feed-posts/**", "/api/forum/categories/**").permitAll()
+                        // POST, PUT, DELETE, PATCH require authentication (JWT)
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
-                .anonymous(AbstractHttpConfigurer::disable) // Enabled anonymous for public access
-
+                // Keep anonymous enabled - needed for public GET endpoints to work correctly
+                // and for Spring Security to inject AnonymousAuthenticationToken for unauthenticated users
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
         return http.build();
     }
