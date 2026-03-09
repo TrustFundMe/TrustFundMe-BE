@@ -20,6 +20,9 @@ public class FeedPost {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Column(name = "campaign_id")
+    private Long campaignId;
+
     @Column(name = "budget_id")
     private Long budgetId;
 

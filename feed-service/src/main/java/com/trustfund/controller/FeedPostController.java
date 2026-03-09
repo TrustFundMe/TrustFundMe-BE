@@ -43,11 +43,12 @@ public class FeedPostController {
     }
 
     @GetMapping
-    @Operation(summary = "Get active feed posts", description = "Get list of feed posts with status=ACTIVE and visibility rules")
+    @Operation(summary = "Get active feed posts", description = "Get list of feed posts with status=ACTIVE and visibility rules. Optionally filter by campaignId.")
     public ResponseEntity<Page<FeedPostResponse>> getActiveFeedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(required = false) Long campaignId
     ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = null;
@@ -67,6 +68,10 @@ public class FeedPostController {
                 : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+
+        if (campaignId != null) {
+            return ResponseEntity.ok(feedPostService.getActiveFeedPostsByCampaignId(campaignId, currentUserId, pageable));
+        }
         return ResponseEntity.ok(feedPostService.getActiveFeedPosts(currentUserId, pageable));
     }
 
@@ -160,11 +165,14 @@ public class FeedPostController {
 
     @GetMapping("/admin")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
-    @Operation(summary = "Get all feed posts (Admin)", description = "Get list of all feed posts without visibility filtering")
+    @Operation(summary = "Get all feed posts (Admin)", description = "Get list of all feed posts with optional filters: status, type, keyword")
     public ResponseEntity<Page<FeedPostResponse>> getAllFeedPosts(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(defaultValue = "createdAt,desc") String sort,
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) String keyword) {
 
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];
@@ -173,7 +181,7 @@ public class FeedPostController {
                 : Sort.Direction.DESC;
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
-        return ResponseEntity.ok(feedPostService.getAllFeedPosts(pageable));
+        return ResponseEntity.ok(feedPostService.getAllFeedPosts(status, type, keyword, pageable));
     }
 
     @DeleteMapping("/admin/{id}")

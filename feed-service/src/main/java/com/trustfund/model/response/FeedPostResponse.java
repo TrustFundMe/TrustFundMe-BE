@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class FeedPostResponse {
 
     private Long id;
+    private Long campaignId;
     private Long budgetId;
     private Long authorId;
     private String authorName;
@@ -34,6 +35,7 @@ public class FeedPostResponse {
     private Boolean isLiked;
     private Boolean isPinned;
     private Boolean isLocked;
+    private Integer flagCount;
 
     private java.util.List<ForumAttachmentResponse> attachments;
 

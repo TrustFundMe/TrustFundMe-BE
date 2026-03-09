@@ -1,5 +1,6 @@
 package com.trustfund.service.implementServices;
 
+import com.trustfund.client.FlagServiceClient;
 import com.trustfund.client.UserInfoClient;
 import com.trustfund.model.FeedPost;
 import com.trustfund.model.ForumAttachment;
@@ -29,10 +30,12 @@ public class FeedPostServiceImpl implements FeedPostService {
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
     private final UserInfoClient userInfoClient;
+    private final FlagServiceClient flagServiceClient;
 
     @Override
     public FeedPostResponse create(CreateFeedPostRequest request, Long authorId) {
         FeedPost feedPost = FeedPost.builder()
+                .campaignId(request.getCampaignId())
                 .budgetId(request.getBudgetId())
                 .authorId(authorId)
                 .type(request.getType())
@@ -108,6 +111,17 @@ public class FeedPostServiceImpl implements FeedPostService {
     public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId,
             org.springframework.data.domain.Pageable pageable) {
         return feedPostRepository.findVisibleActivePosts(currentUserId, pageable)
+                .map(post -> toResponse(post, currentUserId));
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPostsByCampaignId(
+            Long campaignId, Long currentUserId,
+            org.springframework.data.domain.Pageable pageable) {
+        if (campaignId == null) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("campaignId is required");
+        }
+        return feedPostRepository.findVisibleActivePostsByCampaignId(campaignId, currentUserId, pageable)
                 .map(post -> toResponse(post, currentUserId));
     }
 
@@ -225,6 +239,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             post.setStatus(request.getStatus());
         }
+        post.setCampaignId(request.getCampaignId());
         if (request.getBudgetId() != null) {
             post.setBudgetId(request.getBudgetId());
         } else {
@@ -301,9 +316,19 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
-    public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable) {
-        org.springframework.data.domain.Page<FeedPost> posts = feedPostRepository.findAll(pageable);
-        return posts.map(post -> toResponse(post, null));
+    public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(
+            String status, String type, String keyword,
+            org.springframework.data.domain.Pageable pageable) {
+        String statusParam = (status != null && !status.isBlank()) ? status : null;
+        String typeParam = (type != null && !type.isBlank()) ? type : null;
+        String keywordParam = (keyword != null && !keyword.isBlank()) ? keyword : null;
+        org.springframework.data.domain.Page<FeedPost> posts =
+                feedPostRepository.findAllWithFilters(statusParam, typeParam, keywordParam, pageable);
+        return posts.map(post -> {
+            FeedPostResponse response = toResponse(post, null);
+            response.setFlagCount(flagServiceClient.getFlagCountForPost(post.getId()));
+            return response;
+        });
     }
 
     @Override
@@ -406,6 +431,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         return FeedPostResponse.builder()
                 .id(entity.getId())
+                .campaignId(entity.getCampaignId())
                 .budgetId(entity.getBudgetId())
                 .authorId(entity.getAuthorId())
                 .authorName(authorInfo.fullName())

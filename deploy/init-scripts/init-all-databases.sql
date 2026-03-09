@@ -219,6 +219,8 @@ CREATE TABLE IF NOT EXISTS media (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     post_id BIGINT NULL,
     campaign_id BIGINT NULL,
+    conversation_id BIGINT NULL,
+    expenditure_id BIGINT NULL,
     media_type VARCHAR(50) NOT NULL,
     url VARCHAR(1000) NOT NULL,
     description VARCHAR(2000) NULL,
@@ -229,6 +231,8 @@ CREATE TABLE IF NOT EXISTS media (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_media_post_id (post_id),
     INDEX idx_media_campaign_id (campaign_id),
+    INDEX idx_media_conversation_id (conversation_id),
+    INDEX idx_media_expenditure_id (expenditure_id),
     INDEX idx_media_status (status)
 );
 
@@ -253,6 +257,7 @@ CREATE TABLE IF NOT EXISTS forum_category (
 
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    campaign_id BIGINT NULL,
     budget_id BIGINT NULL,
     author_id BIGINT NOT NULL,
     category_id BIGINT NULL,
@@ -262,13 +267,16 @@ CREATE TABLE IF NOT EXISTS feed_post (
     title NVARCHAR(255) NULL,
     content NVARCHAR(2000) NOT NULL,
     status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
-    reply_count INT DEFAULT 0,
-    view_count INT DEFAULT 0,
+    reply_count INT NOT NULL DEFAULT 0,
+    view_count INT NOT NULL DEFAULT 0,
+    like_count INT NOT NULL DEFAULT 0,
+    comment_count INT NOT NULL DEFAULT 0,
     is_pinned BOOLEAN DEFAULT FALSE,
     is_locked BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_feed_post_author_id (author_id),
+    INDEX idx_feed_post_campaign_id (campaign_id),
     INDEX idx_feed_post_budget_id (budget_id),
     INDEX idx_feed_post_category_id (category_id),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
@@ -288,6 +296,46 @@ CREATE TABLE IF NOT EXISTS forum_attachment (
     INDEX idx_forum_attachment_post_id (post_id),
     CONSTRAINT fk_forum_attachment_post
         FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_post_comment (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    parent_comment_id BIGINT NULL,
+    content VARCHAR(1000) NOT NULL,
+    like_count INT NOT NULL DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_feed_post_comment_post_id (post_id),
+    INDEX idx_feed_post_comment_user_id (user_id),
+    INDEX idx_feed_post_comment_parent_id (parent_comment_id),
+    CONSTRAINT fk_feed_post_comment_post
+        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_post_like (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_feed_post_like (post_id, user_id),
+    INDEX idx_feed_post_like_post_id (post_id),
+    INDEX idx_feed_post_like_user_id (user_id),
+    CONSTRAINT fk_feed_post_like_post
+        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_post_comment_like (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    comment_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uq_feed_post_comment_like (comment_id, user_id),
+    INDEX idx_feed_post_comment_like_comment_id (comment_id),
+    INDEX idx_feed_post_comment_like_user_id (user_id),
+    CONSTRAINT fk_feed_post_comment_like_comment
+        FOREIGN KEY (comment_id) REFERENCES feed_post_comment(id) ON DELETE CASCADE
 );
 
 -- =======================================
@@ -505,20 +553,79 @@ VALUES
     (4, 'Tin tức', 'news', 'Tin tức mới nhất từ hệ thống', '#8b5cf6', 4, TRUE, NOW())
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
-INSERT INTO feed_post (author_id, category_id, type, visibility, title, content, status, reply_count, view_count, is_pinned, created_at, budget_id)
+INSERT INTO feed_post (author_id, category_id, type, visibility, title, content, status, reply_count, view_count, like_count, comment_count, is_pinned, created_at, budget_id)
 VALUES
     -- General Category
-    (5, 1, 'DISCUSSION', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 15, FALSE, NOW(), NULL),
-    (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
-    
+    (5, 1, 'DISCUSSION', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 15, 3, 2, FALSE, NOW(), NULL),
+    (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, 8, 5, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
+
     -- Campaigns Category
-    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
-    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
-    
+    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, 24, 10, TRUE, NOW(), 1),
+    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 8, 2, 1, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
+
     -- QA Category
-    (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
-    
+    (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, 1, 0, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
+
     -- News Category
-    (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
+    (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, 15, 0, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
+
+-- Sample comments (post IDs: 1=Chào, 2=Minh bạch, 3=Xe cứu trợ, 4=Hỏi điểm nhận, 5=Tạo chiến dịch, 6=Bảo trì)
+INSERT INTO feed_post_comment (post_id, user_id, parent_comment_id, content, like_count, created_at)
+VALUES
+    -- Post 1: Chào mọi người (2 root comments)
+    (1, 6, NULL, 'Chào bạn! Chào mừng đến với cộng đồng nhé!', 1, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+    (1, 4, NULL, 'Welcome bạn ơi, cộng đồng này rất tốt!', 0, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+
+    -- Post 2: Minh bạch (5 root comments + replies)
+    (2, 4, NULL, 'Đồng ý! Minh bạch mới tạo được niềm tin từ nhà hảo tâm.', 2, DATE_SUB(NOW(), INTERVAL 23 HOUR)),
+    (2, 5, NULL, 'Mình cũng nghĩ vậy, cần công khai từng khoản chi.', 1, DATE_SUB(NOW(), INTERVAL 22 HOUR)),
+    (2, 3, NULL, 'Bên mình luôn đăng báo cáo tài chính sau mỗi chiến dịch.', 3, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
+    (2, 1, NULL, 'TrustFundME đang xây dựng tính năng audit log để tăng minh bạch.', 5, DATE_SUB(NOW(), INTERVAL 18 HOUR)),
+    (2, 6, NULL, 'Ủng hộ việc minh bạch 100%!', 0, DATE_SUB(NOW(), INTERVAL 10 HOUR)),
+
+    -- Post 3: Cập nhật xe cứu trợ (10 root comments)
+    (3, 4, NULL, 'Cảm ơn mọi người đã chung tay! Hy vọng hàng đến nơi an toàn.', 4, DATE_SUB(NOW(), INTERVAL 55 MINUTE)),
+    (3, 5, NULL, 'Tuyệt vời quá! Cộng đồng mình đoàn kết thật.', 2, DATE_SUB(NOW(), INTERVAL 45 MINUTE)),
+    (3, 6, NULL, 'Có cần thêm tình nguyện viên không?', 1, DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
+
+    -- Reply cho comment trên (post 3)
+    (3, 3, 10, 'Cảm ơn bạn, hiện tại đủ rồi nhưng lần sau mình sẽ thông báo nhé!', 0, DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
+
+    -- Post 4: Hỏi điểm nhận (1 root comment)
+    (4, 2, NULL, 'Bạn có thể liên hệ hotline 1800-xxx để được hỗ trợ địa điểm gần nhất.', 1, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+
+    -- Post 5: Tạo chiến dịch (0 comments — no inserts needed)
+
+    -- Post 6: Bảo trì (0 comments — no inserts needed)
+    (3, 6, NULL, 'Cảm ơn admin đã thông báo trước!', 2, DATE_SUB(NOW(), INTERVAL 2 DAY))
+ON DUPLICATE KEY UPDATE content = VALUES(content);
+
+-- Sample post likes
+INSERT INTO feed_post_like (post_id, user_id, created_at)
+VALUES
+    (1, 4, DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
+    (1, 6, DATE_SUB(NOW(), INTERVAL 35 MINUTE)),
+    (1, 2, DATE_SUB(NOW(), INTERVAL 20 MINUTE)),
+    (2, 4, DATE_SUB(NOW(), INTERVAL 23 HOUR)),
+    (2, 5, DATE_SUB(NOW(), INTERVAL 22 HOUR)),
+    (2, 3, DATE_SUB(NOW(), INTERVAL 21 HOUR)),
+    (2, 1, DATE_SUB(NOW(), INTERVAL 20 HOUR)),
+    (2, 6, DATE_SUB(NOW(), INTERVAL 19 HOUR)),
+    (2, 2, DATE_SUB(NOW(), INTERVAL 18 HOUR)),
+    (2, 300, DATE_SUB(NOW(), INTERVAL 17 HOUR)),
+    (2, 4, DATE_SUB(NOW(), INTERVAL 16 HOUR)),
+    (3, 4, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+    (3, 5, DATE_SUB(NOW(), INTERVAL 48 MINUTE)),
+    (3, 6, DATE_SUB(NOW(), INTERVAL 46 MINUTE)),
+    (3, 2, DATE_SUB(NOW(), INTERVAL 44 MINUTE)),
+    (3, 1, DATE_SUB(NOW(), INTERVAL 42 MINUTE)),
+    (3, 300, DATE_SUB(NOW(), INTERVAL 40 MINUTE)),
+    (4, 5, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+    (4, 6, DATE_SUB(NOW(), INTERVAL 58 MINUTE)),
+    (5, 4, DATE_SUB(NOW(), INTERVAL 4 HOUR)),
+    (6, 4, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (6, 5, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (6, 6, DATE_SUB(NOW(), INTERVAL 3 DAY))
+ON DUPLICATE KEY UPDATE created_at = VALUES(created_at);
 

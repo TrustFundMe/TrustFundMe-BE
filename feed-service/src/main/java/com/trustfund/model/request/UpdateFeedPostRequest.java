@@ -24,6 +24,8 @@ public class UpdateFeedPostRequest {
     @Pattern(regexp = "DRAFT|ACTIVE")
     private String status;
 
+    private Long campaignId;
+
     private Long budgetId;
 
     private List<AttachmentInput> attachments;
