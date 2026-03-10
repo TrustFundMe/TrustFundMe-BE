@@ -8,17 +8,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.List;
-
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
 public class CreateFeedPostRequest {
 
-    private Long budgetId;
+    private Long campaignId;
 
-    private List<AttachmentInput> attachments;
+    private Long expenditureId;
+
+    @Size(max = 100)
+    private String category;
 
     @NotBlank
     @Size(max = 50)

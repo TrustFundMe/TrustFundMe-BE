@@ -1,0 +1,66 @@
+```mermaid
+classDiagram
+
+%% Root project
+class "TrustFundMe-BE" as TrustFundMeBE
+
+%% Microservices / components
+class "API Gateway" as ApiGateway
+class "Discovery Server" as DiscoveryServer
+
+class "Identity Service" as IdentityService
+class "Campaign Service" as CampaignService
+class "Payment Service" as PaymentService
+class "Feed Service" as FeedService
+class "Media Service" as MediaService
+class "Chat Service" as ChatService
+class "Flag Service" as FlagService
+
+class "Deploy Scripts" as DeployScripts
+class "Utility Scripts" as UtilityScripts
+class "Webhook Forwarder" as WebhookForwarder
+
+class "Databases" as Databases
+
+%% Root composition
+TrustFundMeBE *-- ApiGateway
+TrustFundMeBE *-- DiscoveryServer
+TrustFundMeBE *-- IdentityService
+TrustFundMeBE *-- CampaignService
+TrustFundMeBE *-- PaymentService
+TrustFundMeBE *-- FeedService
+TrustFundMeBE *-- MediaService
+TrustFundMeBE *-- ChatService
+TrustFundMeBE *-- FlagService
+TrustFundMeBE *-- DeployScripts
+TrustFundMeBE *-- UtilityScripts
+TrustFundMeBE *-- WebhookForwarder
+
+%% Service discovery
+ApiGateway ..> DiscoveryServer : <<register/lookup>>
+IdentityService ..> DiscoveryServer : <<register>>
+CampaignService ..> DiscoveryServer : <<register>>
+PaymentService ..> DiscoveryServer : <<register>>
+FeedService ..> DiscoveryServer : <<register>>
+MediaService ..> DiscoveryServer : <<register>>
+ChatService ..> DiscoveryServer : <<register>>
+FlagService ..> DiscoveryServer : <<register>>
+
+%% Routing from gateway to services
+ApiGateway ..> IdentityService : <<route>>
+ApiGateway ..> CampaignService : <<route>>
+ApiGateway ..> PaymentService : <<route>>
+ApiGateway ..> FeedService : <<route>>
+ApiGateway ..> MediaService : <<route>>
+ApiGateway ..> ChatService : <<route>>
+ApiGateway ..> FlagService : <<route>>
+
+%% Persistence layer
+IdentityService ..> Databases : <<read/write>>
+CampaignService ..> Databases : <<read/write>>
+PaymentService ..> Databases : <<read/write>>
+FeedService ..> Databases : <<read/write>>
+MediaService ..> Databases : <<read/write>>
+ChatService ..> Databases : <<read/write>>
+FlagService ..> Databases : <<read/write>>
+```

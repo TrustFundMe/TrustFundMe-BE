@@ -1,0 +1,98 @@
+@startuml
+title TrustFundMe-BE Package Diagram (UML 2.0)
+' Bám sát cấu trúc thực tế: run-all-services.ps1, deploy/init-scripts, từng service com.trustfund
+
+' Cấu hình giao diện
+skinparam package {
+    BackgroundColor<<Infra>> LightCyan
+    BackgroundColor<<Core>> HoneyDew
+    BackgroundColor<<Storage>> Lavender
+}
+
+package "Infrastructure Layer" as Infra <<Infra>> {
+    [API Gateway] as Gateway
+    [Discovery Server] as Discovery
+    [Webhook Forwarder] as Webhook
+}
+note right of Infra
+  **Description**
+  Handles API routing, JWT authentication,
+  service discovery (Eureka), and external
+  webhook forwarding (PayOS).
+end note
+
+package "Core Services" as Core <<Core>> {
+    package "User Management" {
+        ' identity-service: UserController, BankAccountController, InternalUserController, Auth
+        [Identity Service] as Identity
+    }
+
+    package "Business Logic" {
+        ' campaign-service: Campaign, Expenditure, FundraisingGoal, Category, Follow + IdentityServiceClient, MediaServiceClient
+        [Campaign Service] as Campaign
+        ' feed-service: FeedPostController, FeedPostRepository
+        [Feed Service] as Feed
+        ' flag-service: FlagController, FlagRepository
+        [Flag Service] as Flag
+    }
+
+    package "Communication & Media" {
+        ' chat-service: ChatController, ChatWebSocketController, AppointmentScheduleController
+        [Chat Service] as Chat
+        ' media-service: MediaController, SupabaseStorageService, MediaRepository
+        [Media Service] as Media
+    }
+
+    package "Financials" {
+        ' payment-service: PaymentController, DonationService, PayOS/Pusher webhook
+        [Payment Service] as Payment
+    }
+}
+note right of Core
+  **Description**
+  Business logic microservices for user
+  management, campaigns, feed, moderation,
+  chat, media, and payments.
+end note
+
+package "External & Storage" as External <<Storage>> {
+    ' deploy/init-scripts/init-all-databases.sql: 7 MySQL DBs
+    database "Databases\n(MySQL: campaign, identity,\nmedia, feed, flag, chat, payment)" as DB
+    ' media-service: SupabaseStorageService
+    cloud "Supabase Storage" as Supabase
+}
+
+package "DevOps & Utils" as DevOps {
+    ' deploy/init-scripts/, feed-service/database/
+    file "Deploy Scripts\n(deploy/init-scripts,\nservice/database)"
+    ' run-all-services.ps1, run-*-service.ps1, scripts/
+    file "Run Scripts\n(run-*.ps1, scripts/)"
+}
+
+' --- Package-level Relationships ---
+' Core phụ thuộc vào định nghĩa/cấu hình từ tầng Infrastructure (<<import>>)
+Core ..> Infra : <<import>>
+
+' Core truy cập dữ liệu vào External/Storage (<<access>>)
+Core ..> External : <<access>>
+
+' --- Component-level Relationships ---
+Gateway ..> Discovery : <<use>>
+
+' Campaign gọi Identity Service và Media Service (RestTemplate/Feign client trong code)
+Campaign ..> Identity : <<use>>
+Campaign ..> Media : <<use>>
+
+' Media Service dùng Supabase cho file storage (ngoài DB)
+Media ..> Supabase : <<access>>
+
+' Database access cụ thể (bỏ comment nếu giảng viên yêu cầu chi tiết)
+' Identity ..> DB : <<access>>
+' Campaign ..> DB : <<access>>
+' Payment ..> DB : <<access>>
+' Feed ..> DB : <<access>>
+' Media ..> DB : <<access>>
+' Chat ..> DB : <<access>>
+' Flag ..> DB : <<access>>
+
+@enduml

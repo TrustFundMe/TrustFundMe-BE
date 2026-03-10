@@ -12,6 +12,8 @@ public interface FeedPostService {
 
     org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId, org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPostsByCampaignId(Long campaignId, Long currentUserId, org.springframework.data.domain.Pageable pageable);
+
     FeedPostResponse updateStatus(Long id, Long currentUserId, String status);
 
     FeedPostResponse updateVisibility(Long id, Long currentUserId, String currentRole, String visibility);
@@ -25,7 +27,9 @@ public interface FeedPostService {
     FeedPostResponse toggleLike(Long postId, Long currentUserId);
 
     // Admin APIs
-    org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(
+            String status, String type, String keyword,
+            org.springframework.data.domain.Pageable pageable);
 
     void deleteByAdmin(Long id);
 

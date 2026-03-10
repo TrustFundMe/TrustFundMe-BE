@@ -22,9 +22,24 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
       """)
   Page<FeedPost> findVisibleActivePosts(@Param("currentUserId") Long currentUserId, Pageable pageable);
 
-  Long countByCategoryIdAndStatus(Long categoryId, String status);
+  @Query("""
+      SELECT p FROM FeedPost p
+      WHERE p.status IN ('ACTIVE', 'PUBLISHED')
+        AND p.campaignId = :campaignId
+        AND (
+          p.visibility IN ('PUBLIC', 'FOLLOWERS')
+          OR (p.visibility = 'PRIVATE' AND p.authorId = :currentUserId)
+        )
+      ORDER BY p.isPinned DESC, p.createdAt DESC
+      """)
+  Page<FeedPost> findVisibleActivePostsByCampaignId(
+      @Param("campaignId") Long campaignId,
+      @Param("currentUserId") Long currentUserId,
+      Pageable pageable);
 
-  Page<FeedPost> findByCategoryIdAndStatusOrderByCreatedAtDesc(Long categoryId, String status, Pageable pageable);
+  Long countByCategoryAndStatus(String category, String status);
+
+  Page<FeedPost> findByCategoryAndStatusOrderByCreatedAtDesc(String category, String status, Pageable pageable);
 
   @Query("""
       SELECT p FROM FeedPost p
@@ -36,4 +51,19 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
   @org.springframework.transaction.annotation.Transactional
   @Query("UPDATE FeedPost p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
   void incrementViewCount(@Param("id") Long id);
+
+  @Query("""
+      SELECT p FROM FeedPost p
+      WHERE (:status IS NULL OR p.status = :status)
+        AND (:type IS NULL OR p.type = :type)
+        AND (:keyword IS NULL
+             OR LOWER(p.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+             OR LOWER(p.content) LIKE LOWER(CONCAT('%', :keyword, '%')))
+      ORDER BY p.isPinned DESC, p.createdAt DESC
+      """)
+  Page<FeedPost> findAllWithFilters(
+      @Param("status") String status,
+      @Param("type") String type,
+      @Param("keyword") String keyword,
+      Pageable pageable);
 }

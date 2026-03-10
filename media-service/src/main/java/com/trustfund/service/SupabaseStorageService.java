@@ -35,28 +35,37 @@ public class SupabaseStorageService {
             contentType = MediaType.APPLICATION_OCTET_STREAM_VALUE;
         }
 
+        System.out.println("[Supabase] Uploading to: " + uploadUrl);
+        System.out.println("[Supabase] Content-Type: " + contentType + ", Size: " + file.getSize() + " bytes");
+
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(uploadUrl))
                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + supabaseConfig.getSupabaseKey())
                 .header(HttpHeaders.CONTENT_TYPE, contentType)
+                .header("x-upsert", "true")  // allow overwrite if file exists
                 .PUT(HttpRequest.BodyPublishers.ofByteArray(file.getBytes()))
                 .build();
 
-        HttpResponse<Void> response = httpClient.send(request, HttpResponse.BodyHandlers.discarding());
+        // Read body for better error reporting
+        HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         int statusCode = response.statusCode();
 
         if (statusCode >= 200 && statusCode < 300) {
             String publicUrl = supabaseConfig.getPublicUrl(encodedFilename);
+            System.out.println("[Supabase] Upload OK → " + publicUrl);
             return new StoredFile(uniqueFilename, encodedFilename, publicUrl);
         } else {
-            // Enhanced logging to help debug 403 errors
-            System.err.println("Supabase upload failed! Status: " + statusCode + ", URL: " + uploadUrl);
+            String body = response.body();
+            System.err.println("[Supabase] Upload FAILED! Status: " + statusCode);
+            System.err.println("[Supabase] URL: " + uploadUrl);
+            System.err.println("[Supabase] Response body: " + body);
+            System.err.println("[Supabase] Key (first 30 chars): " + supabaseConfig.getSupabaseKey().substring(0, Math.min(30, supabaseConfig.getSupabaseKey().length())));
             
             HttpStatus status = HttpStatus.resolve(statusCode);
             if (status == null) status = HttpStatus.INTERNAL_SERVER_ERROR;
             
             throw new ResponseStatusException(status, 
-                "Supabase upload failed with status " + statusCode + ". Check Storage Policies (RLS) or bucket permissions.");
+                "Supabase upload failed [" + statusCode + "]: " + body);
         }
     }
 

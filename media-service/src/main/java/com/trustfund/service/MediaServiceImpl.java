@@ -3,6 +3,7 @@ package com.trustfund.service;
 import com.trustfund.model.Media;
 import com.trustfund.model.enums.MediaType;
 import com.trustfund.model.request.MediaUploadRequest;
+import com.trustfund.model.request.RegisterMediaRequest;
 import com.trustfund.model.response.MediaFileResponse;
 import com.trustfund.repository.MediaRepository;
 import lombok.RequiredArgsConstructor;
@@ -64,6 +65,28 @@ public class MediaServiceImpl implements MediaService {
             
             throw new RuntimeException("Lỗi lưu thông tin media vào database: " + e.getMessage(), e);
         }
+    }
+
+    @Override
+    @Transactional
+    public MediaFileResponse registerMedia(RegisterMediaRequest request) {
+        MediaType mediaType = MediaType.PHOTO;
+        if (request.getMediaType() != null) {
+            try { mediaType = MediaType.valueOf(request.getMediaType()); } catch (Exception ignored) {}
+        }
+        Media media = Media.builder()
+                .url(request.getUrl())
+                .mediaType(mediaType)
+                .fileName(request.getFileName())
+                .contentType(request.getContentType())
+                .sizeBytes(request.getSizeBytes())
+                .postId(request.getPostId())
+                .campaignId(request.getCampaignId())
+                .expenditureId(request.getExpenditureId())
+                .conversationId(request.getConversationId())
+                .description(request.getDescription())
+                .build();
+        return mapToResponse(mediaRepository.save(media));
     }
 
     @Override
