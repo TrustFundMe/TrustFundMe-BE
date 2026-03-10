@@ -23,8 +23,8 @@ public class FeedPost {
     @Column(name = "campaign_id")
     private Long campaignId;
 
-    @Column(name = "budget_id")
-    private Long budgetId;
+    @Column(name = "expenditure_id")
+    private Long expenditureId;
 
     @Column(name = "author_id", nullable = false)
     private Long authorId;
@@ -45,8 +45,8 @@ public class FeedPost {
     @Builder.Default
     private String status = "DRAFT";
 
-    @Column(name = "category_id")
-    private Long categoryId;
+    @Column(name = "category", length = 100)
+    private String category;
 
     @Column(name = "parent_post_id")
     private Long parentPostId;
@@ -83,13 +83,9 @@ public class FeedPost {
 
     @PrePersist
     protected void onCreate() {
-        if (createdAt == null) {
-            createdAt = LocalDateTime.now();
-        }
+        if (createdAt == null) createdAt = LocalDateTime.now();
         updatedAt = LocalDateTime.now();
-        if (status == null || status.isBlank()) {
-            status = "DRAFT";
-        }
+        if (status == null || status.isBlank()) status = "DRAFT";
     }
 
     @PreUpdate

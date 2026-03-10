@@ -139,6 +139,16 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.getFirstImageByCampaignId(campaignId));
     }
 
+    @PostMapping("/register")
+    @Operation(summary = "Register externally-uploaded media", description = "Create a DB record for a file already uploaded to storage (no file transfer)")
+    public ResponseEntity<MediaFileResponse> register(
+            @RequestBody com.trustfund.model.request.RegisterMediaRequest request) {
+        if (request.getUrl() == null || request.getUrl().isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "url is required");
+        }
+        return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.registerMedia(request));
+    }
+
     @PatchMapping("/{id}")
     @Operation(summary = "Update media metadata", description = "Update description, postId, or campaignId for a media record")
     public ResponseEntity<MediaFileResponse> update(@PathVariable Long id,

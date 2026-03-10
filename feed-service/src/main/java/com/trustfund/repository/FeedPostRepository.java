@@ -37,9 +37,9 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
       @Param("currentUserId") Long currentUserId,
       Pageable pageable);
 
-  Long countByCategoryIdAndStatus(Long categoryId, String status);
+  Long countByCategoryAndStatus(String category, String status);
 
-  Page<FeedPost> findByCategoryIdAndStatusOrderByCreatedAtDesc(Long categoryId, String status, Pageable pageable);
+  Page<FeedPost> findByCategoryAndStatusOrderByCreatedAtDesc(String category, String status, Pageable pageable);
 
   @Query("""
       SELECT p FROM FeedPost p

@@ -16,7 +16,7 @@ public class FeedPostResponse {
 
     private Long id;
     private Long campaignId;
-    private Long budgetId;
+    private Long expenditureId;
     private Long authorId;
     private String authorName;
     private String authorAvatar;
@@ -26,7 +26,7 @@ public class FeedPostResponse {
     private String content;
     private String status;
 
-    private Long categoryId;
+    private String category;
     private Long parentPostId;
     private Integer replyCount;
     private Integer viewCount;
@@ -36,8 +36,6 @@ public class FeedPostResponse {
     private Boolean isPinned;
     private Boolean isLocked;
     private Integer flagCount;
-
-    private java.util.List<ForumAttachmentResponse> attachments;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

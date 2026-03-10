@@ -10,49 +10,49 @@ Write-Host "Note: Each service will run in a separate window" -ForegroundColor Y
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-discovery-server.ps1`""
 
 # Wait 10 seconds for Discovery Server to be ready
-Start-Sleep -Seconds 10
+Start-Sleep -Seconds 7
 
 # Open API Gateway
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-api-gateway.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Identity Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-identity-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Campaign Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-campaign-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Media Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-media-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Feed Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-feed-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Flag Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-flag-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Chat Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-chat-service.ps1`""
 
 # Wait 5 seconds
-Start-Sleep -Seconds 5
+Start-Sleep -Seconds 2
 
 # Open Payment Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-payment-service.ps1`""

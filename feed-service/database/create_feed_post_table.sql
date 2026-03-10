@@ -2,26 +2,12 @@ CREATE DATABASE IF NOT EXISTS trustfundme_feed_db;
 
 USE trustfundme_feed_db;
 
-CREATE TABLE IF NOT EXISTS forum_category (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    icon_url VARCHAR(500),
-    color VARCHAR(20),
-    display_order INT DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_category_slug (slug),
-    INDEX idx_forum_category_is_active (is_active)
-);
-
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     campaign_id BIGINT NULL,
-    budget_id BIGINT NULL,
+    expenditure_id BIGINT NULL,
     author_id BIGINT NOT NULL,
-    category_id BIGINT NULL,
+    category VARCHAR(100) NULL,
     parent_post_id BIGINT NULL,
     type NVARCHAR(50) NOT NULL,
     visibility NVARCHAR(50) NOT NULL,
@@ -38,25 +24,10 @@ CREATE TABLE IF NOT EXISTS feed_post (
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_feed_post_author_id (author_id),
     INDEX idx_feed_post_campaign_id (campaign_id),
-    INDEX idx_feed_post_budget_id (budget_id),
-    INDEX idx_feed_post_category_id (category_id),
+    INDEX idx_feed_post_expenditure_id (expenditure_id),
+    INDEX idx_feed_post_category (category),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
-);
-
-CREATE TABLE IF NOT EXISTS forum_attachment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    type VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
-    url VARCHAR(1000) NOT NULL,
-    file_name VARCHAR(255) NULL,
-    file_size BIGINT NULL,
-    mime_type VARCHAR(100) NULL,
-    display_order INT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_attachment_post_id (post_id),
-    CONSTRAINT fk_forum_attachment_post
-        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS feed_post_comment (
