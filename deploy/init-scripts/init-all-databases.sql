@@ -8,17 +8,13 @@
 DROP DATABASE IF EXISTS trustfundme_campaign_db;
 DROP DATABASE IF EXISTS trustfundme_identity_db;
 DROP DATABASE IF EXISTS trustfundme_media_db;
-DROP DATABASE IF EXISTS trustfundme_feed_db;
 DROP DATABASE IF EXISTS trustfundme_moderation_db;
-DROP DATABASE IF EXISTS trustfundme_flag_db;
 DROP DATABASE IF EXISTS trustfundme_chat_db;
 DROP DATABASE IF EXISTS trustfundme_payment_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE trustfundme_feed_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE trustfundme_flag_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_chat_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_payment_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
@@ -29,8 +25,6 @@ CREATE USER IF NOT EXISTS 'trustfundme_user'@'%' IDENTIFIED BY 'trustfundme_pass
 GRANT ALL PRIVILEGES ON trustfundme_campaign_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
-GRANT ALL PRIVILEGES ON trustfundme_feed_db.* TO 'trustfundme_user'@'%';
-GRANT ALL PRIVILEGES ON trustfundme_flag_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_chat_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_payment_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
@@ -237,9 +231,9 @@ CREATE TABLE IF NOT EXISTS media (
 );
 
 -- =======================================
--- 3.2 Schema: feed-service (DB: trustfundme_feed_db)
+-- 3.2 Schema: feed-service (Now merged into DB: trustfundme_campaign_db)
 -- =======================================
-USE trustfundme_feed_db;
+USE trustfundme_campaign_db;
 
 CREATE TABLE IF NOT EXISTS forum_category (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -295,9 +289,9 @@ CREATE TABLE IF NOT EXISTS forum_attachment (
 );
 
 -- =======================================
--- 3.3 Schema: flag-service (DB: trustfundme_flag_db)
+-- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
 -- =======================================
-USE trustfundme_flag_db;
+USE trustfundme_campaign_db;
 
 CREATE TABLE IF NOT EXISTS flags (
     flag_id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -426,15 +420,15 @@ ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 -- Campaigns (fund_owner_id points to user id = 3)
 -- Campaign types: ITEMIZED (quỹ theo khoản mục, tự APPROVED khi tạo chi tiêu)
 --                 AUTHORIZED (quỹ ủy quyền, cần staff duyệt chi tiêu)
--- Campaign statuses: PENDING_APPROVAL (mới gửi duyệt), ACTIVE (đang gây quỹ), DRAFT (nháp)
+-- Campaign statuses: PENDING_APPROVAL (mới gửi duyệt), APPROVED (đang gây quỹ), DRAFT (nháp)
 INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, cover_image, description, category_id, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'ACTIVE', NULL, 'ITEMIZED', NOW(), NOW()),
+    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'APPROVED', NULL, 'ITEMIZED', NOW(), NOW()),
     (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW()),
     (3, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
-    (4, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'ACTIVE', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (4, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
     (5, 3, NULL, NULL, NULL, 0.00, 'Trồng 1000 cây xanh phủ xanh đồi trọc', NULL, 'Chung tay đóng góp cây giống để phục hồi rừng đầu nguồn, bảo vệ môi trường bền vững.', 5, NOW(), DATE_ADD(NOW(), INTERVAL 120 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
-    (6, 3, 2, NOW(), NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'ACTIVE', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (6, 3, 2, NOW(), NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
     (7, 3, NULL, NULL, NULL, 0.00, 'Học bổng Chắp cánh ước mơ 2024', NULL, 'Trao học bổng cho học sinh nghèo vượt khó tại các tỉnh miền núi phía Bắc.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 45 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title), category_id = VALUES(category_id), status = VALUES(status), type = VALUES(type), description = VALUES(description);
 
@@ -498,9 +492,9 @@ VALUES
 ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
 
 -- =======================================
--- 5. Sample Data: feed-service
+-- 5. Sample Data: feed-service (Mapped to trustfundme_campaign_db)
 -- =======================================
-USE trustfundme_feed_db;
+USE trustfundme_campaign_db;
 INSERT INTO forum_category (id, name, slug, description, color, display_order, is_active, created_at)
 VALUES
     (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),

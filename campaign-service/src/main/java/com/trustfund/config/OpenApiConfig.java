@@ -14,12 +14,12 @@ public class OpenApiConfig {
     @Bean
     public OpenAPI customOpenAPI() {
         final String securitySchemeName = "bearerAuth";
-        
+
         return new OpenAPI()
                 .info(new Info()
-                        .title("Campaign Service API")
+                        .title("Flag Service API")
                         .version("1.0")
-                        .description("Campaign Management Service for TrustFundME"))
+                        .description("Flagging and Reporting Service for TrustFundME"))
                 .addSecurityItem(new SecurityRequirement()
                         .addList(securitySchemeName))
                 .components(new Components()
@@ -29,6 +29,6 @@ public class OpenApiConfig {
                                         .type(SecurityScheme.Type.HTTP)
                                         .scheme("bearer")
                                         .bearerFormat("JWT")
-                                        .description("Enter JWT token from Identity Service")));
+                                        .description("Enter JWT token")));
     }
 }

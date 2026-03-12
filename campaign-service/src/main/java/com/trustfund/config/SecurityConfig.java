@@ -69,6 +69,10 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**")
                                                 .permitAll()
                                                 .requestMatchers("/api/expenditures/items/**").permitAll()
+                                                // Feed posts endpoints
+                                                .requestMatchers(HttpMethod.GET, "/api/feed-posts/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/flags/**").permitAll()
                                                 .anyRequest().authenticated())
                                 .sessionManagement(sess -> sess
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
