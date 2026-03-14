@@ -137,6 +137,7 @@
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
                     <mainClass>com.trustfund.PaymentServiceApplication</mainClass>
+                    <parameters>true</parameters>
                 </configuration>
             </plugin>
         </plugins>
