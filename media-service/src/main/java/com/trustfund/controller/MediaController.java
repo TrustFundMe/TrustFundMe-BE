@@ -53,11 +53,11 @@ public class MediaController {
     @Operation(summary = "Upload file with metadata", description = "Upload a file and save metadata (post, campaign, description)")
     public ResponseEntity<MediaFileResponse> upload(
             @RequestParam("file") MultipartFile file,
-            @RequestParam(required = false) Long postId,
-            @RequestParam(required = false) Long campaignId,
-            @RequestParam(required = false) Long expenditureId,
-            @RequestParam(required = false) MediaType mediaType,
-            @RequestParam(required = false) String description) throws IOException, InterruptedException {
+            @RequestParam(name = "postId", required = false) Long postId,
+            @RequestParam(name = "campaignId", required = false) Long campaignId,
+            @RequestParam(name = "expenditureId", required = false) Long expenditureId,
+            @RequestParam(name = "mediaType", required = false) MediaType mediaType,
+            @RequestParam(name = "description", required = false) String description) throws IOException, InterruptedException {
         
         System.out.println(">>> MediaController: Uploading file: " + (file != null ? file.getOriginalFilename() : "NULL") 
                 + ", size: " + (file != null ? file.getSize() : 0)
@@ -92,9 +92,9 @@ public class MediaController {
     @Operation(summary = "Upload file for conversation (Chat)", description = "Upload a file and save metadata for a specific conversation")
     public ResponseEntity<MediaFileResponse> uploadForConversation(
             @RequestParam("file") MultipartFile file,
-            @RequestParam Long conversationId,
-            @RequestParam(required = false) MediaType mediaType,
-            @RequestParam(required = false) String description) throws IOException, InterruptedException {
+            @RequestParam("conversationId") Long conversationId,
+            @RequestParam(name = "mediaType", required = false) MediaType mediaType,
+            @RequestParam(name = "description", required = false) String description) throws IOException, InterruptedException {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
         }
@@ -111,51 +111,51 @@ public class MediaController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get media by ID", description = "Get details of a media file from database")
-    public ResponseEntity<MediaFileResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<MediaFileResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(mediaService.getMediaById(id));
     }
 
     @GetMapping("/posts/{postId}")
     @Operation(summary = "Get media by Post ID", description = "Get all media files associated with a post")
-    public ResponseEntity<List<MediaFileResponse>> getByPostId(@PathVariable Long postId) {
+    public ResponseEntity<List<MediaFileResponse>> getByPostId(@PathVariable("postId") Long postId) {
         return ResponseEntity.ok(mediaService.getMediaByPostId(postId));
     }
 
     @GetMapping("/campaigns/{campaignId}")
     @Operation(summary = "Get media by Campaign ID", description = "Get all media files associated with a campaign")
-    public ResponseEntity<List<MediaFileResponse>> getByCampaignId(@PathVariable Long campaignId) {
+    public ResponseEntity<List<MediaFileResponse>> getByCampaignId(@PathVariable("campaignId") Long campaignId) {
         return ResponseEntity.ok(mediaService.getMediaByCampaignId(campaignId));
     }
 
     @GetMapping("/conversations/{conversationId}")
     @Operation(summary = "Get media by Conversation ID", description = "Get all media files associated with a conversation")
-    public ResponseEntity<List<MediaFileResponse>> getByConversationId(@PathVariable Long conversationId) {
+    public ResponseEntity<List<MediaFileResponse>> getByConversationId(@PathVariable("conversationId") Long conversationId) {
         return ResponseEntity.ok(mediaService.getMediaByConversationId(conversationId));
     }
 
     @GetMapping("/campaigns/{campaignId}/first-image")
     @Operation(summary = "Get first image by Campaign ID", description = "Get the first image associated with a campaign for cover display")
-    public ResponseEntity<MediaFileResponse> getFirstImageByCampaignId(@PathVariable Long campaignId) {
+    public ResponseEntity<MediaFileResponse> getFirstImageByCampaignId(@PathVariable("campaignId") Long campaignId) {
         return ResponseEntity.ok(mediaService.getFirstImageByCampaignId(campaignId));
     }
 
     @PatchMapping("/{id}")
     @Operation(summary = "Update media metadata", description = "Update description, postId, or campaignId for a media record")
-    public ResponseEntity<MediaFileResponse> update(@PathVariable Long id,
+    public ResponseEntity<MediaFileResponse> update(@PathVariable("id") Long id,
             @RequestBody com.trustfund.model.request.UpdateMediaRequest request) {
         return ResponseEntity.ok(mediaService.updateMedia(id, request));
     }
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update media status", description = "Update status (APPROVED/REJECTED/PENDING) for a media record")
-    public ResponseEntity<MediaFileResponse> updateStatus(@PathVariable Long id,
-            @RequestParam String status) {
+    public ResponseEntity<MediaFileResponse> updateStatus(@PathVariable("id") Long id,
+            @RequestParam("status") String status) {
         return ResponseEntity.ok(mediaService.updateMediaStatus(id, status));
     }
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete media by ID", description = "Delete media from storage and database")
-    public ResponseEntity<Void> delete(@PathVariable Long id) throws IOException, InterruptedException {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) throws IOException, InterruptedException {
         mediaService.deleteMedia(id);
         return ResponseEntity.noContent().build();
     }

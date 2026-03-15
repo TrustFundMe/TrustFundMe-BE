@@ -32,7 +32,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID")
-    public ResponseEntity<UserInfo> getUserById(@PathVariable Long id) {
+    public ResponseEntity<UserInfo> getUserById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
     }
 
@@ -40,7 +40,7 @@ public class UserController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF', 'USER', 'FUND_OWNER', 'FUND_DONOR')")
     @Operation(summary = "Update user", description = "Update user information by user ID (User can only update their own profile)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<UserInfo> updateUser(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(userService.updateUser(id, request));
     }
@@ -48,7 +48,7 @@ public class UserController {
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Delete user", description = "Permanently delete a user by user ID (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteUser(@PathVariable("id") Long id) {
         userService.deleteUser(id);
         return ResponseEntity.noContent().build();
     }
@@ -56,7 +56,7 @@ public class UserController {
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Ban user", description = "Ban/deactivate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<UserInfo> banUser(@PathVariable Long id, @RequestBody(required = false) java.util.Map<String, String> body) {
+    public ResponseEntity<UserInfo> banUser(@PathVariable("id") Long id, @RequestBody(required = false) java.util.Map<String, String> body) {
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(userService.banUser(id, reason));
     }
@@ -64,21 +64,21 @@ public class UserController {
     @PutMapping("/{id}/unban")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Unban user", description = "Unban/activate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<UserInfo> unbanUser(@PathVariable Long id) {
+    public ResponseEntity<UserInfo> unbanUser(@PathVariable("id") Long id) {
         return ResponseEntity.ok(userService.unbanUser(id));
     }
 
     @PutMapping("/{id}/upgrade-to-fund-donor")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Upgrade user to FUND_DONOR", description = "Upgrade user role to FUND_DONOR after KYC verification (Admin/Staff only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable Long id) {
+    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable("id") Long id) {
         userService.upgradeToFundDonor(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/check-email")
     @Operation(summary = "Check email existence", description = "Check if email already exists in database (public endpoint for sign-in vs sign-up flow)")
-    public ResponseEntity<CheckEmailResponse> checkEmail(@RequestParam String email) {
+    public ResponseEntity<CheckEmailResponse> checkEmail(@RequestParam("email") String email) {
         return ResponseEntity.ok(userService.checkEmail(email));
     }
 }

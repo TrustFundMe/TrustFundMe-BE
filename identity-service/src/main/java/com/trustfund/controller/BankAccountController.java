@@ -84,7 +84,7 @@ public class BankAccountController {
     @PostMapping("/users/{userId}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Submit bank account for User (Staff Only)", description = "Staff inputs bank account data for a user")
-    public ResponseEntity<BankAccountResponse> submitBankAccount(@PathVariable Long userId,
+    public ResponseEntity<BankAccountResponse> submitBankAccount(@PathVariable("userId") Long userId,
             @Valid @RequestBody CreateBankAccountRequest request) {
         return ResponseEntity.ok(bankAccountService.submitBankAccount(userId, request));
     }
@@ -93,9 +93,9 @@ public class BankAccountController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Get pending bank accounts", description = "Get list of pending bank account requests (Admin/Staff only)")
     public ResponseEntity<org.springframework.data.domain.Page<BankAccountResponse>> getPendingBankAccounts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];
         org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
@@ -136,8 +136,8 @@ public class BankAccountController {
     @GetMapping("/check-exists")
     @Operation(summary = "Check if bank account exists", description = "Check if a bank account number + bank code combo already exists for another user")
     public ResponseEntity<java.util.Map<String, Boolean>> checkAccountExists(
-            @RequestParam String accountNumber,
-            @RequestParam String bankCode) {
+            @RequestParam("accountNumber") String accountNumber,
+            @RequestParam("bankCode") String bankCode) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 

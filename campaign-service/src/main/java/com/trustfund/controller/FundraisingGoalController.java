@@ -31,13 +31,13 @@ public class FundraisingGoalController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get fundraising goal by ID", description = "Retrieve a fundraising goal by its ID (Public - no authentication required)")
-    public ResponseEntity<FundraisingGoal> getById(@PathVariable Long id) {
+    public ResponseEntity<FundraisingGoal> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(fundraisingGoalService.getById(id));
     }
 
     @GetMapping("/campaign/{campaignId}")
     @Operation(summary = "Get fundraising goals by campaign", description = "Retrieve all fundraising goals for a specific campaign (Public - no authentication required)")
-    public List<FundraisingGoal> getByCampaignId(@PathVariable Long campaignId) {
+    public List<FundraisingGoal> getByCampaignId(@PathVariable("campaignId") Long campaignId) {
         return fundraisingGoalService.getByCampaignId(campaignId);
     }
 
@@ -51,7 +51,7 @@ public class FundraisingGoalController {
     @PutMapping("/{id}")
     @Operation(summary = "Update fundraising goal", description = "Update an existing fundraising goal (Fund Owner, Staff and Admin only)")
     @PreAuthorize("hasAnyRole('FUND_OWNER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<FundraisingGoal> update(@PathVariable Long id,
+    public ResponseEntity<FundraisingGoal> update(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateFundraisingGoalRequest request) {
         return ResponseEntity.ok(fundraisingGoalService.update(id, request));
     }
@@ -59,7 +59,7 @@ public class FundraisingGoalController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete fundraising goal", description = "Delete a fundraising goal (Staff and Admin only)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         fundraisingGoalService.delete(id);
         return ResponseEntity.noContent().build();
     }

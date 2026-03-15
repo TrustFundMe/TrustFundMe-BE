@@ -45,9 +45,9 @@ public class FeedPostController {
     @GetMapping
     @Operation(summary = "Get active feed posts", description = "Get list of feed posts with status=ACTIVE and visibility rules")
     public ResponseEntity<Page<FeedPostResponse>> getActiveFeedPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort
     ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = null;
@@ -162,9 +162,9 @@ public class FeedPostController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get all feed posts (Admin)", description = "Get list of all feed posts without visibility filtering")
     public ResponseEntity<Page<FeedPostResponse>> getAllFeedPosts(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
 
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];

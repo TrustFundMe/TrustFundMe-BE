@@ -22,7 +22,7 @@ public class CampaignFollowController {
 
     @PostMapping("/{campaignId}")
     @Operation(summary = "Follow a campaign", description = "Follow a campaign by current authenticated user")
-    public ResponseEntity<Void> follow(@PathVariable Long campaignId) {
+    public ResponseEntity<Void> follow(@PathVariable("campaignId") Long campaignId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
 
@@ -32,7 +32,7 @@ public class CampaignFollowController {
 
     @DeleteMapping("/{campaignId}")
     @Operation(summary = "Unfollow a campaign", description = "Unfollow a campaign by current authenticated user")
-    public ResponseEntity<Void> unfollow(@PathVariable Long campaignId) {
+    public ResponseEntity<Void> unfollow(@PathVariable("campaignId") Long campaignId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
 
@@ -42,7 +42,7 @@ public class CampaignFollowController {
 
     @GetMapping("/{campaignId}/me")
     @Operation(summary = "Check if I follow a campaign", description = "Return true/false if current user follows campaign")
-    public ResponseEntity<Map<String, Boolean>> isFollowing(@PathVariable Long campaignId) {
+    public ResponseEntity<Map<String, Boolean>> isFollowing(@PathVariable("campaignId") Long campaignId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
 
@@ -52,14 +52,14 @@ public class CampaignFollowController {
 
     @GetMapping("/{campaignId}/count")
     @Operation(summary = "Count followers of a campaign", description = "Public endpoint to get follower count")
-    public ResponseEntity<Map<String, Long>> countFollowers(@PathVariable Long campaignId) {
+    public ResponseEntity<Map<String, Long>> countFollowers(@PathVariable("campaignId") Long campaignId) {
         long count = campaignFollowService.countFollowers(campaignId);
         return ResponseEntity.ok(Map.of("count", count));
     }
 
     @GetMapping("/{campaignId}/followers")
     @Operation(summary = "Get followers by campaignId", description = "Public endpoint to get follower list (userId + followedAt)")
-    public ResponseEntity<List<com.trustfund.model.response.CampaignFollowerResponse>> getFollowers(@PathVariable Long campaignId) {
+    public ResponseEntity<List<com.trustfund.model.response.CampaignFollowerResponse>> getFollowers(@PathVariable("campaignId") Long campaignId) {
         return ResponseEntity.ok(campaignFollowService.getFollowersByCampaignId(campaignId));
     }
 

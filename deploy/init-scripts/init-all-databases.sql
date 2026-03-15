@@ -108,13 +108,32 @@ CREATE TABLE `expenditures` (
     `status` VARCHAR(50) NULL,
     `staff_review_id` BIGINT NULL,
     `reject_reason` VARCHAR(1000) NULL,
-    `disbursement_proof_url` VARCHAR(1000) NULL,
-    `disbursed_at` DATETIME NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE CASCADE,
     INDEX `idx_expenditures_campaign_id` (`campaign_id`),
     INDEX `idx_expenditures_status` (`status`)
+);
+
+-- expenditure_transactions
+CREATE TABLE `expenditure_transactions` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `expenditure_id` BIGINT NOT NULL,
+    `from_user_id` BIGINT NULL,
+    `to_user_id` BIGINT NULL,
+    `amount` DECIMAL(19, 4) NOT NULL,
+    `from_bank_code` VARCHAR(50) NULL,
+    `from_account_number` VARCHAR(50) NULL,
+    `from_account_holder_name` VARCHAR(255) NULL,
+    `to_bank_code` VARCHAR(50) NULL,
+    `to_account_number` VARCHAR(50) NULL,
+    `to_account_holder_name` VARCHAR(255) NULL,
+    `type` VARCHAR(50) NOT NULL COMMENT 'PAYOUT, REFUND',
+    `proof_url` VARCHAR(1000) NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, COMPLETED, REJECTED',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (`expenditure_id`) REFERENCES `expenditures`(`id`) ON DELETE CASCADE,
+    INDEX `idx_exp_trans_exp_id` (`expenditure_id`)
 );
 
 -- expenditure_items
@@ -217,6 +236,8 @@ CREATE TABLE IF NOT EXISTS media (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     post_id BIGINT NULL,
     campaign_id BIGINT NULL,
+    conversation_id BIGINT NULL,
+    expenditure_id BIGINT NULL,
     media_type VARCHAR(50) NOT NULL,
     url VARCHAR(1000) NOT NULL,
     description VARCHAR(2000) NULL,
@@ -563,4 +584,17 @@ CREATE TABLE IF NOT EXISTS `donation_items` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`donation_id`) REFERENCES `donations`(`id`) ON DELETE CASCADE
 );
+
+-- Add sample data for the new Expenditure Transaction structure
+-- Creating a sample campaign for payout testing
+INSERT INTO campaigns (id, title, description, goal_amount, current_amount, type, status, fund_owner_id, category_id, is_deleted) 
+VALUES (10, 'Hỗ trợ đồng bào vùng lũ', 'Quyên góp khẩn cấp cho miền Trung', 500000000, 450000000, 'AUTHORIZED', 'ACTIVE', 3, 1, false);
+
+-- Expenditure for campaign 10 (AUTHORIZED)
+INSERT INTO expenditures (id, campaign_id, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, created_at)
+VALUES (10, 10, 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', 'WITHDRAWAL_REQUESTED', true, NOW());
+
+-- Transaction for expenditure 10
+INSERT INTO expenditure_transactions (expenditure_id, amount, from_user_id, to_user_id, from_bank_code, from_account_number, from_account_holder_name, to_bank_code, to_account_number, to_account_holder_name, type, status)
+VALUES (10, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING');
 

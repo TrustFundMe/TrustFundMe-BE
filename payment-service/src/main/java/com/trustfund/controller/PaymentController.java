@@ -47,7 +47,7 @@ public class PaymentController {
     }
 
     @GetMapping("/donation/{id}")
-    public ResponseEntity<?> getDonation(@PathVariable Long id) {
+    public ResponseEntity<?> getDonation(@PathVariable("id") Long id) {
         try {
             return ResponseEntity.ok(donationService.getDonation(id));
         } catch (Exception e) {
@@ -56,7 +56,7 @@ public class PaymentController {
     }
 
     @GetMapping("/donation/{id}/verify")
-    public ResponseEntity<?> verifyPayment(@PathVariable Long id) {
+    public ResponseEntity<?> verifyPayment(@PathVariable("id") Long id) {
         try {
             donationService.verifyPayment(id);
             return ResponseEntity.ok(Map.of("message", "Payment verified and synchronized"));
@@ -67,8 +67,8 @@ public class PaymentController {
     }
 
     @GetMapping("/expenditure-item/{id}/check")
-    public ResponseEntity<?> checkExpenditureItem(@PathVariable Long id,
-            @RequestParam(required = false) Integer quantity) {
+    public ResponseEntity<?> checkExpenditureItem(@PathVariable("id") Long id,
+            @RequestParam(name = "quantity", required = false) Integer quantity) {
         try {
             return ResponseEntity.ok(donationService.checkExpenditureItemLimit(id, quantity));
         } catch (Exception e) {
@@ -77,7 +77,7 @@ public class PaymentController {
     }
 
     @GetMapping("/campaign/{campaignId}/progress")
-    public ResponseEntity<?> getCampaignProgress(@PathVariable Long campaignId) {
+    public ResponseEntity<?> getCampaignProgress(@PathVariable("campaignId") Long campaignId) {
         try {
             return ResponseEntity.ok(donationService.getCampaignProgress(campaignId));
         } catch (Exception e) {
@@ -86,8 +86,8 @@ public class PaymentController {
     }
 
     @GetMapping("/campaign/{campaignId}/recent-donations")
-    public ResponseEntity<?> getRecentDonors(@PathVariable Long campaignId,
-            @RequestParam(defaultValue = "3") int limit) {
+    public ResponseEntity<?> getRecentDonors(@PathVariable("campaignId") Long campaignId,
+            @RequestParam(name = "limit", defaultValue = "3") int limit) {
         try {
             return ResponseEntity.ok(donationService.getRecentDonors(campaignId, limit));
         } catch (Exception e) {

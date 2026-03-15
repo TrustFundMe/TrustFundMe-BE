@@ -26,7 +26,7 @@ public class UserKYCController {
     @PostMapping("/users/{userId}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Submit KYC for User (Staff Only)", description = "Staff inputs KYC data for a user to verify them")
-    public ResponseEntity<KYCResponse> submitKYC(@PathVariable Long userId,
+    public ResponseEntity<KYCResponse> submitKYC(@PathVariable("userId") Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
         System.out.println(">>> UserKYCController: Submitting KYC for user: " + userId);
         System.out.println(">>> Payload: " + request);
@@ -36,7 +36,7 @@ public class UserKYCController {
     @PutMapping("/users/{userId}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Update KYC for User (Staff Only)", description = "Staff updates/resubmits KYC data for a user")
-    public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable Long userId,
+    public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable("userId") Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
         System.out.println(">>> UserKYCController: Resubmitting KYC for user: " + userId);
         System.out.println(">>> Payload: " + request);
@@ -55,7 +55,7 @@ public class UserKYCController {
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Get KYC by user ID", description = "Get KYC details of a specific user (STAFF/ADMIN only)")
-    public ResponseEntity<KYCResponse> getKYCByUserId(@PathVariable Long userId) {
+    public ResponseEntity<KYCResponse> getKYCByUserId(@PathVariable("userId") Long userId) {
         return ResponseEntity.ok(userKYCService.getKYCByUserId(userId));
     }
 
@@ -63,9 +63,9 @@ public class UserKYCController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Get all KYC requests", description = "Get list of all KYC requests (STAFF/ADMIN only)")
     public ResponseEntity<org.springframework.data.domain.Page<KYCResponse>> getAllKYCRequests(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];
         org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
@@ -82,9 +82,9 @@ public class UserKYCController {
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Get pending KYC requests", description = "Get list of pending KYC requests (STAFF/ADMIN only)")
     public ResponseEntity<org.springframework.data.domain.Page<KYCResponse>> getPendingKYCRequests(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
         String[] sortParts = sort.split(",");
         String sortField = sortParts[0];
         org.springframework.data.domain.Sort.Direction direction = (sortParts.length > 1
@@ -100,7 +100,7 @@ public class UserKYCController {
     @PatchMapping("/{id}/status")
     @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
     @Operation(summary = "Update KYC status", description = "Approve or Reject KYC (STAFF/ADMIN only)")
-    public ResponseEntity<KYCResponse> updateKYCStatus(@PathVariable Long id,
+    public ResponseEntity<KYCResponse> updateKYCStatus(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateKYCStatusRequest request) {
         return ResponseEntity.ok(userKYCService.updateKYCStatus(id, request.getStatus(), request.getRejectionReason()));
     }

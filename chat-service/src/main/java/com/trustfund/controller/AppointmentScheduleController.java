@@ -37,33 +37,33 @@ public class AppointmentScheduleController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get appointment by ID")
-    public ResponseEntity<AppointmentScheduleResponse> getAppointmentById(@PathVariable Long id) {
+    public ResponseEntity<AppointmentScheduleResponse> getAppointmentById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(service.getAppointmentById(id));
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update appointment details")
-    public ResponseEntity<AppointmentScheduleResponse> updateAppointment(@PathVariable Long id,
+    public ResponseEntity<AppointmentScheduleResponse> updateAppointment(@PathVariable("id") Long id,
             @Valid @RequestBody AppointmentScheduleRequest request) {
         return ResponseEntity.ok(service.updateAppointment(id, request));
     }
 
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update appointment status")
-    public ResponseEntity<AppointmentScheduleResponse> updateStatus(@PathVariable Long id,
-            @RequestParam AppointmentStatus status) {
+    public ResponseEntity<AppointmentScheduleResponse> updateStatus(@PathVariable("id") Long id,
+            @RequestParam("status") AppointmentStatus status) {
         return ResponseEntity.ok(service.updateStatus(id, status));
     }
 
     @GetMapping("/donor/{donorId}")
     @Operation(summary = "Get appointments by donor ID")
-    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByDonor(@PathVariable Long donorId) {
+    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByDonor(@PathVariable("donorId") Long donorId) {
         return ResponseEntity.ok(service.getAppointmentsByDonor(donorId));
     }
 
     @GetMapping("/staff/{staffId}")
     @Operation(summary = "Get appointments by staff ID")
-    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByStaff(@PathVariable Long staffId) {
+    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByStaff(@PathVariable("staffId") Long staffId) {
         return ResponseEntity.ok(service.getAppointmentsByStaff(staffId));
     }
 }

@@ -30,7 +30,7 @@ public class CampaignCategoryController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy danh mục theo ID", description = "Lấy thông tin chi tiết của một danh mục theo ID")
-    public ResponseEntity<CampaignCategoryResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<CampaignCategoryResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(categoryService.getById(id));
     }
 
@@ -44,7 +44,7 @@ public class CampaignCategoryController {
     @PutMapping("/{id}")
     @Operation(summary = "Cập nhật danh mục", description = "Cập nhật thông tin danh mục hiện có (Chỉ dành cho Staff và Admin)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<CampaignCategoryResponse> update(@PathVariable Long id,
+    public ResponseEntity<CampaignCategoryResponse> update(@PathVariable("id") Long id,
             @Valid @RequestBody CampaignCategoryRequest request) {
         return ResponseEntity.ok(categoryService.update(id, request));
     }
@@ -52,7 +52,7 @@ public class CampaignCategoryController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Xóa danh mục", description = "Xóa một danh mục chiến dịch (Chỉ dành cho Staff và Admin)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<Void> delete(@PathVariable Long id) {
+    public ResponseEntity<Void> delete(@PathVariable("id") Long id) {
         categoryService.delete(id);
         return ResponseEntity.noContent().build();
     }

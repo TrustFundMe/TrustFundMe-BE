@@ -1,40 +1,43 @@
 package com.trustfund.service;
 
-import com.trustfund.model.Expenditure;
 import com.trustfund.model.response.ExpenditureItemResponse;
+import com.trustfund.model.response.ExpenditureResponse;
+import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 public interface ExpenditureService {
-    Expenditure createExpenditure(CreateExpenditureRequest request);
+    ExpenditureResponse createExpenditure(CreateExpenditureRequest request);
 
-    List<Expenditure> getExpendituresByCampaign(Long campaignId);
+    List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId);
 
     List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId);
 
-    Expenditure getExpenditureById(Long id);
+    ExpenditureResponse getExpenditureById(Long id);
 
-    Expenditure updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request);
+    ExpenditureResponse updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request);
 
-    Expenditure updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request); // Added method
+    ExpenditureResponse updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request);
 
-    Expenditure updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request); // Updated
-                                                                                                                      // method
+    ExpenditureResponse updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request);
 
-    Expenditure requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt); // Updated method
+    ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt);
 
     List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
 
-    ExpenditureItemResponse getExpenditureItemById(Long id); // New method
+    ExpenditureItemResponse getExpenditureItemById(Long id);
 
-    void updateExpenditureItemQuantity(Long id, Integer amount); // New method
+    void updateExpenditureItemQuantity(Long id, Integer amount);
 
-    Expenditure addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
+    ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
     void deleteExpenditureItem(Long itemId);
 
-    Expenditure updateEvidenceStatus(Long id, String status);
+    ExpenditureResponse updateEvidenceStatus(Long id, String status);
+
+    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl);
 }

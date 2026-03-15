@@ -20,7 +20,7 @@ public class ChatWebSocketController {
     @MessageMapping("/chat/{conversationId}")
     @SendTo("/topic/conversation/{conversationId}")
     public MessageResponse sendMessage(
-            @DestinationVariable Long conversationId,
+            @DestinationVariable("conversationId") Long conversationId,
             @Payload ChatMessageRequest request) {
 
         System.out.println("[WebSocket] Receiving message for conversation: " + conversationId);

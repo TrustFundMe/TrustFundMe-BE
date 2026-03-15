@@ -34,7 +34,7 @@ public class InternalUserController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Lấy thông tin user theo ID (dùng nội bộ bởi các service khác)")
-    public ResponseEntity<UserInfoResponse> getUserInfo(@PathVariable Long id) {
+    public ResponseEntity<UserInfoResponse> getUserInfo(@PathVariable("id") Long id) {
         return userRepository.findById(id)
                 .map(u -> ResponseEntity.ok(UserInfoResponse.builder()
                         .id(u.getId())
@@ -47,7 +47,7 @@ public class InternalUserController {
 
     @GetMapping("/{id}/exists")
     @Operation(summary = "Kiểm tra user có tồn tại không (dùng bởi campaign-service khi tạo campaign)")
-    public ResponseEntity<Void> exists(@PathVariable Long id) {
+    public ResponseEntity<Void> exists(@PathVariable("id") Long id) {
         if (userRepository.existsById(id)) {
             return ResponseEntity.ok().build();
         }
@@ -56,7 +56,7 @@ public class InternalUserController {
 
     @GetMapping("/{id}/verification-status")
     @Operation(summary = "Lấy trạng thái xác thực KYC và Bank Account của user")
-    public ResponseEntity<UserVerificationStatusResponse> getVerificationStatus(@PathVariable Long id) {
+    public ResponseEntity<UserVerificationStatusResponse> getVerificationStatus(@PathVariable("id") Long id) {
         User user = userRepository.findById(id).orElse(null);
         if (user == null) {
             return ResponseEntity.notFound().build();
@@ -78,21 +78,21 @@ public class InternalUserController {
 
     @PutMapping("/{id}/upgrade-role")
     @Operation(summary = "Nâng cấp role user lên FUND_OWNER (dùng khi duyệt campaign)")
-    public ResponseEntity<Void> upgradeRole(@PathVariable Long id) {
+    public ResponseEntity<Void> upgradeRole(@PathVariable("id") Long id) {
         userService.upgradeToFundOwner(id);
         return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}/upgrade-to-fund-donor")
     @Operation(summary = "Nâng cấp role user lên FUND_DONOR (dùng sau khi KYC được duyệt)")
-    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable Long id) {
+    public ResponseEntity<Void> upgradeToFundDonor(@PathVariable("id") Long id) {
         userService.upgradeToFundDonor(id);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/{id}/name")
     @Operation(summary = "Lấy full name của user theo ID (dùng nội bộ)")
-    public ResponseEntity<String> getUserFullName(@PathVariable Long id) {
+    public ResponseEntity<String> getUserFullName(@PathVariable("id") Long id) {
         return userRepository.findById(id)
                 .map(u -> ResponseEntity.ok(u.getFullName()))
                 .orElse(ResponseEntity.notFound().build());
@@ -100,7 +100,7 @@ public class InternalUserController {
 
     @GetMapping("/{id}/primary-bank")
     @Operation(summary = "Lấy tài khoản ngân hàng chính của user (ưu tiên đã duyệt)")
-    public ResponseEntity<com.trustfund.model.response.BankAccountResponse> getPrimaryBankAccount(@PathVariable Long id) {
+    public ResponseEntity<com.trustfund.model.response.BankAccountResponse> getPrimaryBankAccount(@PathVariable("id") Long id) {
         java.util.List<com.trustfund.model.BankAccount> accounts = bankAccountRepository.findByUser_Id(id);
         if (accounts.isEmpty()) {
             return ResponseEntity.notFound().build();

@@ -31,13 +31,13 @@ public class CampaignController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get campaign by ID", description = "Retrieve a campaign by its ID (Public - no authentication required)")
-    public ResponseEntity<CampaignResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<CampaignResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(campaignService.getById(id));
     }
 
     @GetMapping("/fund-owner/{fundOwnerId}")
     @Operation(summary = "Get campaigns by fund owner", description = "Retrieve all campaigns created by a specific fund owner (Public - no authentication required)")
-    public List<CampaignResponse> getByFundOwnerId(@PathVariable Long fundOwnerId) {
+    public List<CampaignResponse> getByFundOwnerId(@PathVariable("fundOwnerId") Long fundOwnerId) {
         return campaignService.getByFundOwnerId(fundOwnerId);
     }
 
@@ -51,7 +51,7 @@ public class CampaignController {
     @PutMapping("/{id}")
     @Operation(summary = "Update campaign", description = "Update an existing campaign (Fund Owner, Staff and Admin only)")
     @PreAuthorize("hasAnyRole('FUND_OWNER', 'STAFF', 'ADMIN')")
-    public ResponseEntity<CampaignResponse> update(@PathVariable Long id,
+    public ResponseEntity<CampaignResponse> update(@PathVariable("id") Long id,
             @Valid @RequestBody UpdateCampaignRequest request) {
         return ResponseEntity.ok(campaignService.update(id, request));
     }
@@ -59,20 +59,20 @@ public class CampaignController {
     @DeleteMapping("/{id}")
     @Operation(summary = "Mark campaign as deleted", description = "Delete a campaign (Staff and Admin only)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<CampaignResponse> markAsDeleted(@PathVariable Long id) {
+    public ResponseEntity<CampaignResponse> markAsDeleted(@PathVariable("id") Long id) {
         return ResponseEntity.ok(campaignService.markAsDeleted(id));
     }
 
     @GetMapping("/status/{status}")
     @Operation(summary = "Get campaigns by status", description = "Retrieve all campaigns with a specific status (Staff and Admin only)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public List<CampaignResponse> getByStatus(@PathVariable String status) {
+    public List<CampaignResponse> getByStatus(@PathVariable("status") String status) {
         return campaignService.getByStatus(status);
     }
 
     @GetMapping("/category/{categoryId}")
     @Operation(summary = "Get campaigns by category", description = "Retrieve all campaigns for a specific category (Public)")
-    public List<CampaignResponse> getByCategoryId(@PathVariable Long categoryId) {
+    public List<CampaignResponse> getByCategoryId(@PathVariable("categoryId") Long categoryId) {
         return campaignService.getByCategoryId(categoryId);
     }
 
@@ -80,7 +80,7 @@ public class CampaignController {
     @Operation(summary = "Review campaign", description = "Staff or Admin reviews a campaign and provides feedback (APPROVED/REJECTED)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<CampaignResponse> reviewCampaign(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody com.trustfund.model.request.ReviewCampaignRequest request,
             org.springframework.security.core.Authentication authentication) {
 

@@ -37,7 +37,7 @@ public class FlagController {
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flag by ID", description = "View details of a specific report")
-    public ResponseEntity<FlagResponse> getById(@PathVariable Long id) {
+    public ResponseEntity<FlagResponse> getById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(flagService.getFlagById(id));
     }
 
@@ -45,9 +45,9 @@ public class FlagController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get all reports (with status filter)", description = "Admin/Staff list all reports, optionally filtered by status (PENDING, RESOLVED, DISMISSED)")
     public ResponseEntity<Page<FlagResponse>> getFlags(
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(flagService.getAllFlags(status, pageable));
     }
@@ -56,8 +56,8 @@ public class FlagController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get pending reports", description = "Admin/Staff list all reports with PENDING status")
     public ResponseEntity<Page<FlagResponse>> getPending(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(flagService.getAllFlags("PENDING", pageable));
     }
@@ -66,9 +66,9 @@ public class FlagController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flags by Post ID", description = "Admin/Staff view all reports for a specific post")
     public ResponseEntity<Page<FlagResponse>> getByPostId(
-            @PathVariable Long postId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @PathVariable("postId") Long postId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(flagService.getFlagsByPostId(postId, pageable));
     }
@@ -77,9 +77,9 @@ public class FlagController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Get flags by Campaign ID", description = "Admin/Staff view all reports for a specific campaign")
     public ResponseEntity<Page<FlagResponse>> getByCampaignId(
-            @PathVariable Long campaignId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @PathVariable("campaignId") Long campaignId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(flagService.getFlagsByCampaignId(campaignId, pageable));
     }
@@ -88,8 +88,8 @@ public class FlagController {
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get my reports", description = "User views their own submitted reports")
     public ResponseEntity<Page<FlagResponse>> getMyFlags(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long userId = Long.parseLong(authentication.getName());
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
@@ -100,8 +100,8 @@ public class FlagController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Review a report", description = "Admin/Staff resolve or dismiss a report")
     public ResponseEntity<FlagResponse> review(
-            @PathVariable Long id,
-            @RequestParam String status // RESOLVED, DISMISSED, etc.
+            @PathVariable("id") Long id,
+            @RequestParam("status") String status // RESOLVED, DISMISSED, etc.
     ) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long adminId = Long.parseLong(authentication.getName());

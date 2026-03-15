@@ -18,4 +18,6 @@ package com.trustfund.model.request;
      private Long staffId;
  
      private String reasonReject;
+ 
+     private String proofUrl;
  }

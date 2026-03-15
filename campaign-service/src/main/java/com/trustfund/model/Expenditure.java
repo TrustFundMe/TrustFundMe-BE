@@ -23,6 +23,10 @@ public class Expenditure {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @OneToMany(mappedBy = "expenditure", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ExpenditureTransaction> transactions = new ArrayList<>();
+
     @Column(name = "campaign_id", nullable = false)
     private Long campaignId;
 
@@ -56,21 +60,6 @@ public class Expenditure {
     
     @Column(name = "reject_reason", length = 1000)
     private String rejectReason;
-
-    @Column(name = "disbursement_proof_url", length = 1000)
-    private String disbursementProofUrl;
-
-    @Column(name = "bank_code", length = 50)
-    private String bankCode;
-
-    @Column(name = "account_number", length = 50)
-    private String accountNumber;
-
-    @Column(name = "account_holder_name", length = 255)
-    private String accountHolderName;
-
-    @Column(name = "disbursed_at")
-    private LocalDateTime disbursedAt;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -43,9 +43,9 @@ public class FeedPostCommentController {
     @Operation(summary = "Get comments", description = "Get root-level comments with nested replies for a feed post")
     public ResponseEntity<Page<FeedPostCommentResponse>> getComments(
             @PathVariable("postId") Long postId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "createdAt,desc") String sort) {
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
 
         Long currentUserId = null;
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
