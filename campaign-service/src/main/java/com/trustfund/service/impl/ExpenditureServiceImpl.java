@@ -38,6 +38,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final ExpenditureTransactionRepository transactionRepository;
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
+    private final com.trustfund.service.ApprovalTaskService approvalTaskService;
 
     @Override
     @Transactional
@@ -144,6 +145,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                             .build())
                     .collect(Collectors.toList());
             expenditureItemRepository.saveAll(items);
+        }
+
+        // Create Approval Task for the new expenditure
+        if ("PENDING_REVIEW".equalsIgnoreCase(savedExpenditure.getStatus())) {
+            approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
         }
 
         return mapToResponse(savedExpenditure);
@@ -354,6 +360,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
         }
 
+        approvalTaskService.completeTask("EXPENDITURE", id);
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
@@ -549,7 +556,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
         expenditure.setEvidenceStatus(status);
-        return mapToResponse(expenditureRepository.save(expenditure));
+        Expenditure saved = expenditureRepository.save(expenditure);
+
+        if ("SUBMITTED".equalsIgnoreCase(status)) {
+            approvalTaskService.createAndAssignTask("EVIDENCE", id);
+        } else if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            approvalTaskService.completeTask("EVIDENCE", id);
+        }
+
+        return mapToResponse(saved);
     }
 
     @Override

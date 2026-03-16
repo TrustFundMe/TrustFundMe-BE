@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class FlagServiceImpl implements FlagService {
 
     private final FlagRepository flagRepository;
+    private final ApprovalTaskService approvalTaskService;
 
     @Override
     @Transactional
@@ -43,6 +44,7 @@ public class FlagServiceImpl implements FlagService {
                 .build();
 
         Flag savedFlag = flagRepository.save(flag);
+        approvalTaskService.createAndAssignTask("FLAG", savedFlag.getId());
         return mapToResponse(savedFlag);
     }
 
@@ -95,6 +97,7 @@ public class FlagServiceImpl implements FlagService {
         flag.setStatus(status);
 
         Flag updatedFlag = flagRepository.save(flag);
+        approvalTaskService.completeTask("FLAG", updatedFlag.getId());
         return mapToResponse(updatedFlag);
     }
 

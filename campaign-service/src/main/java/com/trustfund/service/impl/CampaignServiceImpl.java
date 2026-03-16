@@ -27,6 +27,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final CampaignCategoryRepository categoryRepository;
     private final IdentityServiceClient identityServiceClient;
     private final MediaServiceClient mediaServiceClient;
+    private final com.trustfund.service.ApprovalTaskService approvalTaskService;
 
     @Override
     public List<CampaignResponse> getAll() {
@@ -79,6 +80,11 @@ public class CampaignServiceImpl implements CampaignService {
 
         // Upgrade user role to FUND_OWNER
         identityServiceClient.upgradeUserRole(request.getFundOwnerId());
+
+        // Create Approval Task if pending
+        if ("PENDING_APPROVAL".equalsIgnoreCase(saved.getStatus())) {
+            approvalTaskService.createAndAssignTask("CAMPAIGN", saved.getId());
+        }
 
         return toCampaignResponse(saved);
     }
@@ -168,7 +174,10 @@ public class CampaignServiceImpl implements CampaignService {
         campaign.setApprovedByStaff(staffId);
         campaign.setApprovedAt(java.time.LocalDateTime.now());
 
-        return toCampaignResponse(campaignRepository.save(campaign));
+        Campaign saved = campaignRepository.save(campaign);
+        approvalTaskService.completeTask("CAMPAIGN", saved.getId());
+
+        return toCampaignResponse(saved);
     }
 
     private CampaignResponse toCampaignResponse(Campaign campaign) {

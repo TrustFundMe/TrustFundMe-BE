@@ -133,6 +133,12 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.getMediaByConversationId(conversationId));
     }
 
+    @GetMapping("/expenditures/{expenditureId}")
+    @Operation(summary = "Get media by Expenditure ID", description = "Get all media files associated with an expenditure (evidence)")
+    public ResponseEntity<List<MediaFileResponse>> getByExpenditureId(@PathVariable("expenditureId") Long expenditureId) {
+        return ResponseEntity.ok(mediaService.getMediaByExpenditureId(expenditureId));
+    }
+
     @GetMapping("/campaigns/{campaignId}/first-image")
     @Operation(summary = "Get first image by Campaign ID", description = "Get the first image associated with a campaign for cover display")
     public ResponseEntity<MediaFileResponse> getFirstImageByCampaignId(@PathVariable("campaignId") Long campaignId) {

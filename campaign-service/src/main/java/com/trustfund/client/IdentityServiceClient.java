@@ -114,4 +114,19 @@ public class IdentityServiceClient {
             return null;
         }
     }
+
+    /**
+     * Lấy danh sách ID của tất cả nhân viên từ identity-service.
+     */
+    public java.util.List<Long> getStaffIds() {
+        String url = identityServiceUrl + "/api/internal/users/staff-ids";
+        try {
+            log.debug("Fetching staff IDs from {}", url);
+            Integer[] ids = restTemplate.getForObject(url, Integer[].class);
+            return ids != null ? java.util.Arrays.stream(ids).map(Integer::longValue).collect(java.util.stream.Collectors.toList()) : java.util.Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Failed to fetch staff IDs: {}", e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
 }

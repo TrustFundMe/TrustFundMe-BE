@@ -122,4 +122,14 @@ public class InternalUserController {
                 .status(bestAcc.getStatus())
                 .build());
     }
+
+    @GetMapping("/staff-ids")
+    @Operation(summary = "Lấy danh sách ID của tất cả nhân viên đang hoạt động (dùng nội bộ)")
+    public ResponseEntity<java.util.List<Long>> getStaffIds() {
+        java.util.List<Long> staffIds = userRepository.findAllByRole(User.Role.STAFF).stream()
+                .filter(User::getIsActive)
+                .map(User::getId)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(staffIds);
+    }
 }

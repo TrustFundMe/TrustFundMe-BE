@@ -95,6 +95,13 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public List<MediaFileResponse> getMediaByExpenditureId(Long expenditureId) {
+        return mediaRepository.findByExpenditureId(expenditureId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public MediaFileResponse getFirstImageByCampaignId(Long campaignId) {
         return mediaRepository.findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(campaignId, MediaType.PHOTO)
                 .map(this::mapToResponse)
