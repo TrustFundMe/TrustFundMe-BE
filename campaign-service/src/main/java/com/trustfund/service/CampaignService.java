@@ -14,6 +14,8 @@ public interface CampaignService {
 
     List<CampaignResponse> getByFundOwnerId(Long fundOwnerId);
 
+    org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId, org.springframework.data.domain.Pageable pageable);
+
     CampaignResponse create(CreateCampaignRequest request);
 
     CampaignResponse update(Long id, UpdateCampaignRequest request);

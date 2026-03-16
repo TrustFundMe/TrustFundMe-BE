@@ -45,9 +45,15 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
-        return campaignRepository.findByFundOwnerId(fundOwnerId).stream()
+        return campaignRepository.findByFundOwnerId(fundOwnerId, org.springframework.data.domain.Pageable.unpaged()).stream()
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId, org.springframework.data.domain.Pageable pageable) {
+        return campaignRepository.findByFundOwnerId(fundOwnerId, pageable)
+                .map(this::toCampaignResponse);
     }
 
     @Override

@@ -152,6 +152,12 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.updateMedia(id, request));
     }
 
+    @PostMapping("/register")
+    @Operation(summary = "Register existing media URL", description = "Create a database record for a file already uploaded to storage")
+    public ResponseEntity<MediaFileResponse> register(@RequestBody com.trustfund.model.request.RegisterMediaRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.registerMedia(request));
+    }
+
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update media status", description = "Update status (APPROVED/REJECTED/PENDING) for a media record")
     public ResponseEntity<MediaFileResponse> updateStatus(@PathVariable("id") Long id,

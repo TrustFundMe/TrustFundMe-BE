@@ -41,6 +41,15 @@ public class CampaignController {
         return campaignService.getByFundOwnerId(fundOwnerId);
     }
 
+    @GetMapping("/fund-owner/{fundOwnerId}/paginated")
+    @Operation(summary = "Get paginated campaigns by fund owner", description = "Retrieve campaigns created by a specific fund owner with pagination (Public)")
+    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(
+            @PathVariable("fundOwnerId") Long fundOwnerId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "6") int size) {
+        return campaignService.getByFundOwnerIdPaginated(fundOwnerId, org.springframework.data.domain.PageRequest.of(page, size));
+    }
+
     @PostMapping
     @Operation(summary = "Create new campaign", description = "Create a new campaign (Authentication required - any authenticated user)")
     public ResponseEntity<CampaignResponse> create(@Valid @RequestBody CreateCampaignRequest request) {

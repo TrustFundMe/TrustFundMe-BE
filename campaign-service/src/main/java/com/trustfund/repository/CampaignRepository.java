@@ -9,7 +9,7 @@ import java.util.List;
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
-    List<Campaign> findByFundOwnerId(Long fundOwnerId);
+    org.springframework.data.domain.Page<Campaign> findByFundOwnerId(Long fundOwnerId, org.springframework.data.domain.Pageable pageable);
 
     List<Campaign> findByStatus(String status);
 
