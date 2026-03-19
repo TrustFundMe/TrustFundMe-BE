@@ -1,8 +1,8 @@
 package com.trustfund.service.implementServices;
 
 import com.trustfund.client.UserInfoClient;
+import com.trustfund.client.MediaServiceClient;
 import com.trustfund.model.FeedPost;
-import com.trustfund.model.ForumAttachment;
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
@@ -12,7 +12,7 @@ import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
-import com.trustfund.repository.ForumAttachmentRepository;
+import com.trustfund.repository.ForumCategoryRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,7 +25,8 @@ import java.util.Set;
 public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
-    private final ForumAttachmentRepository forumAttachmentRepository;
+    private final MediaServiceClient mediaServiceClient;
+    private final ForumCategoryRepository forumCategoryRepository;
     private final FlagRepository flagRepository;
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
@@ -42,21 +43,10 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .status(request.getStatus() == null || request.getStatus().isBlank() ? "DRAFT" : request.getStatus())
+                .categoryId(request.getCategoryId())
                 .build();
 
         FeedPost saved = feedPostRepository.save(feedPost);
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            int order = 0;
-            for (com.trustfund.model.request.AttachmentInput att : request.getAttachments()) {
-                ForumAttachment forumAtt = ForumAttachment.builder()
-                        .postId(saved.getId())
-                        .type(att.getType() != null && !att.getType().isBlank() ? att.getType() : "IMAGE")
-                        .url(att.getUrl())
-                        .displayOrder(order++)
-                        .build();
-                forumAttachmentRepository.save(forumAtt);
-            }
-        }
         return toResponse(saved, authorId, null);
     }
 
@@ -233,26 +223,13 @@ public class FeedPostServiceImpl implements FeedPostService {
             post.setBudgetId(null);
         }
 
-        FeedPost saved = feedPostRepository.save(post);
-
-        forumAttachmentRepository.deleteByPostId(id);
-
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            Set<String> seenUrls = new HashSet<>();
-            int order = 0;
-            for (com.trustfund.model.request.AttachmentInput att : request.getAttachments()) {
-                if (att.getUrl() == null || att.getUrl().isBlank()) continue;
-                if (seenUrls.contains(att.getUrl())) continue;
-                seenUrls.add(att.getUrl());
-                ForumAttachment forumAtt = ForumAttachment.builder()
-                        .postId(saved.getId())
-                        .type(att.getType() != null && !att.getType().isBlank() ? att.getType() : "IMAGE")
-                        .url(att.getUrl())
-                        .displayOrder(order++)
-                        .build();
-                forumAttachmentRepository.save(forumAtt);
-            }
+        if (request.getCategoryId() != null) {
+            post.setCategoryId(request.getCategoryId());
+        } else {
+            post.setCategoryId(null);
         }
+
+        FeedPost saved = feedPostRepository.save(post);
 
         return toResponse(saved, currentUserId, null);
     }
@@ -267,7 +244,6 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (!currentUserId.equals(post.getAuthorId())) {
             throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to delete this feed post");
         }
-        forumAttachmentRepository.deleteAll(forumAttachmentRepository.findByPostIdOrderByDisplayOrderAsc(id));
         feedPostRepository.delete(post);
     }
 
@@ -328,9 +304,6 @@ public class FeedPostServiceImpl implements FeedPostService {
     public void deleteByAdmin(Long id) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
-
-        // Delete attachments
-        forumAttachmentRepository.deleteByPostId(id);
 
         // Delete likes
         feedPostLikeRepository.deleteByPostId(id);
@@ -393,26 +366,56 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        java.util.List<ForumAttachment> attachments = forumAttachmentRepository
-                .findByPostIdOrderByDisplayOrderAsc(entity.getId());
         Set<String> seenUrls = new HashSet<>();
-        java.util.List<ForumAttachmentResponse> attachmentResponses = attachments.stream()
-                .filter(att -> {
-                    if (att.getUrl() == null) return false;
-                    if (seenUrls.contains(att.getUrl())) return false;
-                    seenUrls.add(att.getUrl());
-                    return true;
-                })
-                .map(att -> ForumAttachmentResponse.builder()
-                        .id(att.getId())
-                        .type(att.getType())
-                        .url(att.getUrl())
-                        .fileName(att.getFileName())
-                        .fileSize(att.getFileSize())
-                        .mimeType(att.getMimeType())
-                        .displayOrder(att.getDisplayOrder())
-                        .build())
-                .collect(java.util.stream.Collectors.toList());
+
+        String categoryName = null;
+        if (entity.getCategoryId() != null) {
+            categoryName = forumCategoryRepository.findById(entity.getCategoryId())
+                    .map(com.trustfund.model.ForumCategory::getName)
+                    .orElse(null);
+        }
+
+        java.util.List<java.util.Map<String, Object>> mediaList =
+                mediaServiceClient.getMediaByPostId(entity.getId());
+
+        java.util.List<ForumAttachmentResponse> attachmentResponses = new java.util.ArrayList<>();
+        int order = 0;
+        for (java.util.Map<String, Object> media : mediaList) {
+            Object urlObj = media.get("url");
+            if (!(urlObj instanceof String) || ((String) urlObj).isBlank()) continue;
+            String url = (String) urlObj;
+
+            if (seenUrls.contains(url)) continue;
+            seenUrls.add(url);
+
+            Object idObj = media.get("id");
+            Long mediaId = idObj instanceof Number ? ((Number) idObj).longValue() : null;
+
+            Object typeObj = media.get("mediaType");
+            String mediaType = typeObj instanceof String ? (String) typeObj : null;
+            String attachmentType = "PHOTO".equalsIgnoreCase(mediaType) ? "IMAGE" : "FILE";
+
+            Object fileNameObj = media.get("fileName");
+            String fileName = fileNameObj instanceof String ? (String) fileNameObj : null;
+
+            Object sizeObj = media.get("sizeBytes");
+            Long fileSize = sizeObj instanceof Number ? ((Number) sizeObj).longValue() : null;
+
+            Object contentTypeObj = media.get("contentType");
+            String mimeType = contentTypeObj instanceof String ? (String) contentTypeObj : null;
+
+            attachmentResponses.add(
+                    ForumAttachmentResponse.builder()
+                            .id(mediaId)
+                            .type(attachmentType)
+                            .url(url)
+                            .fileName(fileName)
+                            .fileSize(fileSize)
+                            .mimeType(mimeType)
+                            .displayOrder(order++)
+                            .build()
+            );
+        }
 
         boolean isLiked = false;
         if (currentUserId != null) {
@@ -432,6 +435,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .status(entity.getStatus())
+                .category(categoryName)
                 .categoryId(entity.getCategoryId())
                 .parentPostId(entity.getParentPostId())
                 .replyCount(entity.getReplyCount())

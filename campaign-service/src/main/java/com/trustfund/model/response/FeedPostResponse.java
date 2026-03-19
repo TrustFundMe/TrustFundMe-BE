@@ -25,6 +25,9 @@ public class FeedPostResponse {
     private String content;
     private String status;
 
+    // Resolved category slug/name for client display (joined from feed_category)
+    private String category;
+
     private Long categoryId;
     private Long parentPostId;
     private Integer replyCount;

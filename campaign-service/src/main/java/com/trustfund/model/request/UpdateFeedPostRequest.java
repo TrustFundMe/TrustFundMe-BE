@@ -27,4 +27,7 @@ public class UpdateFeedPostRequest {
     private Long budgetId;
 
     private List<AttachmentInput> attachments;
+
+    // Feed category linkage (feed_post.category_id -> feed_category.id)
+    private Long categoryId;
 }

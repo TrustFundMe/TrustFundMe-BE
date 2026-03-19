@@ -1,6 +1,6 @@
 -- =======================================
 -- Seed fake feed posts for testing
--- Run after init-all-databases.sql (DB + schema + forum_category + sample users must exist).
+-- Run after init-all-databases.sql (DB + schema + feed_category + sample users must exist).
 -- Safe to run multiple times (ON DUPLICATE KEY UPDATE).
 -- Post ids 8–19 to avoid conflict with init sample posts 1–7.
 -- author_id 3,4,5,6 = users from identity (Fund Owner, Normal User, Alice, Bob).
