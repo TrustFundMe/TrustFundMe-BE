@@ -8,6 +8,7 @@ import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
 import com.trustfund.model.response.ForumAttachmentResponse;
+import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
@@ -25,6 +26,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
     private final ForumAttachmentRepository forumAttachmentRepository;
+    private final FlagRepository flagRepository;
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
@@ -55,7 +57,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 forumAttachmentRepository.save(forumAtt);
             }
         }
-        return toResponse(saved, authorId);
+        return toResponse(saved, authorId, null);
     }
 
     @Override
@@ -72,7 +74,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         incrementViewCountIfEligible(id, currentUserId, ipAddress);
 
         if (visibility.equals("PUBLIC")) {
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         if (currentUserId == null) {
@@ -83,12 +85,12 @@ public class FeedPostServiceImpl implements FeedPostService {
             if (!currentUserId.equals(post.getAuthorId())) {
                 throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to view this feed post");
             }
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         if (visibility.equals("FOLLOWERS")) {
             // TODO: check follow status
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
@@ -108,7 +110,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId,
             org.springframework.data.domain.Pageable pageable) {
         return feedPostRepository.findVisibleActivePosts(currentUserId, pageable)
-                .map(post -> toResponse(post, currentUserId));
+                .map(post -> toResponse(post, currentUserId, null));
     }
 
     @Override
@@ -128,13 +130,13 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
 
-        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
 
         post.setStatus(status);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -169,7 +171,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         post.setVisibility(visibility);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -200,7 +202,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -252,7 +254,7 @@ public class FeedPostServiceImpl implements FeedPostService {
             }
         }
 
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -297,13 +299,28 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         feedPostRepository.save(post);
-        return toResponse(post, currentUserId);
+        return toResponse(post, currentUserId, null);
     }
 
     @Override
     public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<FeedPost> posts = feedPostRepository.findAll(pageable);
-        return posts.map(post -> toResponse(post, null));
+        java.util.List<Long> postIds = posts.getContent().stream()
+                .map(FeedPost::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<Long, Integer> flagCountByPostId = new java.util.HashMap<>();
+        if (!postIds.isEmpty()) {
+            java.util.List<Object[]> rows = flagRepository.countPendingFlagsByPostIds(postIds, "PENDING");
+            for (Object[] row : rows) {
+                if (row == null || row.length < 2) continue;
+                Long postId = (Long) row[0];
+                Long count = (Long) row[1];
+                flagCountByPostId.put(postId, count != null ? count.intValue() : 0);
+            }
+        }
+
+        return posts.map(post -> toResponse(post, null, flagCountByPostId.get(post.getId())));
     }
 
     @Override
@@ -348,7 +365,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
         post.setIsPinned(post.getIsPinned() == null ? true : !post.getIsPinned());
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
     @Override
@@ -357,7 +374,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
         post.setIsLocked(post.getIsLocked() == null ? true : !post.getIsLocked());
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
     @Override
@@ -367,15 +384,15 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (status == null || status.isBlank()) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
-        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
         post.setStatus(status);
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
-    private FeedPostResponse toResponse(FeedPost entity, Long currentUserId) {
+    private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
         java.util.List<ForumAttachment> attachments = forumAttachmentRepository
                 .findByPostIdOrderByDisplayOrderAsc(entity.getId());
         Set<String> seenUrls = new HashSet<>();
@@ -421,6 +438,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())
                 .commentCount(entity.getCommentCount())
+                .flagCount(flagCount)
                 .isLiked(isLiked)
                 .isPinned(entity.getIsPinned())
                 .isLocked(entity.getIsLocked())

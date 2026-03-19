@@ -35,6 +35,6 @@ public class CreateFeedPostRequest {
     @Size(max = 2000)
     private String content;
 
-    @Pattern(regexp = "DRAFT|ACTIVE")
+    @Pattern(regexp = "DRAFT|PUBLISHED")
     private String status;
 }

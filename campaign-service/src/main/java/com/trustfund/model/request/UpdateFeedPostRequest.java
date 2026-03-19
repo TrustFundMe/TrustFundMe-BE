@@ -21,7 +21,7 @@ public class UpdateFeedPostRequest {
     @Size(max = 2000)
     private String content;
 
-    @Pattern(regexp = "DRAFT|ACTIVE")
+    @Pattern(regexp = "DRAFT|PUBLISHED")
     private String status;
 
     private Long budgetId;
