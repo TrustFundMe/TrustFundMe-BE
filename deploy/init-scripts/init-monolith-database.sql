@@ -211,7 +211,7 @@ CREATE TABLE media (
 -- 5. Schema: Feed (Forum / Social)
 -- =======================================
 
-CREATE TABLE forum_category (
+CREATE TABLE feed_category (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     slug VARCHAR(100) NOT NULL UNIQUE,
@@ -247,22 +247,7 @@ CREATE TABLE feed_post (
     INDEX idx_feed_post_category_id (category_id),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at),
-    FOREIGN KEY (category_id) REFERENCES forum_category(id) ON DELETE SET NULL
-);
-
-CREATE TABLE forum_attachment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    type VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
-    url VARCHAR(1000) NOT NULL,
-    file_name VARCHAR(255) NULL,
-    file_size BIGINT NULL,
-    mime_type VARCHAR(100) NULL,
-    display_order INT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_attachment_post_id (post_id),
-    CONSTRAINT fk_forum_attachment_post
-        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+    FOREIGN KEY (category_id) REFERENCES feed_category(id) ON DELETE SET NULL
 );
 
 -- =======================================
@@ -403,7 +388,7 @@ VALUES
     (1, 'Nước sạch', 1000, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW());
 
 -- Forum Categories
-INSERT INTO forum_category (id, name, slug, description, color, display_order, is_active, created_at)
+INSERT INTO feed_category (id, name, slug, description, color, display_order, is_active, created_at)
 VALUES
     (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),
     (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', '#ff5e14', 2, TRUE, NOW())

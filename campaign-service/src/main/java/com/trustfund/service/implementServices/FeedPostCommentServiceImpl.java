@@ -38,6 +38,10 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
         FeedPost post = feedPostRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("Feed post not found"));
 
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new ForbiddenException("Bình luận đang bị khóa");
+        }
+
         if (request.getParentCommentId() != null) {
             feedPostCommentRepository.findById(request.getParentCommentId())
                     .orElseThrow(() -> new NotFoundException("Parent comment not found"));

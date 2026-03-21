@@ -21,10 +21,13 @@ public class UpdateFeedPostRequest {
     @Size(max = 2000)
     private String content;
 
-    @Pattern(regexp = "DRAFT|ACTIVE")
+    @Pattern(regexp = "DRAFT|PUBLISHED")
     private String status;
 
     private Long budgetId;
 
     private List<AttachmentInput> attachments;
+
+    // Feed category linkage (feed_post.category_id -> feed_category.id)
+    private Long categoryId;
 }

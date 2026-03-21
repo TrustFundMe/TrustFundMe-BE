@@ -25,12 +25,20 @@ public class FeedPostResponse {
     private String content;
     private String status;
 
+    // Resolved category slug/name for client display (joined from feed_category)
+    private String category;
+
     private Long categoryId;
     private Long parentPostId;
     private Integer replyCount;
     private Integer viewCount;
     private Integer likeCount;
     private Integer commentCount;
+    /**
+     * Count of pending flags for this post (used by admin/staff feed table).
+     * If not requested by service layer, this may be null.
+     */
+    private Integer flagCount;
     private Boolean isLiked;
     private Boolean isPinned;
     private Boolean isLocked;

@@ -298,7 +298,7 @@ DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
 DROP TABLE IF EXISTS forum_attachment;
 DROP TABLE IF EXISTS feed_post;
-DROP TABLE IF EXISTS forum_category;
+DROP TABLE IF EXISTS feed_category;
 
 CREATE TABLE forum_category (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -351,38 +351,6 @@ CREATE TABLE IF NOT EXISTS forum_attachment (
     INDEX idx_forum_attachment_post_id (post_id),
     CONSTRAINT fk_forum_attachment_post
         FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS feed_post_comment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    parent_comment_id BIGINT NULL,
-    content VARCHAR(1000) NOT NULL,
-    like_count INT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_feed_post_comment_post_id (post_id),
-    INDEX idx_feed_post_comment_user_id (user_id),
-    FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS feed_post_like (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_feed_post_like_post_user (post_id, user_id),
-    FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
-
-CREATE TABLE IF NOT EXISTS feed_post_comment_like (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    comment_id BIGINT NOT NULL,
-    user_id BIGINT NOT NULL,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE KEY uk_feed_post_comment_like_comment_user (comment_id, user_id),
-    FOREIGN KEY (comment_id) REFERENCES feed_post_comment(id) ON DELETE CASCADE
 );
 
 -- =======================================
@@ -623,7 +591,7 @@ ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
 -- 5. Sample Data: feed-service (Mapped to trustfundme_campaign_db)
 -- =======================================
 USE trustfundme_campaign_db;
-INSERT INTO forum_category (id, name, slug, description, color, display_order, is_active, created_at)
+INSERT INTO feed_category (id, name, slug, description, color, display_order, is_active, created_at)
 VALUES
     (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),
     (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', '#ff5e14', 2, TRUE, NOW()),

@@ -9,7 +9,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "forum_category")
+@Table(name = "feed_category")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

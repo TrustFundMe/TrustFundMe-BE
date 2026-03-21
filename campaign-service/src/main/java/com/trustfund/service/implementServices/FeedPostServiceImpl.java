@@ -1,17 +1,18 @@
 package com.trustfund.service.implementServices;
 
 import com.trustfund.client.UserInfoClient;
+import com.trustfund.client.MediaServiceClient;
 import com.trustfund.model.FeedPost;
-import com.trustfund.model.ForumAttachment;
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
 import com.trustfund.model.response.ForumAttachmentResponse;
+import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
-import com.trustfund.repository.ForumAttachmentRepository;
+import com.trustfund.repository.ForumCategoryRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +25,9 @@ import java.util.Set;
 public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
-    private final ForumAttachmentRepository forumAttachmentRepository;
+    private final MediaServiceClient mediaServiceClient;
+    private final ForumCategoryRepository forumCategoryRepository;
+    private final FlagRepository flagRepository;
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
@@ -40,22 +43,11 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .status(request.getStatus() == null || request.getStatus().isBlank() ? "DRAFT" : request.getStatus())
+                .categoryId(request.getCategoryId())
                 .build();
 
         FeedPost saved = feedPostRepository.save(feedPost);
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            int order = 0;
-            for (com.trustfund.model.request.AttachmentInput att : request.getAttachments()) {
-                ForumAttachment forumAtt = ForumAttachment.builder()
-                        .postId(saved.getId())
-                        .type(att.getType() != null && !att.getType().isBlank() ? att.getType() : "IMAGE")
-                        .url(att.getUrl())
-                        .displayOrder(order++)
-                        .build();
-                forumAttachmentRepository.save(forumAtt);
-            }
-        }
-        return toResponse(saved, authorId);
+        return toResponse(saved, authorId, null);
     }
 
     @Override
@@ -72,7 +64,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         incrementViewCountIfEligible(id, currentUserId, ipAddress);
 
         if (visibility.equals("PUBLIC")) {
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         if (currentUserId == null) {
@@ -83,12 +75,12 @@ public class FeedPostServiceImpl implements FeedPostService {
             if (!currentUserId.equals(post.getAuthorId())) {
                 throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to view this feed post");
             }
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         if (visibility.equals("FOLLOWERS")) {
             // TODO: check follow status
-            return toResponse(post, currentUserId);
+            return toResponse(post, currentUserId, null);
         }
 
         throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
@@ -108,7 +100,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     public org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId,
             org.springframework.data.domain.Pageable pageable) {
         return feedPostRepository.findVisibleActivePosts(currentUserId, pageable)
-                .map(post -> toResponse(post, currentUserId));
+                .map(post -> toResponse(post, currentUserId, null));
     }
 
     @Override
@@ -128,13 +120,13 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
 
-        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
 
         post.setStatus(status);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -169,7 +161,7 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         post.setVisibility(visibility);
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -200,7 +192,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         FeedPost saved = feedPostRepository.save(post);
-        return toResponse(saved, currentUserId);
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -231,28 +223,15 @@ public class FeedPostServiceImpl implements FeedPostService {
             post.setBudgetId(null);
         }
 
-        FeedPost saved = feedPostRepository.save(post);
-
-        forumAttachmentRepository.deleteByPostId(id);
-
-        if (request.getAttachments() != null && !request.getAttachments().isEmpty()) {
-            Set<String> seenUrls = new HashSet<>();
-            int order = 0;
-            for (com.trustfund.model.request.AttachmentInput att : request.getAttachments()) {
-                if (att.getUrl() == null || att.getUrl().isBlank()) continue;
-                if (seenUrls.contains(att.getUrl())) continue;
-                seenUrls.add(att.getUrl());
-                ForumAttachment forumAtt = ForumAttachment.builder()
-                        .postId(saved.getId())
-                        .type(att.getType() != null && !att.getType().isBlank() ? att.getType() : "IMAGE")
-                        .url(att.getUrl())
-                        .displayOrder(order++)
-                        .build();
-                forumAttachmentRepository.save(forumAtt);
-            }
+        if (request.getCategoryId() != null) {
+            post.setCategoryId(request.getCategoryId());
+        } else {
+            post.setCategoryId(null);
         }
 
-        return toResponse(saved, currentUserId);
+        FeedPost saved = feedPostRepository.save(post);
+
+        return toResponse(saved, currentUserId, null);
     }
 
     @Override
@@ -265,7 +244,6 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (!currentUserId.equals(post.getAuthorId())) {
             throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to delete this feed post");
         }
-        forumAttachmentRepository.deleteAll(forumAttachmentRepository.findByPostIdOrderByDisplayOrderAsc(id));
         feedPostRepository.delete(post);
     }
 
@@ -297,13 +275,28 @@ public class FeedPostServiceImpl implements FeedPostService {
         }
 
         feedPostRepository.save(post);
-        return toResponse(post, currentUserId);
+        return toResponse(post, currentUserId, null);
     }
 
     @Override
     public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<FeedPost> posts = feedPostRepository.findAll(pageable);
-        return posts.map(post -> toResponse(post, null));
+        java.util.List<Long> postIds = posts.getContent().stream()
+                .map(FeedPost::getId)
+                .collect(java.util.stream.Collectors.toList());
+
+        java.util.Map<Long, Integer> flagCountByPostId = new java.util.HashMap<>();
+        if (!postIds.isEmpty()) {
+            java.util.List<Object[]> rows = flagRepository.countPendingFlagsByPostIds(postIds, "PENDING");
+            for (Object[] row : rows) {
+                if (row == null || row.length < 2) continue;
+                Long postId = (Long) row[0];
+                Long count = (Long) row[1];
+                flagCountByPostId.put(postId, count != null ? count.intValue() : 0);
+            }
+        }
+
+        return posts.map(post -> toResponse(post, null, flagCountByPostId.get(post.getId())));
     }
 
     @Override
@@ -311,9 +304,6 @@ public class FeedPostServiceImpl implements FeedPostService {
     public void deleteByAdmin(Long id) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
-
-        // Delete attachments
-        forumAttachmentRepository.deleteByPostId(id);
 
         // Delete likes
         feedPostLikeRepository.deleteByPostId(id);
@@ -348,7 +338,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
         post.setIsPinned(post.getIsPinned() == null ? true : !post.getIsPinned());
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
     @Override
@@ -357,7 +347,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
         post.setIsLocked(post.getIsLocked() == null ? true : !post.getIsLocked());
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
     @Override
@@ -367,35 +357,65 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (status == null || status.isBlank()) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
-        if (!status.equals("DRAFT") && !status.equals("ACTIVE")) {
+        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
         post.setStatus(status);
         feedPostRepository.save(post);
-        return toResponse(post, null);
+        return toResponse(post, null, null);
     }
 
-    private FeedPostResponse toResponse(FeedPost entity, Long currentUserId) {
-        java.util.List<ForumAttachment> attachments = forumAttachmentRepository
-                .findByPostIdOrderByDisplayOrderAsc(entity.getId());
+    private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
         Set<String> seenUrls = new HashSet<>();
-        java.util.List<ForumAttachmentResponse> attachmentResponses = attachments.stream()
-                .filter(att -> {
-                    if (att.getUrl() == null) return false;
-                    if (seenUrls.contains(att.getUrl())) return false;
-                    seenUrls.add(att.getUrl());
-                    return true;
-                })
-                .map(att -> ForumAttachmentResponse.builder()
-                        .id(att.getId())
-                        .type(att.getType())
-                        .url(att.getUrl())
-                        .fileName(att.getFileName())
-                        .fileSize(att.getFileSize())
-                        .mimeType(att.getMimeType())
-                        .displayOrder(att.getDisplayOrder())
-                        .build())
-                .collect(java.util.stream.Collectors.toList());
+
+        String categoryName = null;
+        if (entity.getCategoryId() != null) {
+            categoryName = forumCategoryRepository.findById(entity.getCategoryId())
+                    .map(com.trustfund.model.ForumCategory::getName)
+                    .orElse(null);
+        }
+
+        java.util.List<java.util.Map<String, Object>> mediaList =
+                mediaServiceClient.getMediaByPostId(entity.getId());
+
+        java.util.List<ForumAttachmentResponse> attachmentResponses = new java.util.ArrayList<>();
+        int order = 0;
+        for (java.util.Map<String, Object> media : mediaList) {
+            Object urlObj = media.get("url");
+            if (!(urlObj instanceof String) || ((String) urlObj).isBlank()) continue;
+            String url = (String) urlObj;
+
+            if (seenUrls.contains(url)) continue;
+            seenUrls.add(url);
+
+            Object idObj = media.get("id");
+            Long mediaId = idObj instanceof Number ? ((Number) idObj).longValue() : null;
+
+            Object typeObj = media.get("mediaType");
+            String mediaType = typeObj instanceof String ? (String) typeObj : null;
+            String attachmentType = "PHOTO".equalsIgnoreCase(mediaType) ? "IMAGE" : "FILE";
+
+            Object fileNameObj = media.get("fileName");
+            String fileName = fileNameObj instanceof String ? (String) fileNameObj : null;
+
+            Object sizeObj = media.get("sizeBytes");
+            Long fileSize = sizeObj instanceof Number ? ((Number) sizeObj).longValue() : null;
+
+            Object contentTypeObj = media.get("contentType");
+            String mimeType = contentTypeObj instanceof String ? (String) contentTypeObj : null;
+
+            attachmentResponses.add(
+                    ForumAttachmentResponse.builder()
+                            .id(mediaId)
+                            .type(attachmentType)
+                            .url(url)
+                            .fileName(fileName)
+                            .fileSize(fileSize)
+                            .mimeType(mimeType)
+                            .displayOrder(order++)
+                            .build()
+            );
+        }
 
         boolean isLiked = false;
         if (currentUserId != null) {
@@ -415,12 +435,14 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .status(entity.getStatus())
+                .category(categoryName)
                 .categoryId(entity.getCategoryId())
                 .parentPostId(entity.getParentPostId())
                 .replyCount(entity.getReplyCount())
                 .viewCount(entity.getViewCount())
                 .likeCount(entity.getLikeCount())
                 .commentCount(entity.getCommentCount())
+                .flagCount(flagCount)
                 .isLiked(isLiked)
                 .isPinned(entity.getIsPinned())
                 .isLocked(entity.getIsLocked())
