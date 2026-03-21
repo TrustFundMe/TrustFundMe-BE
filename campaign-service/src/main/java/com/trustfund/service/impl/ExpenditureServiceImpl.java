@@ -16,6 +16,8 @@ import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
 import com.trustfund.client.IdentityServiceClient;
+import com.trustfund.client.NotificationServiceClient;
+
 import com.trustfund.model.response.BankAccountResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,6 +40,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final ExpenditureTransactionRepository transactionRepository;
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
 
     @Override
@@ -46,7 +49,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         CampaignResponse campaign = campaignService.getById(request.getCampaignId());
 
         if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể yêu cầu chi tiêu.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Chiến dịch đã bị vô hiệu hóa, không thể yêu cầu chi tiêu.");
         }
 
         // === VALIDATION: Kiểm tra điều kiện tạo expenditure mới ===
@@ -56,7 +60,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 boolean hasActiveExp = existingExps.stream().anyMatch(e -> !"DISBURSED".equalsIgnoreCase(e.getStatus())
                         && !"REJECTED".equalsIgnoreCase(e.getStatus()));
-                
+
                 if (hasActiveExp) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
                             "Quỹ ủy quyền chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân hoặc bị từ chối.");
@@ -64,29 +68,29 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
                 // Kiểm tra bằng chứng giải ngân cho các khoản DISBURSED
                 boolean allDisbursedHaveProof = existingExps.stream()
-                    .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
-                    .allMatch(e -> e.getTransactions().stream()
-                        .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
-                        .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
+                        .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
+                        .allMatch(e -> e.getTransactions().stream()
+                                .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
+                                .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
 
                 if (!allDisbursedHaveProof) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                        "Vui lòng nộp bằng chứng giải ngân cho khoản chi trước đó.");
+                            "Vui lòng nộp bằng chứng giải ngân cho khoản chi trước đó.");
                 }
             } else if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
                 boolean hasActiveExp = existingExps.stream()
                         .anyMatch(e -> !"DISBURSED".equalsIgnoreCase(e.getStatus()));
-                
+
                 if (hasActiveExp) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
                             "Quỹ vật phẩm chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân.");
                 }
 
                 boolean allDisbursedHaveProof = existingExps.stream()
-                    .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
-                    .allMatch(e -> e.getTransactions().stream()
-                        .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
-                        .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
+                        .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
+                        .allMatch(e -> e.getTransactions().stream()
+                                .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
+                                .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
 
                 if (!allDisbursedHaveProof) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -214,7 +218,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .map(this::mapToTransactionResponse)
                         .collect(Collectors.toList()) : java.util.Collections.emptyList())
                 .disbursementProofUrl(expenditure.getTransactions() != null ? expenditure.getTransactions().stream()
-                        .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()) && t.getProofUrl() != null && t.getCreatedAt() != null)
+                        .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()) && t.getProofUrl() != null
+                                && t.getCreatedAt() != null)
                         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
                         .map(ExpenditureTransaction::getProofUrl)
                         .findFirst()
@@ -244,7 +249,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public ExpenditureResponse updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request) {
+    public ExpenditureResponse updateExpenditureStatus(Long id,
+            com.trustfund.model.request.ReviewExpenditureRequest request) {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
         String status = request.getStatus();
@@ -270,8 +276,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         if ("APPROVED".equalsIgnoreCase(status)) {
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
-            
-            // Tự động tạo bản ghi giao dịch PENDING cho AUTHORIZED (đã duyệt và tự yêu cầu rút tiền)
+
+            // Tự động tạo bản ghi giao dịch PENDING cho AUTHORIZED (đã duyệt và tự yêu cầu
+            // rút tiền)
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
                 ExpenditureTransaction transaction = ExpenditureTransaction.builder()
                         .expenditure(expenditure)
@@ -298,7 +305,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         transaction.setToAccountHolderName(toBank.getAccountHolderName());
                     }
                 } catch (Exception e) {
-                    log.error("⚠️ Warning: Could not fetch bank details for AUTHORIZED transaction: {}", e.getMessage());
+                    log.error("⚠️ Warning: Could not fetch bank details for AUTHORIZED transaction: {}",
+                            e.getMessage());
                 }
                 transactionRepository.save(transaction);
                 log.info("➔ Created PENDING transaction for AUTHORIZED expenditure {} after Staff approval", id);
@@ -311,7 +319,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         // Logic Giải ngân (DISBURSED)
         if ("DISBURSED".equalsIgnoreCase(status)) {
             // Tìm giao dịch PENDING PAYOUT để cập nhật thành COMPLETED
-            ExpenditureTransaction transaction = transactionRepository.findByExpenditureIdAndTypeAndStatus(id, "PAYOUT", "PENDING")
+            ExpenditureTransaction transaction = transactionRepository
+                    .findByExpenditureIdAndTypeAndStatus(id, "PAYOUT", "PENDING")
                     .stream()
                     .findFirst()
                     .orElse(null);
@@ -328,11 +337,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             try {
                 transaction.setStatus("COMPLETED");
-                
+
                 // Luôn coi Admin (ID 1) là người chuyển tiền trong các giao dịch PAYOUT
                 transaction.setFromUserId(1L);
                 transaction.setToUserId(campaign.getFundOwnerId());
-                
+
                 // Fetch bank info cho Admin (ID 1)
                 BankAccountResponse fromBank = identityServiceClient.getPrimaryBankAccount(1L);
                 if (fromBank != null) {
@@ -361,6 +370,57 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         }
 
         approvalTaskService.completeTask("EXPENDITURE", id);
+
+        // Gửi thông báo duyệt chi tiêu cho chủ sở hữu chiến dịch
+        if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)
+                || "DISBURSED".equalsIgnoreCase(status)) {
+            try {
+                CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+                String notiType;
+                String title;
+                String content;
+
+                if ("APPROVED".equalsIgnoreCase(status)) {
+                    notiType = "EXPENDITURE_APPROVED";
+                    title = "Yêu cầu chi tiêu đã được duyệt";
+                    content = String.format("Yêu cầu chi tiêu cho chiến dịch '%s' đã được phê duyệt.",
+                            campaign.getTitle());
+                } else if ("REJECTED".equalsIgnoreCase(status)) {
+                    notiType = "EXPENDITURE_REJECTED";
+                    title = "Yêu cầu chi tiêu bị từ chối";
+                    content = String.format("Yêu cầu chi tiêu cho chiến dịch '%s' đã bị từ chối. Lý do: %s",
+                            campaign.getTitle(), request.getReasonReject());
+                } else {
+                    notiType = "EXPENDITURE_DISBURSED";
+                    title = "Khoản chi đã được giải ngân";
+                    content = String.format(
+                            "Khoản chi cho chiến dịch '%s' đã được giải ngân thành công. Vui lòng kiểm tra tài khoản.",
+                            campaign.getTitle());
+                }
+
+                java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+                notificationData.put("expenditureId", id);
+                notificationData.put("campaignId", campaign.getId());
+
+                com.trustfund.model.request.NotificationRequest notiReq = com.trustfund.model.request.NotificationRequest
+                        .builder()
+                        .userId(campaign.getFundOwnerId())
+                        .type(notiType)
+                        .targetId(campaign.getId())
+                        .targetType("CAMPAIGN")
+                        .title(title)
+                        .content(content)
+                        .data(notificationData)
+                        .build();
+
+                notificationServiceClient.sendNotification(notiReq);
+                log.info("➔ Sent notification {} for expenditure request {} to user {}", notiType, id,
+                        campaign.getFundOwnerId());
+            } catch (Exception e) {
+                log.error("❌ Failed to send notification for expenditure status update: {}", e.getMessage());
+            }
+        }
+
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
@@ -391,7 +451,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .status("PENDING")
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
-        
+
         // Lấy thông tin ngân hàng
         try {
             BankAccountResponse fromBank = identityServiceClient.getPrimaryBankAccount(1L);
@@ -457,26 +517,28 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             com.trustfund.model.request.UpdateDisbursementProofRequest request) {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
-        
+
         // Cập nhật bằng chứng vào giao dịch PAYOUT mới nhất
         List<ExpenditureTransaction> transactions = transactionRepository.findByExpenditureId(id);
         transactions.stream()
-            .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
-            .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-            .findFirst()
-            .ifPresent(t -> {
-                t.setProofUrl(request.getProofUrl());
-                transactionRepository.save(t);
-            });
+                .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
+                .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
+                .findFirst()
+                .ifPresent(t -> {
+                    t.setProofUrl(request.getProofUrl());
+                    transactionRepository.save(t);
+                });
 
         return mapToResponse(expenditure);
     }
 
     @Override
     @Transactional
-    public ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> itemsRequest) {
+    public ExpenditureResponse addItemsToExpenditure(Long expenditureId,
+            List<CreateExpenditureItemRequest> itemsRequest) {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Expenditure not found: " + expenditureId));
 
         List<ExpenditureItem> items = itemsRequest.stream()
                 .map(itemReq -> ExpenditureItem.builder()
@@ -528,7 +590,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     private Expenditure recalculateExpenditureTotals(Long expenditureId) {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Expenditure not found: " + expenditureId));
         List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(expenditureId);
 
         BigDecimal totalExpectedAmount = items.stream()
@@ -562,6 +625,41 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             approvalTaskService.createAndAssignTask("EVIDENCE", id);
         } else if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
             approvalTaskService.completeTask("EVIDENCE", id);
+
+            // Gửi thông báo duyệt minh chứng chi tiêu cho chủ sở hữu chiến dịch
+            try {
+                CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+                String notiType = "APPROVED".equalsIgnoreCase(status) ? "EVIDENCE_APPROVED" : "EVIDENCE_REJECTED";
+                String title = "APPROVED".equalsIgnoreCase(status) ? "Minh chứng chi tiêu đã được duyệt"
+                        : "Minh chứng chi tiêu bị từ chối";
+                String content = "APPROVED".equalsIgnoreCase(status)
+                        ? String.format("Minh chứng cho khoản chi của chiến dịch '%s' đã được phê duyệt.",
+                                campaign.getTitle())
+                        : String.format(
+                                "Minh chứng cho khoản chi của chiến dịch '%s' đã bị từ chối. Vui lòng kiểm tra lại.",
+                                campaign.getTitle());
+
+                java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+                notificationData.put("expenditureId", id);
+                notificationData.put("campaignId", campaign.getId());
+
+                com.trustfund.model.request.NotificationRequest notiReq = com.trustfund.model.request.NotificationRequest
+                        .builder()
+                        .userId(campaign.getFundOwnerId())
+                        .type(notiType)
+                        .targetId(campaign.getId())
+                        .targetType("CAMPAIGN")
+                        .title(title)
+                        .content(content)
+                        .data(notificationData)
+                        .build();
+
+                notificationServiceClient.sendNotification(notiReq);
+                log.info("➔ Sent notification {} for expenditure evidence {} to user {}", notiType, id,
+                        campaign.getFundOwnerId());
+            } catch (Exception e) {
+                log.error("❌ Failed to send notification for expenditure evidence status update: {}", e.getMessage());
+            }
         }
 
         return mapToResponse(saved);
@@ -569,10 +667,12 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl) {
+    public ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId,
+            String proofUrl) {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
-        
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Expenditure not found: " + expenditureId));
+
         ExpenditureTransaction transaction = ExpenditureTransaction.builder()
                 .expenditure(expenditure)
                 .fromUserId(fromUserId)

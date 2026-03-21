@@ -11,6 +11,8 @@ import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.service.interfaceServices.UserKYCService;
 import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.exception.exceptions.BadRequestException;
+import com.trustfund.client.NotificationServiceClient;
+import com.trustfund.model.request.NotificationRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,6 +28,7 @@ public class UserKYCServiceImpl implements UserKYCService {
     private final UserKYCRepository userKYCRepository;
     private final UserRepository userRepository;
     private final BankAccountRepository bankAccountRepository;
+    private final NotificationServiceClient notificationServiceClient;
 
     @Override
     @Transactional
@@ -55,6 +58,9 @@ public class UserKYCServiceImpl implements UserKYCService {
             user.setRole(User.Role.FUND_OWNER);
             userRepository.save(user);
         }
+
+        // Send notification for auto-approval
+        sendKYCNotification(savedKYC, KYCStatus.APPROVED, null);
 
         return mapToResponse(savedKYC);
     }
@@ -110,6 +116,9 @@ public class UserKYCServiceImpl implements UserKYCService {
             userRepository.save(user);
         }
 
+        // Send notification for auto-approval
+        sendKYCNotification(savedKYC, KYCStatus.APPROVED, null);
+
         return mapToResponse(savedKYC);
     }
 
@@ -153,6 +162,10 @@ public class UserKYCServiceImpl implements UserKYCService {
         }
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
+
+        // Send notification
+        sendKYCNotification(savedKYC, status, rejectionReason);
+
         return mapToResponse(savedKYC);
     }
 
@@ -169,6 +182,36 @@ public class UserKYCServiceImpl implements UserKYCService {
         // KYC is already approved (we're in the approval flow)
         // So we only need to check if bank is also verified
         return hasBankVerified;
+    }
+
+    private void sendKYCNotification(UserKYC kyc, KYCStatus status, String rejectionReason) {
+        try {
+            boolean isApproved = status == KYCStatus.APPROVED;
+            String title = isApproved ? "Xác thực danh tính (KYC) thành công" : "Xác thực danh tính (KYC) bị từ chối";
+            String content = isApproved
+                    ? "Chúc mừng! Hồ sơ KYC của bạn đã được duyệt thành công. Bây giờ bạn có thể tạo chiến dịch gây quỹ."
+                    : "Rất tiếc, hồ sơ KYC của bạn đã bị từ chối. Lý do: " + rejectionReason;
+
+            java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+            notificationData.put("kycId", kyc.getId());
+            notificationData.put("status", status.name());
+
+            NotificationRequest notificationRequest = NotificationRequest.builder()
+                    .userId(kyc.getUser().getId())
+                    .type(isApproved ? "KYC_APPROVED" : "KYC_REJECTED")
+                    .targetId(kyc.getId())
+                    .targetType("KYC")
+                    .title(title)
+                    .content(content)
+                    .data(notificationData)
+                    .build();
+
+            log.info("[UserKYCService] Sending KYC notification to user {} for KYC {}",
+                    kyc.getUser().getId(), kyc.getId());
+            notificationServiceClient.sendNotification(notificationRequest);
+        } catch (Exception e) {
+            log.error("Error sending KYC notification for user {}: {}", kyc.getUser().getId(), e.getMessage());
+        }
     }
 
     private KYCResponse mapToResponse(UserKYC kyc) {

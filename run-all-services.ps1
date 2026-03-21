@@ -56,8 +56,10 @@ Start-Sleep -Seconds 5
 
 # Open Payment Service
 Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-payment-service.ps1`""
+# Open Notification Service
+Start-Process powershell -ArgumentList "-NoExit", "-File", "`"$PSScriptRoot\run-notification-service.ps1`""
 
-Write-Host "Opened 9 PowerShell windows!" -ForegroundColor Green
+Write-Host "Opened 10 PowerShell windows!" -ForegroundColor Green
 Write-Host "1. Discovery Server (port 8761)" -ForegroundColor Cyan
 Write-Host "2. API Gateway (port 8080)" -ForegroundColor Cyan
 Write-Host "3. Identity Service (port 8081)" -ForegroundColor Cyan
@@ -67,3 +69,4 @@ Write-Host "6. Feed Service (port 8084)" -ForegroundColor Cyan
 Write-Host "7. Flag Service (port 8085)" -ForegroundColor Cyan
 Write-Host "8. Chat Service (port 8086)" -ForegroundColor Cyan
 Write-Host "9. Payment Service (port 8087)" -ForegroundColor Cyan
+Write-Host "10. Notification Service (port 8088)" -ForegroundColor Cyan

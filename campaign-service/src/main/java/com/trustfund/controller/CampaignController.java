@@ -47,7 +47,9 @@ public class CampaignController {
             @PathVariable("fundOwnerId") Long fundOwnerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "6") int size) {
-        return campaignService.getByFundOwnerIdPaginated(fundOwnerId, org.springframework.data.domain.PageRequest.of(page, size));
+        return campaignService.getByFundOwnerIdPaginated(fundOwnerId,
+                org.springframework.data.domain.PageRequest.of(page, size, org.springframework.data.domain.Sort
+                        .by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")));
     }
 
     @PostMapping

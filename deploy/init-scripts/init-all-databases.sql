@@ -11,12 +11,14 @@ DROP DATABASE IF EXISTS trustfundme_media_db;
 DROP DATABASE IF EXISTS trustfundme_moderation_db;
 DROP DATABASE IF EXISTS trustfundme_chat_db;
 DROP DATABASE IF EXISTS trustfundme_payment_db;
+DROP DATABASE IF EXISTS trustfundme_notification_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_chat_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_payment_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE trustfundme_notification_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -27,12 +29,24 @@ GRANT ALL PRIVILEGES ON trustfundme_identity_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_chat_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_payment_db.* TO 'trustfundme_user'@'%';
+GRANT ALL PRIVILEGES ON trustfundme_notification_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
 -- 2. Schema: campaign-service (DB: trustfundme_campaign_db)
 -- =======================================
 USE trustfundme_campaign_db;
+
+DROP TABLE IF EXISTS approval_tasks;
+DROP TABLE IF EXISTS flag_reports;
+DROP TABLE IF EXISTS flags;
+DROP TABLE IF EXISTS expenditure_items;
+DROP TABLE IF EXISTS expenditure_transactions;
+DROP TABLE IF EXISTS expenditures;
+DROP TABLE IF EXISTS fundraising_goals;
+DROP TABLE IF EXISTS campaign_follows;
+DROP TABLE IF EXISTS campaigns;
+DROP TABLE IF EXISTS campaign_categories;
 
 -- campaign_categories
 CREATE TABLE campaign_categories (
@@ -153,10 +167,30 @@ CREATE TABLE `expenditure_items` (
     INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
 );
 
+-- approval_tasks
+CREATE TABLE `approval_tasks` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `type` VARCHAR(50) NOT NULL COMMENT 'CAMPAIGN, EXPENDITURE, FLAG',
+    `target_id` BIGINT NOT NULL,
+    `staff_id` BIGINT NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_approval_tasks_type` (`type`),
+    INDEX `idx_approval_tasks_target_id` (`target_id`),
+    INDEX `idx_approval_tasks_staff_id` (`staff_id`),
+    INDEX `idx_approval_tasks_status` (`status`)
+);
+
 -- =======================================
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
 -- =======================================
 USE trustfundme_identity_db;
+
+DROP TABLE IF EXISTS user_kyc;
+DROP TABLE IF EXISTS otp_tokens;
+DROP TABLE IF EXISTS bank_account;
+DROP TABLE IF EXISTS users;
 
 -- users
 CREATE TABLE users (
@@ -164,11 +198,12 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password VARCHAR(255) NOT NULL,
     full_name VARCHAR(255) NOT NULL,
-    phone_number VARCHAR(255),
+    phone_number VARCHAR(255) UNIQUE,
     avatar_url VARCHAR(1000),
     role VARCHAR(50) NOT NULL DEFAULT 'USER',
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     verified BOOLEAN NOT NULL DEFAULT FALSE,
+    ban_reason VARCHAR(1000) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     INDEX idx_email (email)
@@ -232,7 +267,9 @@ CREATE TABLE user_kyc (
 -- DB này giữ lại để sau này có thể dùng cho các tính năng khác
 USE trustfundme_media_db;
 
-CREATE TABLE IF NOT EXISTS media (
+DROP TABLE IF EXISTS media;
+
+CREATE TABLE media (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     post_id BIGINT NULL,
     campaign_id BIGINT NULL,
@@ -256,7 +293,14 @@ CREATE TABLE IF NOT EXISTS media (
 -- =======================================
 USE trustfundme_campaign_db;
 
-CREATE TABLE IF NOT EXISTS forum_category (
+DROP TABLE IF EXISTS feed_post_comment_like;
+DROP TABLE IF EXISTS feed_post_like;
+DROP TABLE IF EXISTS feed_post_comment;
+DROP TABLE IF EXISTS forum_attachment;
+DROP TABLE IF EXISTS feed_post;
+DROP TABLE IF EXISTS forum_category;
+
+CREATE TABLE forum_category (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     name VARCHAR(100) NOT NULL,
     slug VARCHAR(100) NOT NULL UNIQUE,
@@ -309,6 +353,38 @@ CREATE TABLE IF NOT EXISTS forum_attachment (
         FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
 );
 
+CREATE TABLE IF NOT EXISTS feed_post_comment (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    parent_comment_id BIGINT NULL,
+    content VARCHAR(1000) NOT NULL,
+    like_count INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_feed_post_comment_post_id (post_id),
+    INDEX idx_feed_post_comment_user_id (user_id),
+    FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_post_like (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_feed_post_like_post_user (post_id, user_id),
+    FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS feed_post_comment_like (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    comment_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_feed_post_comment_like_comment_user (comment_id, user_id),
+    FOREIGN KEY (comment_id) REFERENCES feed_post_comment(id) ON DELETE CASCADE
+);
+
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
 -- =======================================
@@ -334,9 +410,12 @@ CREATE TABLE IF NOT EXISTS flags (
 -- =======================================
 USE trustfundme_chat_db;
 
-CREATE TABLE IF NOT EXISTS conversations (
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
+
+CREATE TABLE conversations (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    staff_id BIGINT NOT NULL,
+    staff_id BIGINT NULL,
     fund_owner_id BIGINT NOT NULL,
     campaign_id BIGINT NULL,
     last_message_at DATETIME NULL,
@@ -348,7 +427,7 @@ CREATE TABLE IF NOT EXISTS conversations (
     INDEX idx_conversations_last_message_at (last_message_at)
 );
 
-CREATE TABLE IF NOT EXISTS messages (
+CREATE TABLE messages (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     conversation_id BIGINT NOT NULL,
     sender_id BIGINT NOT NULL,
@@ -379,7 +458,32 @@ CREATE TABLE IF NOT EXISTS appointment_schedules (
     INDEX idx_staff_id (staff_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- =======================================
+-- 3.5 Schema: notification-service (DB: trustfundme_notification_db)
+-- =======================================
+USE trustfundme_notification_db;
+
+DROP TABLE IF EXISTS notification;
+
+CREATE TABLE notification (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    type VARCHAR(100),
+    target_id INT,
+    target_type VARCHAR(50),
+    title VARCHAR(255),
+    content TEXT,
+    data JSON,
+    is_read BIT(1) DEFAULT 0,
+    read_at DATETIME(6),
+    created_at DATETIME(6),
+    updated_at DATETIME(6),
+    INDEX idx_notification_user_id (user_id),
+    INDEX idx_notification_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 -- Sample Chat Data
+USE trustfundme_chat_db;
 INSERT INTO conversations (id, staff_id, fund_owner_id, campaign_id, last_message_at)
 VALUES
     (1, 2, 3, 1, NOW()),
@@ -589,9 +693,14 @@ CREATE TABLE IF NOT EXISTS `donation_items` (
 );
 
 -- Add sample data for the new Expenditure Transaction structure
+USE trustfundme_campaign_db;
 -- Creating a sample campaign for payout testing
-INSERT INTO campaigns (id, title, description, goal_amount, current_amount, type, status, fund_owner_id, category_id, is_deleted) 
-VALUES (10, 'Hỗ trợ đồng bào vùng lũ', 'Quyên góp khẩn cấp cho miền Trung', 500000000, 450000000, 'AUTHORIZED', 'ACTIVE', 3, 1, false);
+INSERT INTO campaigns (id, fund_owner_id, title, description, balance, type, status, category_id) 
+VALUES (10, 3, 'Hỗ trợ đồng bào vùng lũ', 'Quyên góp khẩn cấp cho miền Trung', 450000000, 'AUTHORIZED', 'APPROVED', 1);
+
+-- Fundraising goal for campaign 10
+INSERT INTO fundraising_goals (campaign_id, target_amount, description, is_active)
+VALUES (10, 500000000, 'Ngân sách hỗ trợ khẩn cấp', TRUE);
 
 -- Expenditure for campaign 10 (AUTHORIZED)
 INSERT INTO expenditures (id, campaign_id, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, created_at)
@@ -600,4 +709,3 @@ VALUES (10, 10, 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', '
 -- Transaction for expenditure 10
 INSERT INTO expenditure_transactions (expenditure_id, amount, from_user_id, to_user_id, from_bank_code, from_account_number, from_account_holder_name, to_bank_code, to_account_number, to_account_holder_name, type, status)
 VALUES (10, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING');
-

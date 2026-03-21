@@ -3,9 +3,11 @@ package com.trustfund.service.implementServices;
 import com.trustfund.exception.exceptions.BadRequestException;
 import com.trustfund.exception.exceptions.ForbiddenException;
 import com.trustfund.exception.exceptions.NotFoundException;
+import com.trustfund.client.NotificationServiceClient;
 import com.trustfund.model.Conversation;
 import com.trustfund.model.Message;
 import com.trustfund.model.request.CreateConversationRequest;
+import com.trustfund.model.request.NotificationRequest;
 import com.trustfund.model.request.SendMessageRequest;
 import com.trustfund.model.response.ConversationResponse;
 import com.trustfund.model.response.MessageResponse;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ public class ChatServiceImpl implements ChatService {
 
     private final ConversationRepository conversationRepository;
     private final MessageRepository messageRepository;
+    private final NotificationServiceClient notificationServiceClient;
 
     @Override
     @Transactional
@@ -148,6 +152,24 @@ public class ChatServiceImpl implements ChatService {
         // Update conversation's last message time
         conversation.setLastMessageAt(LocalDateTime.now());
         conversationRepository.save(conversation);
+
+        // Notify the recipient
+        Long receiverId = senderId.equals(conversation.getFundOwnerId())
+                ? conversation.getStaffId()
+                : conversation.getFundOwnerId();
+
+        if (receiverId != null && !receiverId.equals(0L)) {
+            NotificationRequest notificationRequest = NotificationRequest.builder()
+                    .userId(receiverId)
+                    .type("NEW_MESSAGE")
+                    .targetId(conversationId)
+                    .targetType("Conversation")
+                    .title("Tin nhắn mới")
+                    .content(request.getContent())
+                    .data(Map.of("senderId", senderId, "conversationId", conversationId))
+                    .build();
+            notificationServiceClient.sendNotification(notificationRequest);
+        }
 
         return toMessageResponse(saved);
     }

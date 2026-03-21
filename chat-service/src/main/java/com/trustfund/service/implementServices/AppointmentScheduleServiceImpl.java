@@ -15,6 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
+import com.trustfund.client.NotificationServiceClient;
+import com.trustfund.model.request.NotificationRequest;
 
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
@@ -28,6 +30,7 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
 
     private final AppointmentScheduleRepository repository;
     private final RestTemplate restTemplate;
+    private final NotificationServiceClient notificationServiceClient;
 
     @Value("${identity.service.url:http://localhost:8081}")
     private String identityServiceUrl;
@@ -119,7 +122,14 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
         }
 
         appointment.setStatus(status);
-        return mapToResponse(repository.save(appointment));
+        AppointmentSchedule saved = repository.save(appointment);
+
+        // Send notification for CONFIRMED or CANCELLED status
+        if (status == AppointmentStatus.CONFIRMED || status == AppointmentStatus.CANCELLED) {
+            sendAppointmentNotification(saved, status);
+        }
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -145,6 +155,40 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
         } catch (Exception e) {
             log.warn("Could not fetch name for user {}: {}", userId, e.getMessage());
             return "User #" + userId;
+        }
+    }
+
+    private void sendAppointmentNotification(AppointmentSchedule appointment, AppointmentStatus status) {
+        try {
+            boolean isConfirmed = status == AppointmentStatus.CONFIRMED;
+            String title = isConfirmed ? "Lịch hẹn đã được xác nhận" : "Lịch hẹn đã bị hủy";
+
+            String startTimeStr = appointment.getStartTime().toString().replace("T", " ");
+            String content = isConfirmed
+                    ? "Lịch hẹn của bạn vào lúc " + startTimeStr + " tại " + appointment.getLocation()
+                            + " đã được xác nhận."
+                    : "Rất tiếc, lịch hẹn của bạn vào lúc " + startTimeStr + " đã bị hủy.";
+
+            java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+            notificationData.put("appointmentId", appointment.getId());
+            notificationData.put("status", status.name());
+
+            NotificationRequest notificationRequest = NotificationRequest.builder()
+                    .userId(appointment.getDonorId())
+                    .type(isConfirmed ? "APPOINTMENT_CONFIRMED" : "APPOINTMENT_CANCELLED")
+                    .targetId(appointment.getId())
+                    .targetType("APPOINTMENT")
+                    .title(title)
+                    .content(content)
+                    .data(notificationData)
+                    .build();
+
+            log.info("[AppointmentService] Sending notification to user {} for appointment {}",
+                    appointment.getDonorId(), appointment.getId());
+            notificationServiceClient.sendNotification(notificationRequest);
+        } catch (Exception e) {
+            log.error("Error sending appointment notification for user {}: {}", appointment.getDonorId(),
+                    e.getMessage());
         }
     }
 

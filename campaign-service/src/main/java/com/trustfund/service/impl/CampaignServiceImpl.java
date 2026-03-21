@@ -28,10 +28,14 @@ public class CampaignServiceImpl implements CampaignService {
     private final IdentityServiceClient identityServiceClient;
     private final MediaServiceClient mediaServiceClient;
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
+    private final com.trustfund.client.NotificationServiceClient notificationServiceClient;
 
     @Override
     public List<CampaignResponse> getAll() {
-        return campaignRepository.findAll().stream()
+        return campaignRepository
+                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                        "createdAt"))
+                .stream()
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -45,13 +49,18 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
-        return campaignRepository.findByFundOwnerId(fundOwnerId, org.springframework.data.domain.Pageable.unpaged()).stream()
+        return campaignRepository.findByFundOwnerId(fundOwnerId,
+                org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                                "createdAt")))
+                .stream()
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
-    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId, org.springframework.data.domain.Pageable pageable) {
+    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
+            org.springframework.data.domain.Pageable pageable) {
         return campaignRepository.findByFundOwnerId(fundOwnerId, pageable)
                 .map(this::toCampaignResponse);
     }
@@ -102,7 +111,8 @@ public class CampaignServiceImpl implements CampaignService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found"));
 
         if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa, không thể chỉnh sửa.");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Chiến dịch đã bị vô hiệu hóa, không thể chỉnh sửa.");
         }
 
         if (request.getTitle() != null)
@@ -140,14 +150,22 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByStatus(String status) {
-        return campaignRepository.findByStatus(status).stream()
+        return campaignRepository
+                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                        "createdAt"))
+                .stream()
+                .filter(c -> c.getStatus().equalsIgnoreCase(status))
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
     public List<CampaignResponse> getByCategoryId(Long categoryId) {
-        return campaignRepository.findByCategoryId(categoryId).stream()
+        return campaignRepository
+                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                        "createdAt"))
+                .stream()
+                .filter(c -> c.getCategory().getId().equals(categoryId))
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -183,6 +201,42 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign saved = campaignRepository.save(campaign);
         approvalTaskService.completeTask("CAMPAIGN", saved.getId());
 
+        // Send notification if approved or rejected
+        if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            try {
+                boolean isApproved = "APPROVED".equalsIgnoreCase(status);
+                String title = isApproved ? "Chiến dịch đã được duyệt" : "Chiến dịch đã bị từ chối";
+                String content = isApproved
+                        ? "Chúc mừng! Chiến dịch '" + saved.getTitle() + "' của bạn đã được duyệt thành công."
+                        : "Rất tiếc, chiến dịch '" + saved.getTitle() + "' của bạn đã bị từ chối. Lý do: "
+                                + rejectionReason;
+
+                java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
+                notificationData.put("campaignId", saved.getId());
+                notificationData.put("status", status);
+
+                com.trustfund.model.request.NotificationRequest notificationRequest = com.trustfund.model.request.NotificationRequest
+                        .builder()
+                        .userId(saved.getFundOwnerId())
+                        .type(isApproved ? "CAMPAIGN_APPROVED" : "CAMPAIGN_REJECTED")
+                        .targetId(saved.getId())
+                        .targetType("CAMPAIGN")
+                        .title(title)
+                        .content(content)
+                        .data(notificationData)
+                        .build();
+
+                System.out.println("[CampaignService] Sending notification to user " + saved.getFundOwnerId()
+                        + " for campaign " + saved.getId());
+                notificationServiceClient.sendNotification(notificationRequest);
+            } catch (Exception e) {
+                // Log and continue, don't block the main flow
+                org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                        .error("Error sending approval/rejection notification for campaign {}: {}", saved.getId(),
+                                e.getMessage());
+            }
+        }
+
         return toCampaignResponse(saved);
     }
 
@@ -196,7 +250,8 @@ public class CampaignServiceImpl implements CampaignService {
             coverImageUrl = mediaServiceClient.getMediaUrl(campaign.getCoverImage());
         }
 
-        // Fallback: if coverImageUrl is still null, try to get the first image of the campaign
+        // Fallback: if coverImageUrl is still null, try to get the first image of the
+        // campaign
         if (coverImageUrl == null) {
             coverImageUrl = mediaServiceClient.getFirstImageByCampaignId(campaign.getId());
         }

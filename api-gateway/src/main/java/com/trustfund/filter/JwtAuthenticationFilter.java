@@ -105,7 +105,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         }
 
         // WebSocket endpoint - allow SockJS handshake (/ws/**)
-        if (path.startsWith("/ws")) {
+        if (path != null && (path.startsWith("/ws/") || path.equals("/ws"))) {
             return true;
         }
 
