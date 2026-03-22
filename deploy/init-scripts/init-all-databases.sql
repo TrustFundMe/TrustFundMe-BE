@@ -447,18 +447,18 @@ USE trustfundme_notification_db;
 DROP TABLE IF EXISTS notification;
 
 CREATE TABLE notification (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     type VARCHAR(100),
-    target_id INT,
+    target_id BIGINT,
     target_type VARCHAR(50),
     title VARCHAR(255),
     content TEXT,
     data JSON,
-    is_read BIT(1) DEFAULT 0,
-    read_at DATETIME(6),
-    created_at DATETIME(6),
-    updated_at DATETIME(6),
+    is_read TINYINT(1) DEFAULT 0,
+    read_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
     INDEX idx_notification_user_id (user_id),
     INDEX idx_notification_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
