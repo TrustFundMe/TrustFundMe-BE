@@ -20,14 +20,14 @@ public class FeedPost {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "budget_id")
-    private Long budgetId;
+    @Column(name = "target_id")
+    private Long targetId;
+
+    @Column(name = "target_type", length = 50)
+    private String targetType;
 
     @Column(name = "author_id", nullable = false)
     private Long authorId;
-
-    @Column(name = "type", nullable = false, length = 50)
-    private String type;
 
     @Column(name = "visibility", nullable = false, length = 50)
     private String visibility;

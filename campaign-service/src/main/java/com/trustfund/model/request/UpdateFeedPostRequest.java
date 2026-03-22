@@ -24,7 +24,9 @@ public class UpdateFeedPostRequest {
     @Pattern(regexp = "DRAFT|PUBLISHED")
     private String status;
 
-    private Long budgetId;
+    private Long targetId;
+
+    private String targetType;
 
     private List<AttachmentInput> attachments;
 

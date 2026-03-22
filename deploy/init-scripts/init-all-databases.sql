@@ -313,27 +313,28 @@ CREATE TABLE forum_category (
     INDEX idx_forum_category_slug (slug),
     INDEX idx_forum_category_is_active (is_active)
 );
-
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    budget_id BIGINT NULL,
+    target_id BIGINT NULL COMMENT 'ID of linked entity (campaign or expenditure)',
+    target_type VARCHAR(50) NULL COMMENT 'EXPENDITURE or CAMPAIGN',
+    target_name VARCHAR(255) NULL COMMENT 'Cached name of linked entity',
     author_id BIGINT NOT NULL,
-    category_id BIGINT NULL,
+    author_name VARCHAR(255) NULL COMMENT 'Cached author full name for display',
     parent_post_id BIGINT NULL,
-    type NVARCHAR(50) NOT NULL,
     visibility NVARCHAR(50) NOT NULL,
     title NVARCHAR(255) NULL,
     content NVARCHAR(2000) NOT NULL,
     status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
     reply_count INT DEFAULT 0,
     view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
     is_pinned BOOLEAN DEFAULT FALSE,
     is_locked BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_feed_post_author_id (author_id),
-    INDEX idx_feed_post_budget_id (budget_id),
-    INDEX idx_feed_post_category_id (category_id),
+    INDEX idx_feed_post_target (target_id, target_type),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
 );
@@ -371,6 +372,18 @@ CREATE TABLE IF NOT EXISTS flags (
     INDEX idx_flags_campaign_id (campaign_id),
     INDEX idx_flags_user_id (user_id),
     INDEX idx_flags_status (status)
+);
+
+-- user_post_seen: tracks which posts a user has seen
+CREATE TABLE IF NOT EXISTS user_post_seen (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    post_id BIGINT NOT NULL,
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_post (user_id, post_id),
+    INDEX idx_user_post_seen_user_id (user_id),
+    INDEX idx_user_post_seen_post_id (post_id),
+    CONSTRAINT fk_user_post_seen_post FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
 );
 
 -- =======================================
@@ -591,29 +604,22 @@ ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
 -- 5. Sample Data: feed-service (Mapped to trustfundme_campaign_db)
 -- =======================================
 USE trustfundme_campaign_db;
-INSERT INTO feed_category (id, name, slug, description, color, display_order, is_active, created_at)
-VALUES
-    (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),
-    (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', '#ff5e14', 2, TRUE, NOW()),
-    (3, 'Hỏi đáp', 'qa', 'Hỏi đáp và hỗ trợ cộng đồng', '#10b981', 3, TRUE, NOW()),
-    (4, 'Tin tức', 'news', 'Tin tức mới nhất từ hệ thống', '#8b5cf6', 4, TRUE, NOW())
-ON DUPLICATE KEY UPDATE name = VALUES(name);
 
-INSERT INTO feed_post (author_id, category_id, type, visibility, title, content, status, reply_count, view_count, is_pinned, created_at, budget_id)
+INSERT INTO feed_post (author_id, author_name, visibility, title, content, status, reply_count, view_count, like_count, comment_count, is_pinned, created_at, target_id, target_type, target_name)
 VALUES
-    -- General Category
-    (5, 1, 'DISCUSSION', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 15, FALSE, NOW(), NULL),
-    (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
-    
-    -- Campaigns Category
-    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
-    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
-    
-    -- QA Category
-    (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
-    
-    -- News Category
-    (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
+    -- General Discussion
+    (5, 'Alice Nguyen', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 0, 3, 2, FALSE, NOW(), NULL, NULL, NULL),
+    (6, 'Bob Tran', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 0, 8, 5, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL),
+
+    -- Campaign Updates - linked to expenditure 1 (EXPENDITURE)
+    (3, 'Fund Owner', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, 25, 10, TRUE, NOW(), 1, 'EXPENDITURE', 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy'),
+    (4, 'Normal User', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 0, 2, 1, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1, 'EXPENDITURE', 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy'),
+
+    -- QA
+    (5, 'Alice Nguyen', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 0, 1, 0, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, NULL, NULL),
+
+    -- News/Announcement
+    (1, 'Admin User', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 0, 15, 0, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL, NULL, NULL)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- =======================================
@@ -663,7 +669,7 @@ CREATE TABLE IF NOT EXISTS `donation_items` (
 -- Add sample data for the new Expenditure Transaction structure
 USE trustfundme_campaign_db;
 -- Creating a sample campaign for payout testing
-INSERT INTO campaigns (id, fund_owner_id, title, description, balance, type, status, category_id) 
+INSERT INTO campaigns (id, fund_owner_id, title, description, balance, type, status, category_id)
 VALUES (10, 3, 'Hỗ trợ đồng bào vùng lũ', 'Quyên góp khẩn cấp cho miền Trung', 450000000, 'AUTHORIZED', 'APPROVED', 1);
 
 -- Fundraising goal for campaign 10

@@ -16,7 +16,9 @@ import java.util.List;
 @Builder
 public class CreateFeedPostRequest {
 
-    private Long budgetId;
+    private Long targetId;
+
+    private String targetType;
 
     private List<AttachmentInput> attachments;
 

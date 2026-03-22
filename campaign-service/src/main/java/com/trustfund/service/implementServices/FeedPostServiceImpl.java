@@ -2,6 +2,8 @@ package com.trustfund.service.implementServices;
 
 import com.trustfund.client.UserInfoClient;
 import com.trustfund.client.MediaServiceClient;
+import com.trustfund.model.Campaign;
+import com.trustfund.model.Expenditure;
 import com.trustfund.model.FeedPost;
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
@@ -32,13 +34,15 @@ public class FeedPostServiceImpl implements FeedPostService {
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
     private final UserInfoClient userInfoClient;
+    private final com.trustfund.repository.ExpenditureRepository expenditureRepository;
+    private final com.trustfund.repository.CampaignRepository campaignRepository;
 
     @Override
     public FeedPostResponse create(CreateFeedPostRequest request, Long authorId) {
         FeedPost feedPost = FeedPost.builder()
-                .budgetId(request.getBudgetId())
+                .targetId(request.getTargetId())
+                .targetType(request.getTargetType())
                 .authorId(authorId)
-                .type(request.getType())
                 .visibility(request.getVisibility())
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -217,10 +221,15 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             post.setStatus(request.getStatus());
         }
-        if (request.getBudgetId() != null) {
-            post.setBudgetId(request.getBudgetId());
+        if (request.getTargetId() != null) {
+            post.setTargetId(request.getTargetId());
         } else {
-            post.setBudgetId(null);
+            post.setTargetId(null);
+        }
+        if (request.getTargetType() != null) {
+            post.setTargetType(request.getTargetType());
+        } else {
+            post.setTargetType(null);
         }
 
         if (request.getCategoryId() != null) {
@@ -368,6 +377,20 @@ public class FeedPostServiceImpl implements FeedPostService {
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
         Set<String> seenUrls = new HashSet<>();
 
+        // Resolve targetName based on targetType
+        String targetName = null;
+        if (entity.getTargetId() != null && entity.getTargetType() != null) {
+            if (entity.getTargetType().equals("EXPENDITURE")) {
+                targetName = expenditureRepository.findById(entity.getTargetId())
+                        .map(Expenditure::getPlan)
+                        .orElse(null);
+            } else if (entity.getTargetType().equals("CAMPAIGN")) {
+                targetName = campaignRepository.findById(entity.getTargetId())
+                        .map(Campaign::getTitle)
+                        .orElse(null);
+            }
+        }
+
         String categoryName = null;
         if (entity.getCategoryId() != null) {
             categoryName = forumCategoryRepository.findById(entity.getCategoryId())
@@ -426,11 +449,12 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         return FeedPostResponse.builder()
                 .id(entity.getId())
-                .budgetId(entity.getBudgetId())
+                .targetId(entity.getTargetId())
+                .targetType(entity.getTargetType())
+                .targetName(targetName)
                 .authorId(entity.getAuthorId())
                 .authorName(authorInfo.fullName())
                 .authorAvatar(authorInfo.avatarUrl())
-                .type(entity.getType())
                 .visibility(entity.getVisibility())
                 .title(entity.getTitle())
                 .content(entity.getContent())

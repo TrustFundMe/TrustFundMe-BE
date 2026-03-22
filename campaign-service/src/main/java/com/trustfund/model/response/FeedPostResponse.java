@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 public class FeedPostResponse {
 
     private Long id;
-    private Long budgetId;
+    private Long targetId;
+    private String targetType;
+    private String targetName;
     private Long authorId;
     private String authorName;
     private String authorAvatar;
