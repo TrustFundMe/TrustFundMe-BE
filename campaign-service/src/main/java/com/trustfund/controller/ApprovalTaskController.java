@@ -1,6 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.model.ApprovalTask;
+import com.trustfund.model.response.ApprovalTaskResponse;
 import com.trustfund.service.ApprovalTaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,5 +41,22 @@ public class ApprovalTaskController {
             @PathVariable Long taskId,
             @RequestParam Long newStaffId) {
         return ResponseEntity.ok(approvalTaskService.reassignTask(taskId, newStaffId));
+    }
+
+    @GetMapping("/campaign/{campaignId}")
+    @Operation(summary = "Lấy task duyệt của một campaign (cho FundOwner xem staff phụ trách)")
+    public ResponseEntity<ApprovalTaskResponse> getTaskByCampaign(@PathVariable Long campaignId) {
+        ApprovalTask task = approvalTaskService.getTaskByCampaignId(campaignId);
+        if (task == null) {
+            return ResponseEntity.ok(ApprovalTaskResponse.builder().build());
+        }
+        ApprovalTaskResponse response = ApprovalTaskResponse.builder()
+                .id(task.getId())
+                .type(task.getType())
+                .targetId(task.getTargetId())
+                .staffId(task.getStaffId())
+                .status(task.getStatus())
+                .build();
+        return ResponseEntity.ok(response);
     }
 }

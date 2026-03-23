@@ -80,4 +80,9 @@ public class ApprovalTaskServiceImpl implements ApprovalTaskService {
                 })
                 .orElse(null);
     }
+
+    @Override
+    public ApprovalTask getTaskByCampaignId(Long campaignId) {
+        return approvalTaskRepository.findByTypeAndTargetId("CAMPAIGN", campaignId).orElse(null);
+    }
 }

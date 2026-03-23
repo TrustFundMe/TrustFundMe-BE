@@ -27,9 +27,6 @@ public class FeedPostResponse {
     private String content;
     private String status;
 
-    // Resolved category slug/name for client display (joined from feed_category)
-    private String category;
-
     private Long categoryId;
     private Long parentPostId;
     private Integer replyCount;
@@ -44,8 +41,6 @@ public class FeedPostResponse {
     private Boolean isLiked;
     private Boolean isPinned;
     private Boolean isLocked;
-
-    private java.util.List<ForumAttachmentResponse> attachments;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

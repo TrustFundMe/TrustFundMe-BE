@@ -30,6 +30,12 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+    @GetMapping("/staff")
+    @Operation(summary = "Get all staff members", description = "Retrieve all active staff members (authenticated users)")
+    public ResponseEntity<List<UserInfo>> getAllStaffs() {
+        return ResponseEntity.ok(userService.getAllStaffs());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID")
     public ResponseEntity<UserInfo> getUserById(@PathVariable("id") Long id) {

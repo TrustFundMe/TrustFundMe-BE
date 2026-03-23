@@ -9,18 +9,15 @@ import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
-import com.trustfund.model.response.ForumAttachmentResponse;
 import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
-import com.trustfund.repository.ForumCategoryRepository;
+import com.trustfund.repository.UserPostSeenRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -28,11 +25,11 @@ public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
     private final MediaServiceClient mediaServiceClient;
-    private final ForumCategoryRepository forumCategoryRepository;
     private final FlagRepository flagRepository;
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
+    private final UserPostSeenRepository userPostSeenRepository;
     private final UserInfoClient userInfoClient;
     private final com.trustfund.repository.ExpenditureRepository expenditureRepository;
     private final com.trustfund.repository.CampaignRepository campaignRepository;
@@ -91,6 +88,11 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private void incrementViewCountIfEligible(Long postId, Long userId, String ipAddress) {
+        // Nếu user đã có record post_seen rồi thì không tăng
+        if (userId != null && userPostSeenRepository.existsByUserIdAndPostId(userId, postId)) {
+            return;
+        }
+
         String key = "view:" + postId + ":" + (userId != null ? "u" + userId : "ip" + ipAddress);
         org.springframework.cache.Cache cache = cacheManager.getCache("postValidationViews");
 
@@ -375,8 +377,6 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        Set<String> seenUrls = new HashSet<>();
-
         // Resolve targetName based on targetType
         String targetName = null;
         if (entity.getTargetId() != null && entity.getTargetType() != null) {
@@ -389,55 +389,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                         .map(Campaign::getTitle)
                         .orElse(null);
             }
-        }
-
-        String categoryName = null;
-        if (entity.getCategoryId() != null) {
-            categoryName = forumCategoryRepository.findById(entity.getCategoryId())
-                    .map(com.trustfund.model.ForumCategory::getName)
-                    .orElse(null);
-        }
-
-        java.util.List<java.util.Map<String, Object>> mediaList =
-                mediaServiceClient.getMediaByPostId(entity.getId());
-
-        java.util.List<ForumAttachmentResponse> attachmentResponses = new java.util.ArrayList<>();
-        int order = 0;
-        for (java.util.Map<String, Object> media : mediaList) {
-            Object urlObj = media.get("url");
-            if (!(urlObj instanceof String) || ((String) urlObj).isBlank()) continue;
-            String url = (String) urlObj;
-
-            if (seenUrls.contains(url)) continue;
-            seenUrls.add(url);
-
-            Object idObj = media.get("id");
-            Long mediaId = idObj instanceof Number ? ((Number) idObj).longValue() : null;
-
-            Object typeObj = media.get("mediaType");
-            String mediaType = typeObj instanceof String ? (String) typeObj : null;
-            String attachmentType = "PHOTO".equalsIgnoreCase(mediaType) ? "IMAGE" : "FILE";
-
-            Object fileNameObj = media.get("fileName");
-            String fileName = fileNameObj instanceof String ? (String) fileNameObj : null;
-
-            Object sizeObj = media.get("sizeBytes");
-            Long fileSize = sizeObj instanceof Number ? ((Number) sizeObj).longValue() : null;
-
-            Object contentTypeObj = media.get("contentType");
-            String mimeType = contentTypeObj instanceof String ? (String) contentTypeObj : null;
-
-            attachmentResponses.add(
-                    ForumAttachmentResponse.builder()
-                            .id(mediaId)
-                            .type(attachmentType)
-                            .url(url)
-                            .fileName(fileName)
-                            .fileSize(fileSize)
-                            .mimeType(mimeType)
-                            .displayOrder(order++)
-                            .build()
-            );
         }
 
         boolean isLiked = false;
@@ -459,7 +410,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .status(entity.getStatus())
-                .category(categoryName)
                 .categoryId(entity.getCategoryId())
                 .parentPostId(entity.getParentPostId())
                 .replyCount(entity.getReplyCount())
@@ -470,7 +420,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .isLiked(isLiked)
                 .isPinned(entity.getIsPinned())
                 .isLocked(entity.getIsLocked())
-                .attachments(attachmentResponses)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();

@@ -9,12 +9,10 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ForumAttachmentResponse {
+public class ApprovalTaskResponse {
     private Long id;
     private String type;
-    private String url;
-    private String fileName;
-    private Long fileSize;
-    private String mimeType;
-    private Integer displayOrder;
+    private Long targetId;
+    private Long staffId;
+    private String status;
 }

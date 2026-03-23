@@ -77,6 +77,10 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/user-post-seen").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-post-seen").authenticated()
                                                 .requestMatchers("/api/user-post-seen/**").authenticated()
+                                                // Approval tasks — public for viewing campaign assignee
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/tasks/campaign/**")
+                                                .permitAll()
+                                                .requestMatchers("/api/admin/tasks/**").hasRole("ADMIN")
                                                 .anyRequest().authenticated())
                                 .sessionManagement(sess -> sess
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

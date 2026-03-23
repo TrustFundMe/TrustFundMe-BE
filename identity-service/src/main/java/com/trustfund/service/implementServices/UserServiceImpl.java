@@ -44,6 +44,15 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserInfo> getAllStaffs() {
+        List<User> staffs = userRepository.findAllByRole(User.Role.STAFF);
+        return staffs.stream()
+                .map(UserInfo::fromUser)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public UserInfo getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found with id: " + id));

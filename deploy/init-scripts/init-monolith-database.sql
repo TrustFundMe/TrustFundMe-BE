@@ -151,10 +151,10 @@ CREATE TABLE campaign_follows (
     INDEX idx_campaign_follows_followed_at (followed_at)
 );
 
--- expenditures
+-- expenditures (1 expenditure mẫu cho mỗi campaign)
 CREATE TABLE `expenditures` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `campaign_id` BIGINT NOT NULL,
+    `campaign_id` BIGINT NOT NULL UNIQUE,
     `evidence_due_at` DATETIME NULL,
     `evidence_status` VARCHAR(50) NULL,
     `total_amount` DECIMAL(19, 4) NULL,

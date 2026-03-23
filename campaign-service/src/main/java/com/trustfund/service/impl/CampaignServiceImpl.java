@@ -115,6 +115,11 @@ public class CampaignServiceImpl implements CampaignService {
                     "Chiến dịch đã bị vô hiệu hóa, không thể chỉnh sửa.");
         }
 
+        if ("APPROVED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Chiến dịch đang hoạt động, không thể chỉnh sửa.");
+        }
+
         if (request.getTitle() != null)
             campaign.setTitle(request.getTitle());
         if (request.getDescription() != null)
