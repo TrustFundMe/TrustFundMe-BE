@@ -42,7 +42,7 @@ public class ModuleGroupController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ModuleGroupDetailResponse> viewModuleGroup(@PathVariable Long id) {
+    public ResponseEntity<ModuleGroupDetailResponse> viewModuleGroup(@PathVariable("id") Long id) {
         return ResponseEntity.ok(moduleGroupService.getDetailById(id));
     }
 
@@ -53,24 +53,24 @@ public class ModuleGroupController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ModuleGroupDetailResponse> updateModuleGroup(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateModuleGroupRequest request) {
         return ResponseEntity.ok(moduleGroupService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteModuleGroup(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteModuleGroup(@PathVariable("id") Long id) {
         moduleGroupService.delete(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping(params = "page")
     public ResponseEntity<ApiResponse<PageResponse<ModuleGroupDetailResponse>>> searchModuleGroups(
-            @RequestParam int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "displayOrder,asc") String[] sort,
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Boolean isActive
+            @RequestParam(name = "page") int page,
+            @RequestParam(name = "size", defaultValue = "20") int size,
+            @RequestParam(name = "sort", defaultValue = "displayOrder,asc") String[] sort,
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "isActive", required = false) Boolean isActive
     ) {
         String sortField = sort[0];
         Sort.Direction direction = sort.length > 1 ? Sort.Direction.fromString(sort[1]) : Sort.Direction.ASC;

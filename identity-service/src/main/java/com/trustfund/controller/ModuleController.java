@@ -24,7 +24,7 @@ public class ModuleController {
     private final ModuleItemService moduleItemService;
 
     @GetMapping("/{id}")
-    public ResponseEntity<ModuleDetail> viewModule(@PathVariable Long id) {
+    public ResponseEntity<ModuleDetail> viewModule(@PathVariable("id") Long id) {
         return ResponseEntity.ok(moduleItemService.getModuleDetail(id));
     }
 
@@ -35,30 +35,30 @@ public class ModuleController {
 
     @PutMapping("/{id}")
     public ResponseEntity<UpdateModuleResponse> updateModule(
-            @PathVariable Long id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateModuleRequest request) {
         return ResponseEntity.ok(moduleItemService.updateModule(id, request));
     }
 
     @GetMapping("/module-group/{id}")
-    public ResponseEntity<List<ModuleDetail>> getModulesByGroup(@PathVariable Long id) {
+    public ResponseEntity<List<ModuleDetail>> getModulesByGroup(@PathVariable("id") Long id) {
         return ResponseEntity.ok(moduleItemService.getModulesByGroupId(id));
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteModule(@PathVariable Long id) {
+    public ResponseEntity<Void> deleteModule(@PathVariable("id") Long id) {
         moduleItemService.deleteModule(id);
         return ResponseEntity.noContent().build();
     }
 
     @GetMapping
     public ResponseEntity<ApiResponse<PageResponse<ModuleDetail>>> searchModules(
-            @RequestParam(required = false) String keyword,
-            @RequestParam(required = false) Long moduleGroupId,
-            @RequestParam(required = false) Boolean isActive,
-            @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "10") int size,
-            @RequestParam(defaultValue = "displayOrder,asc") String[] sort
+            @RequestParam(name = "keyword", required = false) String keyword,
+            @RequestParam(name = "moduleGroupId", required = false) Long moduleGroupId,
+            @RequestParam(name = "isActive", required = false) Boolean isActive,
+            @RequestParam(name = "page", defaultValue = "1") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "displayOrder,asc") String[] sort
     ) {
         int pageIndex = Math.max(page - 1, 0);
         String sortField = sort[0];
