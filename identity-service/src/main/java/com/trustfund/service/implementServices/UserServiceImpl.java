@@ -3,6 +3,7 @@ package com.trustfund.service.implementServices;
 import com.trustfund.exception.exceptions.BadRequestException;
 import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.model.User;
+import com.trustfund.model.dto.response.ImportResult;
 import com.trustfund.model.request.UpdateUserRequest;
 import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
@@ -204,6 +205,95 @@ public class UserServiceImpl implements UserService {
         } else {
             log.info("User with id: {} already has role: {} - skipping upgrade", id, user.getRole());
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.io.ByteArrayInputStream exportUsersToExcel() {
+        List<User> users = userRepository.findAll();
+        return com.trustfund.utils.ExcelHelper.usersToExcel(users);
+    }
+
+    @Override
+    @Transactional
+    public ImportResult importUsersFromExcel(org.springframework.web.multipart.MultipartFile file) {
+        try {
+            log.info("Starting user import from file: {}, size: {}", file.getOriginalFilename(), file.getSize());
+            List<User> users = com.trustfund.utils.ExcelHelper.excelToUsers(file.getInputStream());
+            log.info("Parsed {} users from Excel", users.size());
+
+            // Phase 1: Validate all rows (outside transaction, no side effects)
+            var emailsInFile = new java.util.HashSet<String>();
+            var phonesInFile = new java.util.HashSet<String>();
+            var skipped = new java.util.ArrayList<String>();
+
+            for (User u : users) {
+                String email = (u.getEmail() != null ? u.getEmail().toLowerCase().trim() : "");
+                String phone = (u.getPhoneNumber() != null ? u.getPhoneNumber().trim() : "");
+
+                if (email.isEmpty()) {
+                    skipped.add("Dòng trống (bỏ qua)");
+                    continue;
+                }
+
+                if (emailsInFile.contains(email)) {
+                    skipped.add("Trùng email trong file: " + email);
+                    continue;
+                }
+
+                if (!phone.isEmpty() && phonesInFile.contains(phone)) {
+                    skipped.add("Trùng SĐT trong file: " + phone + " (email: " + email + ")");
+                    continue;
+                }
+
+                if (userRepository.existsByEmail(email)) {
+                    skipped.add("Email đã tồn tại: " + email);
+                    continue;
+                }
+
+                if (!phone.isEmpty() && userRepository.existsByPhoneNumber(phone)) {
+                    skipped.add("SĐT đã tồn tại: " + phone + " (email: " + email + ")");
+                    continue;
+                }
+
+                // Valid row
+                emailsInFile.add(email);
+                if (!phone.isEmpty()) phonesInFile.add(phone);
+            }
+
+            // Phase 2: Build valid users list (inside transaction)
+            List<User> validUsers = users.stream()
+                .filter(u -> {
+                    String email = (u.getEmail() != null ? u.getEmail().toLowerCase().trim() : "");
+                    if (email.isEmpty()) return false;
+                    if (!emailsInFile.contains(email)) return false;
+                    u.setEmail(email);
+                    u.setPassword(passwordEncoder.encode(u.getPassword()));
+                    return true;
+                })
+                .collect(java.util.stream.Collectors.toList());
+
+            if (!validUsers.isEmpty()) {
+                userRepository.saveAll(validUsers);
+            }
+
+            int imported = validUsers.size();
+            log.info("Excel import: {} imported, {} skipped", imported, skipped.size());
+
+            return ImportResult.builder()
+                    .imported(imported)
+                    .skipped(skipped.size())
+                    .skippedReasons(skipped)
+                    .build();
+
+        } catch (java.io.IOException e) {
+            throw new RuntimeException("fail to store excel data: " + e.getMessage());
+        }
+    }
+
+    @Override
+    public java.io.ByteArrayInputStream downloadUsersTemplate() {
+        return com.trustfund.utils.ExcelHelper.usersToExcelTemplate();
     }
 
     private void deleteOldAvatarFile(String avatarUrl) {

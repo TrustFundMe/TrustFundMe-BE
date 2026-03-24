@@ -187,6 +187,90 @@ CREATE TABLE `approval_tasks` (
 -- =======================================
 USE trustfundme_identity_db;
 
+-- =======================================
+-- 3a. Module Groups & Modules (sidebar navigation)
+-- =======================================
+DROP TABLE IF EXISTS modules;
+DROP TABLE IF EXISTS module_groups;
+
+-- module_groups
+CREATE TABLE module_groups (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000) NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- modules
+CREATE TABLE modules (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    module_group_id BIGINT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    url VARCHAR(500) NULL,
+    icon VARCHAR(50) NULL,
+    description VARCHAR(500) NULL,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (module_group_id) REFERENCES module_groups(id) ON DELETE CASCADE
+);
+
+-- =======================================
+-- 3b. Module & Module Group sample data
+-- =======================================
+-- Insert module groups first
+INSERT INTO module_groups (id, name, description, is_active, display_order, created_at, updated_at) VALUES
+    (1, 'Tổng quan', 'Tổng quan hệ thống', TRUE, 1, NOW(), NOW()),
+    (2, 'Quản lý người dùng', 'Quản lý người dùng, vai trò và quyền truy cập', TRUE, 2, NOW(), NOW()),
+    (3, 'Quản lý chiến dịch', 'Quản lý chiến dịch gây quỹ', TRUE, 3, NOW(), NOW()),
+    (4, 'Quản lý quỹ', 'Quản lý chi tiêu và giải ngân', TRUE, 4, NOW(), NOW()),
+    (5, 'Giao dịch', 'Quản lý thanh toán và lịch sử giao dịch', TRUE, 5, NOW(), NOW()),
+    (6, 'Giao tiếp', 'Chat, diễn đàn và thông báo', TRUE, 6, NOW(), NOW()),
+    (7, 'Hệ thống', 'Cấu hình và quản lý hệ thống', TRUE, 7, NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), display_order = VALUES(display_order);
+
+-- Insert modules
+INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_active, created_at, updated_at) VALUES
+    -- Group 1: Tổng quan
+    (1, 1, 'Dashboard', '/dashboard', 'home', 0, TRUE, NOW(), NOW()),
+
+    -- Group 2: Quản lý người dùng
+    (2, 2, 'Người dùng', '/users', 'users', 0, TRUE, NOW(), NOW()),
+    (3, 2, 'Vai trò', '/roles', 'shield', 1, TRUE, NOW(), NOW()),
+    (4, 2, 'Xác minh KYC', '/kyc', 'user-check', 2, TRUE, NOW(), NOW()),
+    (5, 2, 'Tài khoản ngân hàng', '/bank-accounts', 'building', 3, TRUE, NOW(), NOW()),
+
+    -- Group 3: Quản lý chiến dịch
+    (6, 3, 'Chiến dịch', '/campaigns', 'folder', 0, TRUE, NOW(), NOW()),
+    (7, 3, 'Danh mục', '/categories', 'tag', 1, TRUE, NOW(), NOW()),
+    (8, 3, 'Mục tiêu gây quỹ', '/fundraising-goals', 'target', 2, TRUE, NOW(), NOW()),
+    (9, 3, 'Chi tiêu', '/expenditures', 'credit-card', 3, TRUE, NOW(), NOW()),
+    (10, 3, 'Flag / Báo cáo', '/flags', 'flag', 4, TRUE, NOW(), NOW()),
+    (11, 3, 'Nhiệm vụ duyệt', '/tasks', 'clipboard-check', 5, TRUE, NOW(), NOW()),
+
+    -- Group 4: Quản lý quỹ
+    (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 0, TRUE, NOW(), NOW()),
+    (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 1, TRUE, NOW(), NOW()),
+
+    -- Group 5: Giao dịch
+    (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
+    (15, 5, 'Lịch sử thanh toán', '/payments', 'dollar-sign', 1, TRUE, NOW(), NOW()),
+
+    -- Group 6: Giao tiếp
+    (16, 6, 'Chat', '/chat', 'message-circle', 0, TRUE, NOW(), NOW()),
+    (17, 6, 'Diễn đàn', '/forum', 'message-square', 1, TRUE, NOW(), NOW()),
+    (18, 6, 'Bài đăng', '/feed', 'rss', 2, TRUE, NOW(), NOW()),
+    (19, 6, 'Thông báo', '/notifications', 'bell', 3, TRUE, NOW(), NOW()),
+
+    -- Group 7: Hệ thống
+    (20, 7, 'Nhóm module', '/module-groups', 'layers', 0, TRUE, NOW(), NOW()),
+    (21, 7, 'Module', '/modules', 'menu', 1, TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE title = VALUES(title), url = VALUES(url), display_order = VALUES(display_order);
+
 DROP TABLE IF EXISTS user_kyc;
 DROP TABLE IF EXISTS otp_tokens;
 DROP TABLE IF EXISTS bank_account;
