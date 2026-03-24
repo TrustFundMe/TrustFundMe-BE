@@ -12,6 +12,8 @@ import com.trustfund.service.CampaignService;
 import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -41,6 +43,12 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    public Page<CampaignResponse> getAll(Pageable pageable) {
+        return campaignRepository.findAll(pageable)
+                .map(this::toCampaignResponse);
+    }
+
+    @Override
     public CampaignResponse getById(Long id) {
         Campaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
@@ -59,8 +67,8 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
-    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
-            org.springframework.data.domain.Pageable pageable) {
+    public Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
+            Pageable pageable) {
         return campaignRepository.findByFundOwnerId(fundOwnerId, pageable)
                 .map(this::toCampaignResponse);
     }
@@ -248,6 +256,19 @@ public class CampaignServiceImpl implements CampaignService {
     private CampaignResponse toCampaignResponse(Campaign campaign) {
         UserVerificationStatusResponse verificationStatus = identityServiceClient
                 .getVerificationStatus(campaign.getFundOwnerId());
+                
+        String ownerName = null;
+        String ownerAvatarUrl = null;
+        try {
+            com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient.getUserInfo(campaign.getFundOwnerId());
+            if (userInfo != null) {
+                ownerName = userInfo.getFullName();
+                ownerAvatarUrl = userInfo.getAvatarUrl();
+            }
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                    .warn("Could not fetch user info for campaign owner {}", campaign.getFundOwnerId());
+        }
 
         // Resolve cover image URL
         String coverImageUrl = null;
@@ -264,6 +285,8 @@ public class CampaignServiceImpl implements CampaignService {
         return CampaignResponse.builder()
                 .id(campaign.getId())
                 .fundOwnerId(campaign.getFundOwnerId())
+                .ownerName(ownerName)
+                .ownerAvatarUrl(ownerAvatarUrl)
                 .title(campaign.getTitle())
                 .coverImage(campaign.getCoverImage())
                 .coverImageUrl(coverImageUrl)

@@ -3,11 +3,14 @@ package com.trustfund.service.interfaceServices;
 import com.trustfund.model.request.UpdateUserRequest;
 import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface UserService {
     List<UserInfo> getAllUsers();
+    Page<UserInfo> getAllUsers(Pageable pageable);
     List<UserInfo> getAllStaffs();
 
     UserInfo getUserById(Long id);
