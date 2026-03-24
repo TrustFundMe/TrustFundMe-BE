@@ -757,4 +757,10 @@ VALUES (10, 10, 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', '
 
 -- Transaction for expenditure 10
 INSERT INTO expenditure_transactions (expenditure_id, amount, from_user_id, to_user_id, from_bank_code, from_account_number, from_account_holder_name, to_bank_code, to_account_number, to_account_holder_name, type, status)
-VALUES (10, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING');
+VALUES
+    -- expenditure_id=1 (WITHDRAWAL_REQUESTED): pending payout
+    (1, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING'),
+    -- expenditure_id=2 (DISBURSED): completed payout
+    (2, 5000000, 1, 4, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'TPB', '123456789012', 'TRAN THI B', 'PAYOUT', 'COMPLETED'),
+    -- expenditure_id=3 (PENDING_REVIEW): rejected payout (example)
+    (3, 8000000, 1, 5, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'ACB', '987654321098', 'LE VAN C', 'PAYOUT', 'REJECTED');

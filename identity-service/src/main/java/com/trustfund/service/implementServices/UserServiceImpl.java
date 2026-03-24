@@ -222,10 +222,13 @@ public class UserServiceImpl implements UserService {
             List<User> users = com.trustfund.utils.ExcelHelper.excelToUsers(file.getInputStream());
             log.info("Parsed {} users from Excel", users.size());
 
-            // Phase 1: Validate all rows (outside transaction, no side effects)
+            // Phase 1a: Normalize + deduplicate within file
             var emailsInFile = new java.util.HashSet<String>();
             var phonesInFile = new java.util.HashSet<String>();
             var skipped = new java.util.ArrayList<String>();
+            var candidateEmails = new java.util.ArrayList<String>();
+            var candidatePhones = new java.util.ArrayList<String>();
+            var userByEmail = new java.util.LinkedHashMap<String, User>();
 
             for (User u : users) {
                 String email = (u.getEmail() != null ? u.getEmail().toLowerCase().trim() : "");
@@ -246,30 +249,50 @@ public class UserServiceImpl implements UserService {
                     continue;
                 }
 
-                if (userRepository.existsByEmail(email)) {
+                emailsInFile.add(email);
+                if (!phone.isEmpty()) phonesInFile.add(phone);
+                candidateEmails.add(email);
+                if (!phone.isEmpty()) candidatePhones.add(phone);
+                userByEmail.put(email, u);
+            }
+
+            // Phase 1b: Batch check DB existence (single query each)
+            var existingEmails = new java.util.HashSet<String>(
+                userRepository.findExistingEmails(candidateEmails)
+            );
+            var existingPhones = new java.util.HashSet<String>(
+                userRepository.findExistingPhones(candidatePhones)
+            );
+
+            // Phase 1c: Final validation against DB
+            var validEmails = new java.util.HashSet<String>();
+            for (String email : emailsInFile) {
+                if (existingEmails.contains(email)) {
                     skipped.add("Email đã tồn tại: " + email);
                     continue;
                 }
-
-                if (!phone.isEmpty() && userRepository.existsByPhoneNumber(phone)) {
-                    skipped.add("SĐT đã tồn tại: " + phone + " (email: " + email + ")");
-                    continue;
-                }
-
-                // Valid row
-                emailsInFile.add(email);
-                if (!phone.isEmpty()) phonesInFile.add(phone);
+                validEmails.add(email);
             }
 
-            // Phase 2: Build valid users list (inside transaction)
-            List<User> validUsers = users.stream()
-                .filter(u -> {
-                    String email = (u.getEmail() != null ? u.getEmail().toLowerCase().trim() : "");
-                    if (email.isEmpty()) return false;
-                    if (!emailsInFile.contains(email)) return false;
+            for (var entry : userByEmail.entrySet()) {
+                String email = entry.getKey();
+                User u = entry.getValue();
+                String phone = (u.getPhoneNumber() != null ? u.getPhoneNumber().trim() : "");
+                if (!phone.isEmpty() && existingPhones.contains(phone) && validEmails.contains(email)) {
+                    skipped.add("SĐT đã tồn tại: " + phone + " (email: " + email + ")");
+                    validEmails.remove(email);
+                }
+            }
+
+            // Phase 2: Build and save valid users
+            // Encode default password ONCE and reuse for all rows (BCrypt is slow, avoid N encodes)
+            String defaultPasswordHash = passwordEncoder.encode("TrustFund123@");
+            List<User> validUsers = validEmails.stream()
+                .map(email -> {
+                    User u = userByEmail.get(email);
                     u.setEmail(email);
-                    u.setPassword(passwordEncoder.encode(u.getPassword()));
-                    return true;
+                    u.setPassword(defaultPasswordHash);
+                    return u;
                 })
                 .collect(java.util.stream.Collectors.toList());
 
