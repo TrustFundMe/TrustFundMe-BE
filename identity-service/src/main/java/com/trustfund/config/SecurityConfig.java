@@ -66,6 +66,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/bank-accounts/pending").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers(HttpMethod.POST, "/api/bank-accounts/users/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/bank-accounts/**").authenticated()
+                        // Module Groups: /active endpoint is public for sidebar, others require auth
+                        .requestMatchers(HttpMethod.GET, "/api/module-groups/active").permitAll()
+                        .requestMatchers("/api/module-groups/**").hasAnyRole("ADMIN", "STAFF")
+                        .requestMatchers("/api/modules/**").hasAnyRole("ADMIN", "STAFF")
                         .anyRequest().authenticated())
                 .sessionManagement(sess -> sess
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))

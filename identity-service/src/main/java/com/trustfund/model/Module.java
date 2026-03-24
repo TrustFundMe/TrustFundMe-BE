@@ -6,10 +6,10 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
 
 @Entity
 @Table(name = "modules")
@@ -18,57 +18,42 @@ import java.util.List;
 @AllArgsConstructor
 @Builder
 public class Module {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "module_group_id")
+    @JoinColumn(name = "module_group_id", nullable = false)
     @JsonIgnore
     private ModuleGroup moduleGroup;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parent_id")
-    @JsonIgnore
-    private Module parent;
-
+    @Column(nullable = false, length = 100)
     private String title;
-    
-    @Column(nullable = false)
+
+    @Column(length = 500)
     private String url;
-    
+
+    @Column(length = 50)
     private String icon;
 
-    @Column(length = 1000)
+    @Column(length = 500)
     private String description;
 
-    @Column(name = "display_order")
-    private Integer displayOrder;
+    @Column(nullable = false)
+    @Builder.Default
+    private Integer displayOrder = 0;
 
     @Column(name = "is_active", nullable = false)
     @Builder.Default
     private Boolean isActive = true;
 
-    @Column(name = "required_permission")
-    private String requiredPermission;
 
-    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    @Builder.Default
-    private List<Module> children = new ArrayList<>();
 
-    @Column(nullable = false, updatable = false)
+    @CreationTimestamp
+    @Column(updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
     private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-        updatedAt = LocalDateTime.now();
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        updatedAt = LocalDateTime.now();
-    }
 }

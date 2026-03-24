@@ -36,6 +36,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserInfo> getAllUsers() {
+        return userRepository.findAll().stream()
+                .map(UserInfo::fromUser)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Page<UserInfo> getAllUsers(Pageable pageable) {
         return userRepository.findAll(pageable)
                 .map(UserInfo::fromUser);
