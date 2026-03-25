@@ -3,6 +3,7 @@ package com.trustfund.controller;
 import com.trustfund.exception.exceptions.BadRequestException;
 import com.trustfund.model.dto.response.ApiResponse;
 import com.trustfund.model.dto.response.ImportResult;
+import com.trustfund.model.request.CreateUserRequest;
 import com.trustfund.model.request.UpdateUserRequest;
 import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
@@ -53,6 +54,15 @@ public class UserController {
     @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID")
     public ResponseEntity<UserInfo> getUserById(@PathVariable("id") Long id) {
         return ResponseEntity.ok(userService.getUserById(id));
+    }
+
+    @PostMapping
+    @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
+    @Operation(summary = "Create a new user", description = "Create a new user account manually (Admin/Staff only)", security = @SecurityRequirement(name = "bearerAuth"))
+    public ResponseEntity<ApiResponse<UserInfo>> createUser(@Valid @RequestBody CreateUserRequest request) {
+        log.info("Create user request - email: {}, fullName: {}, role: {}", request.getEmail(), request.getFullName(), request.getRole());
+        UserInfo user = userService.createUser(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user, "Tạo người dùng thành công"));
     }
 
     @PutMapping("/{id}")

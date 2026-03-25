@@ -1,6 +1,7 @@
 package com.trustfund.service.interfaceServices;
 
 import com.trustfund.model.dto.response.ImportResult;
+import com.trustfund.model.request.CreateUserRequest;
 import com.trustfund.model.request.UpdateUserRequest;
 import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
@@ -17,6 +18,8 @@ public interface UserService {
     UserInfo getUserById(Long id);
 
     UserInfo updateUser(Long id, UpdateUserRequest request);
+
+    UserInfo createUser(CreateUserRequest request);
 
     void deleteUser(Long id);
 

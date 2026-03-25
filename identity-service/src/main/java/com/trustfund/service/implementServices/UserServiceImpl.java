@@ -4,6 +4,7 @@ import com.trustfund.exception.exceptions.BadRequestException;
 import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.model.User;
 import com.trustfund.model.dto.response.ImportResult;
+import com.trustfund.model.request.CreateUserRequest;
 import com.trustfund.model.request.UpdateUserRequest;
 import com.trustfund.model.response.CheckEmailResponse;
 import com.trustfund.model.response.UserInfo;
@@ -118,6 +119,49 @@ public class UserServiceImpl implements UserService {
 
         user = userRepository.save(user);
         log.info("Updated user with id: {}", id);
+        return UserInfo.fromUser(user);
+    }
+
+    @Override
+    @Transactional
+    public UserInfo createUser(CreateUserRequest request) {
+        String email = request.getEmail().toLowerCase().trim();
+
+        // Kiểm tra email đã tồn tại chưa
+        if (userRepository.existsByEmail(email)) {
+            throw new BadRequestException("Email đã được sử dụng");
+        }
+
+        // Kiểm tra số điện thoại đã tồn tại chưa
+        String phone = request.getPhoneNumber();
+        if (phone != null && !phone.trim().isEmpty()) {
+            if (userRepository.existsByPhoneNumber(phone.trim())) {
+                throw new BadRequestException("Số điện thoại đã được sử dụng");
+            }
+        }
+
+        // Xác định role
+        User.Role role = User.Role.USER;
+        if (request.getRole() != null && !request.getRole().trim().isEmpty()) {
+            try {
+                role = User.Role.valueOf(request.getRole().toUpperCase().trim());
+            } catch (IllegalArgumentException e) {
+                throw new BadRequestException("Vai trò không hợp lệ: " + request.getRole());
+            }
+        }
+
+        User user = User.builder()
+                .email(email)
+                .fullName(request.getFullName().trim())
+                .phoneNumber(phone != null && !phone.trim().isEmpty() ? phone.trim() : null)
+                .role(role)
+                .password(passwordEncoder.encode("TrustFund123@"))
+                .isActive(true)
+                .verified(false)
+                .build();
+
+        user = userRepository.save(user);
+        log.info("Created user with id: {}, email: {}, role: {}", user.getId(), email, role);
         return UserInfo.fromUser(user);
     }
 
