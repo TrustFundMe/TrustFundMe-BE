@@ -9,6 +9,8 @@ import java.util.List;
 public interface UserService {
     List<UserInfo> getAllUsers();
 
+    List<UserInfo> getAllStaff();
+
     UserInfo getUserById(Long id);
 
     UserInfo updateUser(Long id, UpdateUserRequest request);

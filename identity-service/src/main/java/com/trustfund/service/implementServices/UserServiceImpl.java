@@ -44,6 +44,16 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
+    public List<UserInfo> getAllStaff() {
+        List<User> staff = userRepository.findAllByRole(User.Role.STAFF);
+        log.info("Retrieved {} staff members", staff.size());
+        return staff.stream()
+                .map(UserInfo::fromUser)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public UserInfo getUserById(Long id) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("User not found with id: " + id));
@@ -76,7 +86,8 @@ public class UserServiceImpl implements UserService {
 
         if (newPhoneNumber != null) {
             if (!newPhoneNumber.equals(user.getPhoneNumber())) {
-                log.info("Checking phone number uniqueness: current={}, requested={}", user.getPhoneNumber(), newPhoneNumber);
+                log.info("Checking phone number uniqueness: current={}, requested={}", user.getPhoneNumber(),
+                        newPhoneNumber);
                 if (userRepository.existsByPhoneNumber(newPhoneNumber)) {
                     log.warn("Phone number already exists: {}", newPhoneNumber);
                     throw new BadRequestException("Phone number already exists");

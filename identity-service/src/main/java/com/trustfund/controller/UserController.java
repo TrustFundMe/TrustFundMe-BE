@@ -30,6 +30,12 @@ public class UserController {
         return ResponseEntity.ok(userService.getAllUsers());
     }
 
+    @GetMapping("/staff")
+    @Operation(summary = "Get all staff members", description = "Retrieve a list of all staff members (Public)")
+    public ResponseEntity<List<UserInfo>> getAllStaff() {
+        return ResponseEntity.ok(userService.getAllStaff());
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieve user information by user ID")
     public ResponseEntity<UserInfo> getUserById(@PathVariable("id") Long id) {
@@ -56,7 +62,8 @@ public class UserController {
     @PutMapping("/{id}/ban")
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Ban user", description = "Ban/deactivate a user account (Admin only)", security = @SecurityRequirement(name = "bearerAuth"))
-    public ResponseEntity<UserInfo> banUser(@PathVariable("id") Long id, @RequestBody(required = false) java.util.Map<String, String> body) {
+    public ResponseEntity<UserInfo> banUser(@PathVariable("id") Long id,
+            @RequestBody(required = false) java.util.Map<String, String> body) {
         String reason = body != null ? body.get("reason") : null;
         return ResponseEntity.ok(userService.banUser(id, reason));
     }

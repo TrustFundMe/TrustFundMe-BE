@@ -35,11 +35,11 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
     @Value("${identity.service.url:http://localhost:8081}")
     private String identityServiceUrl;
 
-    /** Phải đặt lịch trước tối thiểu 24 tiếng */
-    private static final long MIN_ADVANCE_HOURS = 24;
+    /** Phải đặt lịch trước tối thiểu (bỏ qua để test và linh hoạt) */
+    private static final long MIN_ADVANCE_HOURS = 0;
 
-    /** Phải xác nhận trước tối thiểu 24 tiếng so với giờ hẹn */
-    private static final long MAX_CONFIRM_HOURS_BEFORE = 24;
+    /** Phải xác nhận trước (bỏ qua để test và linh hoạt) */
+    private static final long MAX_CONFIRM_HOURS_BEFORE = 0;
 
     @Override
     @Transactional

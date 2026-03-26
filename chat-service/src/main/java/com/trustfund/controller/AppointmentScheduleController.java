@@ -57,13 +57,15 @@ public class AppointmentScheduleController {
 
     @GetMapping("/donor/{donorId}")
     @Operation(summary = "Get appointments by donor ID")
-    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByDonor(@PathVariable("donorId") Long donorId) {
+    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByDonor(
+            @PathVariable("donorId") Long donorId) {
         return ResponseEntity.ok(service.getAppointmentsByDonor(donorId));
     }
 
     @GetMapping("/staff/{staffId}")
     @Operation(summary = "Get appointments by staff ID")
-    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByStaff(@PathVariable("staffId") Long staffId) {
+    public ResponseEntity<List<AppointmentScheduleResponse>> getAppointmentsByStaff(
+            @PathVariable("staffId") Long staffId) {
         return ResponseEntity.ok(service.getAppointmentsByStaff(staffId));
     }
 }
