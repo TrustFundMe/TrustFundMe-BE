@@ -116,7 +116,7 @@ public class FeedPostController {
     }
 
     @PutMapping("/{id}")
-    @Operation(summary = "Update feed post (full)", description = "Update title, content, status, budgetId, attachments (author only)")
+    @Operation(summary = "Update feed post (full)", description = "Update title, content, status, targetId, targetType, attachments (author only)")
     public ResponseEntity<FeedPostResponse> update(@PathVariable("id") Long id,
                                                    @Valid @RequestBody UpdateFeedPostRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();

@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 public class FeedPostResponse {
 
     private Long id;
-    private Long budgetId;
+    private Long targetId;
+    private String targetType;
+    private String targetName;
     private Long authorId;
     private String authorName;
     private String authorAvatar;
@@ -24,9 +26,6 @@ public class FeedPostResponse {
     private String title;
     private String content;
     private String status;
-
-    // Resolved category slug/name for client display (joined from feed_category)
-    private String category;
 
     private Long categoryId;
     private Long parentPostId;
@@ -42,8 +41,6 @@ public class FeedPostResponse {
     private Boolean isLiked;
     private Boolean isPinned;
     private Boolean isLocked;
-
-    private java.util.List<ForumAttachmentResponse> attachments;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

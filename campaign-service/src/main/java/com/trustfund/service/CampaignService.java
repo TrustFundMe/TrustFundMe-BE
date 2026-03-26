@@ -3,18 +3,21 @@ package com.trustfund.service;
 import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
 import com.trustfund.model.response.CampaignResponse;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 
 public interface CampaignService {
 
-    List<CampaignResponse> getAll();
+    java.util.List<CampaignResponse> getAll();
+    Page<CampaignResponse> getAll(Pageable pageable);
 
     CampaignResponse getById(Long id);
 
     List<CampaignResponse> getByFundOwnerId(Long fundOwnerId);
 
-    org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId, org.springframework.data.domain.Pageable pageable);
+    Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId, Pageable pageable);
 
     CampaignResponse create(CreateCampaignRequest request);
 

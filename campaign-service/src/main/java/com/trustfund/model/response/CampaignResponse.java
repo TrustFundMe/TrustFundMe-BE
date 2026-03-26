@@ -15,6 +15,8 @@ import java.time.LocalDateTime;
 public class CampaignResponse {
     private Long id;
     private Long fundOwnerId;
+    private String ownerName;
+    private String ownerAvatarUrl;
     private String title;
     private Long coverImage;
     private String coverImageUrl;

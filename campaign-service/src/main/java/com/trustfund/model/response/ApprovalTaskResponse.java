@@ -5,16 +5,18 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ForumAttachmentResponse {
+public class ApprovalTaskResponse {
     private Long id;
     private String type;
-    private String url;
-    private String fileName;
-    private Long fileSize;
-    private String mimeType;
-    private Integer displayOrder;
+    private Long targetId;
+    private Long staffId;
+    private String status;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

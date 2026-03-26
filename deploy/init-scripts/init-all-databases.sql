@@ -108,10 +108,10 @@ CREATE TABLE campaign_follows (
     INDEX idx_campaign_follows_followed_at (followed_at)
 );
 
--- expenditures
+-- expenditures (1 expenditure mẫu cho mỗi campaign)
 CREATE TABLE `expenditures` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `campaign_id` BIGINT NOT NULL,
+    `campaign_id` BIGINT NOT NULL UNIQUE,
     `evidence_due_at` DATETIME NULL,
     `evidence_status` VARCHAR(50) NULL,
     `total_amount` DECIMAL(19, 4) NULL,
@@ -186,6 +186,90 @@ CREATE TABLE `approval_tasks` (
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
 -- =======================================
 USE trustfundme_identity_db;
+
+-- =======================================
+-- 3a. Module Groups & Modules (sidebar navigation)
+-- =======================================
+DROP TABLE IF EXISTS modules;
+DROP TABLE IF EXISTS module_groups;
+
+-- module_groups
+CREATE TABLE module_groups (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000) NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- modules
+CREATE TABLE modules (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    module_group_id BIGINT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    url VARCHAR(500) NULL,
+    icon VARCHAR(50) NULL,
+    description VARCHAR(500) NULL,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (module_group_id) REFERENCES module_groups(id) ON DELETE CASCADE
+);
+
+-- =======================================
+-- 3b. Module & Module Group sample data
+-- =======================================
+-- Insert module groups first
+INSERT INTO module_groups (id, name, description, is_active, display_order, created_at, updated_at) VALUES
+    (1, 'Tổng quan', 'Tổng quan hệ thống', TRUE, 1, NOW(), NOW()),
+    (2, 'Quản lý người dùng', 'Quản lý người dùng, vai trò và quyền truy cập', TRUE, 2, NOW(), NOW()),
+    (3, 'Quản lý chiến dịch', 'Quản lý chiến dịch gây quỹ', TRUE, 3, NOW(), NOW()),
+    (4, 'Quản lý quỹ', 'Quản lý chi tiêu và giải ngân', TRUE, 4, NOW(), NOW()),
+    (5, 'Giao dịch', 'Quản lý thanh toán và lịch sử giao dịch', TRUE, 5, NOW(), NOW()),
+    (6, 'Giao tiếp', 'Chat, diễn đàn và thông báo', TRUE, 6, NOW(), NOW()),
+    (7, 'Hệ thống', 'Cấu hình và quản lý hệ thống', TRUE, 7, NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), display_order = VALUES(display_order);
+
+-- Insert modules
+INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_active, created_at, updated_at) VALUES
+    -- Group 1: Tổng quan
+    (1, 1, 'Dashboard', '/dashboard', 'home', 0, TRUE, NOW(), NOW()),
+
+    -- Group 2: Quản lý người dùng
+    (2, 2, 'Người dùng', '/users', 'users', 0, TRUE, NOW(), NOW()),
+    (3, 2, 'Vai trò', '/roles', 'shield', 1, TRUE, NOW(), NOW()),
+    (4, 2, 'Xác minh KYC', '/kyc', 'user-check', 2, TRUE, NOW(), NOW()),
+    (5, 2, 'Tài khoản ngân hàng', '/bank-accounts', 'building', 3, TRUE, NOW(), NOW()),
+
+    -- Group 3: Quản lý chiến dịch
+    (6, 3, 'Chiến dịch', '/campaigns', 'folder', 0, TRUE, NOW(), NOW()),
+    (7, 3, 'Danh mục', '/categories', 'tag', 1, TRUE, NOW(), NOW()),
+    (8, 3, 'Mục tiêu gây quỹ', '/fundraising-goals', 'target', 2, TRUE, NOW(), NOW()),
+    (9, 3, 'Chi tiêu', '/expenditures', 'credit-card', 3, TRUE, NOW(), NOW()),
+    (10, 3, 'Flag / Báo cáo', '/flags', 'flag', 4, TRUE, NOW(), NOW()),
+    (11, 3, 'Nhiệm vụ duyệt', '/tasks', 'clipboard-check', 5, TRUE, NOW(), NOW()),
+
+    -- Group 4: Quản lý quỹ
+    (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 0, TRUE, NOW(), NOW()),
+    (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 1, TRUE, NOW(), NOW()),
+
+    -- Group 5: Giao dịch
+    (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
+    (15, 5, 'Lịch sử thanh toán', '/payments', 'dollar-sign', 1, TRUE, NOW(), NOW()),
+
+    -- Group 6: Giao tiếp
+    (16, 6, 'Chat', '/chat', 'message-circle', 0, TRUE, NOW(), NOW()),
+    (17, 6, 'Diễn đàn', '/forum', 'message-square', 1, TRUE, NOW(), NOW()),
+    (18, 6, 'Bài đăng', '/feed', 'rss', 2, TRUE, NOW(), NOW()),
+    (19, 6, 'Thông báo', '/notifications', 'bell', 3, TRUE, NOW(), NOW()),
+
+    -- Group 7: Hệ thống
+    (20, 7, 'Nhóm module', '/module-groups', 'layers', 0, TRUE, NOW(), NOW()),
+    (21, 7, 'Module', '/modules', 'menu', 1, TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE title = VALUES(title), url = VALUES(url), display_order = VALUES(display_order);
 
 DROP TABLE IF EXISTS user_kyc;
 DROP TABLE IF EXISTS otp_tokens;
@@ -313,27 +397,28 @@ CREATE TABLE forum_category (
     INDEX idx_forum_category_slug (slug),
     INDEX idx_forum_category_is_active (is_active)
 );
-
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    budget_id BIGINT NULL,
+    target_id BIGINT NULL COMMENT 'ID of linked entity (campaign or expenditure)',
+    target_type VARCHAR(50) NULL COMMENT 'EXPENDITURE or CAMPAIGN',
+    target_name VARCHAR(255) NULL COMMENT 'Cached name of linked entity',
     author_id BIGINT NOT NULL,
-    category_id BIGINT NULL,
+    author_name VARCHAR(255) NULL COMMENT 'Cached author full name for display',
     parent_post_id BIGINT NULL,
-    type NVARCHAR(50) NOT NULL,
     visibility NVARCHAR(50) NOT NULL,
     title NVARCHAR(255) NULL,
     content NVARCHAR(2000) NOT NULL,
     status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
     reply_count INT DEFAULT 0,
     view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
     is_pinned BOOLEAN DEFAULT FALSE,
     is_locked BOOLEAN DEFAULT FALSE,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_feed_post_author_id (author_id),
-    INDEX idx_feed_post_budget_id (budget_id),
-    INDEX idx_feed_post_category_id (category_id),
+    INDEX idx_feed_post_target (target_id, target_type),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
 );
@@ -371,6 +456,18 @@ CREATE TABLE IF NOT EXISTS flags (
     INDEX idx_flags_campaign_id (campaign_id),
     INDEX idx_flags_user_id (user_id),
     INDEX idx_flags_status (status)
+);
+
+-- user_post_seen: tracks which posts a user has seen
+CREATE TABLE IF NOT EXISTS user_post_seen (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    post_id BIGINT NOT NULL,
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_post (user_id, post_id),
+    INDEX idx_user_post_seen_user_id (user_id),
+    INDEX idx_user_post_seen_post_id (post_id),
+    CONSTRAINT fk_user_post_seen_post FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
 );
 
 -- =======================================
@@ -434,18 +531,18 @@ USE trustfundme_notification_db;
 DROP TABLE IF EXISTS notification;
 
 CREATE TABLE notification (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id INT NOT NULL,
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
     type VARCHAR(100),
-    target_id INT,
+    target_id BIGINT,
     target_type VARCHAR(50),
     title VARCHAR(255),
     content TEXT,
     data JSON,
-    is_read BIT(1) DEFAULT 0,
-    read_at DATETIME(6),
-    created_at DATETIME(6),
-    updated_at DATETIME(6),
+    is_read TINYINT(1) DEFAULT 0,
+    read_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
     INDEX idx_notification_user_id (user_id),
     INDEX idx_notification_created_at (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -542,6 +639,7 @@ ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VAL
 
 
 -- Expenditures
+-- Mỗi campaign chỉ có 1 expenditure mẫu (UNIQUE campaign_id)
 -- Expenditure statuses:
 --   APPROVED         → ITEMIZED campaign: tự approved khi fund owner tạo
 --   PENDING_REVIEW   → AUTHORIZED campaign: cần staff duyệt
@@ -549,36 +647,26 @@ ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VAL
 --   DISBURSED        → Sau khi admin xác nhận đã chuyển tiền
 INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, staff_review_id, reject_reason, created_at, updated_at)
 VALUES
-    -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu tự APPROVED, fund owner đã yêu cầu rút tiền
+    -- Campaign 1 (ITEMIZED/ACTIVE): fund owner đã yêu cầu rút tiền
     (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NULL, NULL, NOW(), NOW()),
-    -- Campaign 1 (ITEMIZED/ACTIVE): chi tiêu mới tạo, chờ fund owner yêu cầu rút
-    (3, 1, DATE_ADD(NOW(), INTERVAL 10 DAY), 'PENDING', 0.00, 3000000.00, 3000000.00, 'Thuê xe tải vận chuyển hàng cứu trợ đợt 2', 'APPROVED', FALSE, NULL, NULL, NOW(), NOW()),
-    (4, 1, DATE_ADD(NOW(), INTERVAL 15 DAY), 'PENDING', 0.00, 2000000.00, 2000000.00, 'Mua thuốc men và vật tư y tế', 'APPROVED', FALSE, NULL, NULL, NOW(), NOW()),
-    -- Campaign 4 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, đã DISBURSED
+    -- Campaign 4 (AUTHORIZED/ACTIVE): đã DISBURSED
     (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
-    -- Campaign 6 (AUTHORIZED/ACTIVE): chi tiêu cần staff duyệt, chờ duyệt
-    (5, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW()),
-    -- NEW SAMPLE: Bị từ chối
-    (6, 4, NULL, NULL, 0.00, 1000000.00, 1000000.00, 'Yêu cầu mua thực phẩm bổ sung', 'REJECTED', FALSE, 2, 'Hạng mục này không nằm trong danh mục hỗ trợ y tế khẩn cấp của chiến dịch.', NOW(), NOW())
+    -- Campaign 6 (AUTHORIZED/ACTIVE): chờ staff duyệt
+    (3, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW())
 ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount), staff_review_id = VALUES(staff_review_id), reject_reason = VALUES(reject_reason);
 
 -- Expenditure Items
 -- exp 1 (Campaign 1 - ITEMIZED): đã WITHDRAWAL_REQUESTED
 -- exp 2 (Campaign 4 - AUTHORIZED): đã DISBURSED
--- exp 3 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
--- exp 4 (Campaign 1 - ITEMIZED): APPROVED, chờ rút tiền
--- exp 5 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
+-- exp 3 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
 INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, quantity_left, price, expected_price, note, created_at, updated_at)
 VALUES
     (1, 'Mì tôm', 500, 0, 500, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
     (1, 'Nước sạch', 1000, 0, 1000, 0.00, 5000.00, 'Chai nước khoáng 500ml', NOW(), NOW()),
     (1, 'Lương khô', 200, 0, 200, 0.00, 12500.00, 'Gói lương khô quân đội', NOW(), NOW()),
     (2, 'Máy đo huyết áp', 10, 10, 0, 500000.00, 500000.00, 'Máy Omron tự động', NOW(), NOW()),
-    (3, 'Thuê vận tải', 1, 0, 1, 0.00, 3000000.00, 'Xe tải 5 tấn đợt 2', NOW(), NOW()),
-    (4, 'Thuốc men', 50, 0, 50, 0.00, 40000.00, 'Gói cứu thương cá nhân', NOW(), NOW()),
-    (5, 'Thức ăn hạt', 100, 0, 100, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
-    (5, 'Thuốc thú y', 20, 0, 20, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW()),
-    (6, 'Thực phẩm bổ sung', 20, 0, 20, 0.00, 50000.00, 'Sữa bột và vitamin', NOW(), NOW());
+    (3, 'Thức ăn hạt', 100, 0, 100, 0.00, 50000.00, 'Thức ăn cho chó mèo', NOW(), NOW()),
+    (3, 'Thuốc thú y', 20, 0, 20, 0.00, 150000.00, 'Vaccine và thuốc tẩy giun', NOW(), NOW());
 
 
 -- Campaign follows (user 4 follows campaign 1)
@@ -591,29 +679,22 @@ ON DUPLICATE KEY UPDATE followed_at = VALUES(followed_at);
 -- 5. Sample Data: feed-service (Mapped to trustfundme_campaign_db)
 -- =======================================
 USE trustfundme_campaign_db;
-INSERT INTO feed_category (id, name, slug, description, color, display_order, is_active, created_at)
-VALUES
-    (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', '#6366f1', 1, TRUE, NOW()),
-    (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', '#ff5e14', 2, TRUE, NOW()),
-    (3, 'Hỏi đáp', 'qa', 'Hỏi đáp và hỗ trợ cộng đồng', '#10b981', 3, TRUE, NOW()),
-    (4, 'Tin tức', 'news', 'Tin tức mới nhất từ hệ thống', '#8b5cf6', 4, TRUE, NOW())
-ON DUPLICATE KEY UPDATE name = VALUES(name);
 
-INSERT INTO feed_post (author_id, category_id, type, visibility, title, content, status, reply_count, view_count, is_pinned, created_at, budget_id)
+INSERT INTO feed_post (author_id, author_name, visibility, title, content, status, reply_count, view_count, like_count, comment_count, is_pinned, created_at, target_id, target_type, target_name)
 VALUES
-    -- General Category
-    (5, 1, 'DISCUSSION', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 15, FALSE, NOW(), NULL),
-    (6, 1, 'DISCUSSION', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 42, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL),
-    
-    -- Campaigns Category
-    (3, 2, 'CAMPAIGN_UPDATE', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, TRUE, NOW(), 1),
-    (4, 2, 'DISCUSSION', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 8, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1),
-    
-    -- QA Category
-    (5, 3, 'QUESTION', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 5, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL),
-    
-    -- News Category
-    (1, 4, 'ANNOUNCEMENT', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 1024, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL)
+    -- General Discussion
+    (5, 'Alice Nguyen', 'PUBLIC', 'Chào mọi người!', 'Xin chào các bạn, mình là thành viên mới. Rất vui được tham gia cộng đồng TrustFundME!', 'PUBLISHED', 2, 0, 3, 2, FALSE, NOW(), NULL, NULL, NULL),
+    (6, 'Bob Tran', 'PUBLIC', 'Thảo luận về từ thiện minh bạch', 'Mình thấy việc minh bạch tài chính là quan trọng nhất. Các bạn nghĩ sao?', 'PUBLISHED', 5, 0, 8, 5, FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), NULL, NULL, NULL),
+
+    -- Campaign Updates - linked to expenditure 1 (EXPENDITURE)
+    (3, 'Fund Owner', 'PUBLIC', 'Cập nhật chuyến xe cứu trợ Quảng Bình', 'Đoàn xe chở 500 thùng mì tôm và 1000 chai nước đã xuất phát. Cảm ơn tình cảm của mọi người!', 'PUBLISHED', 10, 156, 25, 10, TRUE, NOW(), 1, 'EXPENDITURE', 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy'),
+    (4, 'Normal User', 'PUBLIC', 'Hỏi về các điểm tiếp nhận nhu yếu phẩm', 'Hiện tại mình có ít quần áo cũ và mì tôm, có thể gửi ở đâu Hà Nội ạ?', 'PUBLISHED', 1, 0, 2, 1, FALSE, DATE_SUB(NOW(), INTERVAL 2 HOUR), 1, 'EXPENDITURE', 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy'),
+
+    -- QA
+    (5, 'Alice Nguyen', 'PUBLIC', 'Làm sao để tạo chiến dịch?', 'Mình có hoàn cảnh khó khăn cần giúp đỡ, thủ tục tạo chiến dịch như thế nào?', 'PUBLISHED', 0, 0, 1, 0, FALSE, DATE_SUB(NOW(), INTERVAL 5 HOUR), NULL, NULL, NULL),
+
+    -- News/Announcement
+    (1, 'Admin User', 'PUBLIC', 'Thông báo bảo trì hệ thống', 'Hệ thống sẽ bảo trì vào 0h ngày mai. Mong các bạn lưu ý.', 'PUBLISHED', 0, 0, 15, 0, TRUE, DATE_SUB(NOW(), INTERVAL 3 DAY), NULL, NULL, NULL)
 ON DUPLICATE KEY UPDATE title = VALUES(title);
 
 -- =======================================
@@ -663,7 +744,7 @@ CREATE TABLE IF NOT EXISTS `donation_items` (
 -- Add sample data for the new Expenditure Transaction structure
 USE trustfundme_campaign_db;
 -- Creating a sample campaign for payout testing
-INSERT INTO campaigns (id, fund_owner_id, title, description, balance, type, status, category_id) 
+INSERT INTO campaigns (id, fund_owner_id, title, description, balance, type, status, category_id)
 VALUES (10, 3, 'Hỗ trợ đồng bào vùng lũ', 'Quyên góp khẩn cấp cho miền Trung', 450000000, 'AUTHORIZED', 'APPROVED', 1);
 
 -- Fundraising goal for campaign 10
@@ -676,4 +757,10 @@ VALUES (10, 10, 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', '
 
 -- Transaction for expenditure 10
 INSERT INTO expenditure_transactions (expenditure_id, amount, from_user_id, to_user_id, from_bank_code, from_account_number, from_account_holder_name, to_bank_code, to_account_number, to_account_holder_name, type, status)
-VALUES (10, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING');
+VALUES
+    -- expenditure_id=1 (WITHDRAWAL_REQUESTED): pending payout
+    (1, 15000000, 1, 3, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'MB', '999988887777', 'NGUYEN VAN A', 'PAYOUT', 'PENDING'),
+    -- expenditure_id=2 (DISBURSED): completed payout
+    (2, 5000000, 1, 4, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'TPB', '123456789012', 'TRAN THI B', 'PAYOUT', 'COMPLETED'),
+    -- expenditure_id=3 (PENDING_REVIEW): rejected payout (example)
+    (3, 8000000, 1, 5, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'ACB', '987654321098', 'LE VAN C', 'PAYOUT', 'REJECTED');

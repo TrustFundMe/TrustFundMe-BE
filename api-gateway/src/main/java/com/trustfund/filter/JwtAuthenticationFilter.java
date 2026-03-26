@@ -114,6 +114,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        // Module Groups - /active is public (sidebar), others require auth
+        if (path.equals("/api/module-groups/active")) {
+            return true;
+        }
+
         return false;
     }
 

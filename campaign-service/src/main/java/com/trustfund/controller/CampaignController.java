@@ -8,6 +8,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -24,9 +26,9 @@ public class CampaignController {
     private final CampaignService campaignService;
 
     @GetMapping
-    @Operation(summary = "Get all campaigns", description = "Retrieve a list of all campaigns (Public - no authentication required)")
-    public List<CampaignResponse> getAll() {
-        return campaignService.getAll();
+    @Operation(summary = "Get all campaigns (paginated)", description = "Retrieve a paginated list of all campaigns (Public - no authentication required)")
+    public Page<CampaignResponse> getAll(Pageable pageable) {
+        return campaignService.getAll(pageable);
     }
 
     @GetMapping("/{id}")
@@ -43,7 +45,7 @@ public class CampaignController {
 
     @GetMapping("/fund-owner/{fundOwnerId}/paginated")
     @Operation(summary = "Get paginated campaigns by fund owner", description = "Retrieve campaigns created by a specific fund owner with pagination (Public)")
-    public org.springframework.data.domain.Page<CampaignResponse> getByFundOwnerIdPaginated(
+    public Page<CampaignResponse> getByFundOwnerIdPaginated(
             @PathVariable("fundOwnerId") Long fundOwnerId,
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "6") int size) {

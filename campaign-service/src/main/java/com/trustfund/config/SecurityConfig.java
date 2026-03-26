@@ -17,9 +17,6 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.time.LocalDateTime;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.util.HashMap;
-import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -73,6 +70,16 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/feed-posts/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/flags/**").permitAll()
+                                                // User post seen — allow GET (returns empty for anon), POST needs auth
+                                                .requestMatchers(HttpMethod.GET, "/api/user-post-seen").permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/user-post-seen").authenticated()
+                                                .requestMatchers("/api/user-post-seen/**").authenticated()
+                                                // Approval tasks
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/tasks/campaign/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/tasks/staff/**")
+                                                .hasAnyRole("ADMIN", "STAFF")
+                                                .requestMatchers("/api/admin/tasks/**").hasRole("ADMIN")
                                                 .anyRequest().authenticated())
                                 .sessionManagement(sess -> sess
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -89,15 +96,14 @@ public class SecurityConfig {
                         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
                         response.setContentType("application/json;charset=UTF-8");
 
-                        Map<String, Object> errorResponse = new HashMap<>();
-                        errorResponse.put("timestamp", LocalDateTime.now());
-                        errorResponse.put("status", 403);
-                        errorResponse.put("error", "Forbidden");
-                        errorResponse.put("message", "Access Denied: " + accessDeniedException.getMessage());
-                        errorResponse.put("path", request.getRequestURI());
+                        String jsonResponse = String.format(
+                                "{\"timestamp\":\"%s\", \"status\":403, \"error\":\"Forbidden\", \"message\":\"%s\", \"path\":\"%s\"}",
+                                LocalDateTime.now().toString(),
+                                accessDeniedException.getMessage().replace("\"", "\\\""),
+                                request.getRequestURI()
+                        );
 
-                        ObjectMapper mapper = new ObjectMapper();
-                        mapper.writeValue(response.getWriter(), errorResponse);
+                        response.getWriter().write(jsonResponse);
                 };
         }
 }

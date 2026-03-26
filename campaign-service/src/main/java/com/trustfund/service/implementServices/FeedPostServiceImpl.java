@@ -2,23 +2,22 @@ package com.trustfund.service.implementServices;
 
 import com.trustfund.client.UserInfoClient;
 import com.trustfund.client.MediaServiceClient;
+import com.trustfund.model.Campaign;
+import com.trustfund.model.Expenditure;
 import com.trustfund.model.FeedPost;
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
-import com.trustfund.model.response.ForumAttachmentResponse;
 import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
-import com.trustfund.repository.ForumCategoryRepository;
+import com.trustfund.repository.UserPostSeenRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import java.util.HashSet;
-import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -26,19 +25,21 @@ public class FeedPostServiceImpl implements FeedPostService {
 
     private final FeedPostRepository feedPostRepository;
     private final MediaServiceClient mediaServiceClient;
-    private final ForumCategoryRepository forumCategoryRepository;
     private final FlagRepository flagRepository;
     private final FeedPostLikeRepository feedPostLikeRepository;
     private final FeedPostCommentRepository feedPostCommentRepository;
     private final org.springframework.cache.CacheManager cacheManager;
+    private final UserPostSeenRepository userPostSeenRepository;
     private final UserInfoClient userInfoClient;
+    private final com.trustfund.repository.ExpenditureRepository expenditureRepository;
+    private final com.trustfund.repository.CampaignRepository campaignRepository;
 
     @Override
     public FeedPostResponse create(CreateFeedPostRequest request, Long authorId) {
         FeedPost feedPost = FeedPost.builder()
-                .budgetId(request.getBudgetId())
+                .targetId(request.getTargetId())
+                .targetType(request.getTargetType())
                 .authorId(authorId)
-                .type(request.getType())
                 .visibility(request.getVisibility())
                 .title(request.getTitle())
                 .content(request.getContent())
@@ -87,6 +88,11 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private void incrementViewCountIfEligible(Long postId, Long userId, String ipAddress) {
+        // Nếu user đã có record post_seen rồi thì không tăng
+        if (userId != null && userPostSeenRepository.existsByUserIdAndPostId(userId, postId)) {
+            return;
+        }
+
         String key = "view:" + postId + ":" + (userId != null ? "u" + userId : "ip" + ipAddress);
         org.springframework.cache.Cache cache = cacheManager.getCache("postValidationViews");
 
@@ -217,10 +223,15 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             post.setStatus(request.getStatus());
         }
-        if (request.getBudgetId() != null) {
-            post.setBudgetId(request.getBudgetId());
+        if (request.getTargetId() != null) {
+            post.setTargetId(request.getTargetId());
         } else {
-            post.setBudgetId(null);
+            post.setTargetId(null);
+        }
+        if (request.getTargetType() != null) {
+            post.setTargetType(request.getTargetType());
+        } else {
+            post.setTargetType(null);
         }
 
         if (request.getCategoryId() != null) {
@@ -366,55 +377,18 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        Set<String> seenUrls = new HashSet<>();
-
-        String categoryName = null;
-        if (entity.getCategoryId() != null) {
-            categoryName = forumCategoryRepository.findById(entity.getCategoryId())
-                    .map(com.trustfund.model.ForumCategory::getName)
-                    .orElse(null);
-        }
-
-        java.util.List<java.util.Map<String, Object>> mediaList =
-                mediaServiceClient.getMediaByPostId(entity.getId());
-
-        java.util.List<ForumAttachmentResponse> attachmentResponses = new java.util.ArrayList<>();
-        int order = 0;
-        for (java.util.Map<String, Object> media : mediaList) {
-            Object urlObj = media.get("url");
-            if (!(urlObj instanceof String) || ((String) urlObj).isBlank()) continue;
-            String url = (String) urlObj;
-
-            if (seenUrls.contains(url)) continue;
-            seenUrls.add(url);
-
-            Object idObj = media.get("id");
-            Long mediaId = idObj instanceof Number ? ((Number) idObj).longValue() : null;
-
-            Object typeObj = media.get("mediaType");
-            String mediaType = typeObj instanceof String ? (String) typeObj : null;
-            String attachmentType = "PHOTO".equalsIgnoreCase(mediaType) ? "IMAGE" : "FILE";
-
-            Object fileNameObj = media.get("fileName");
-            String fileName = fileNameObj instanceof String ? (String) fileNameObj : null;
-
-            Object sizeObj = media.get("sizeBytes");
-            Long fileSize = sizeObj instanceof Number ? ((Number) sizeObj).longValue() : null;
-
-            Object contentTypeObj = media.get("contentType");
-            String mimeType = contentTypeObj instanceof String ? (String) contentTypeObj : null;
-
-            attachmentResponses.add(
-                    ForumAttachmentResponse.builder()
-                            .id(mediaId)
-                            .type(attachmentType)
-                            .url(url)
-                            .fileName(fileName)
-                            .fileSize(fileSize)
-                            .mimeType(mimeType)
-                            .displayOrder(order++)
-                            .build()
-            );
+        // Resolve targetName based on targetType
+        String targetName = null;
+        if (entity.getTargetId() != null && entity.getTargetType() != null) {
+            if (entity.getTargetType().equals("EXPENDITURE")) {
+                targetName = expenditureRepository.findById(entity.getTargetId())
+                        .map(Expenditure::getPlan)
+                        .orElse(null);
+            } else if (entity.getTargetType().equals("CAMPAIGN")) {
+                targetName = campaignRepository.findById(entity.getTargetId())
+                        .map(Campaign::getTitle)
+                        .orElse(null);
+            }
         }
 
         boolean isLiked = false;
@@ -426,16 +400,16 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         return FeedPostResponse.builder()
                 .id(entity.getId())
-                .budgetId(entity.getBudgetId())
+                .targetId(entity.getTargetId())
+                .targetType(entity.getTargetType())
+                .targetName(targetName)
                 .authorId(entity.getAuthorId())
                 .authorName(authorInfo.fullName())
                 .authorAvatar(authorInfo.avatarUrl())
-                .type(entity.getType())
                 .visibility(entity.getVisibility())
                 .title(entity.getTitle())
                 .content(entity.getContent())
                 .status(entity.getStatus())
-                .category(categoryName)
                 .categoryId(entity.getCategoryId())
                 .parentPostId(entity.getParentPostId())
                 .replyCount(entity.getReplyCount())
@@ -446,7 +420,6 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .isLiked(isLiked)
                 .isPinned(entity.getIsPinned())
                 .isLocked(entity.getIsLocked())
-                .attachments(attachmentResponses)
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
