@@ -380,37 +380,9 @@ USE trustfundme_campaign_db;
 DROP TABLE IF EXISTS feed_post_comment_like;
 DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
-DROP TABLE IF EXISTS forum_attachment;
 DROP TABLE IF EXISTS feed_post;
 DROP TABLE IF EXISTS feed_category;
 
-CREATE TABLE forum_category (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    icon_url VARCHAR(500),
-    color VARCHAR(20),
-    display_order INT DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_category_slug (slug),
-    INDEX idx_forum_category_is_active (is_active)
-);
-
--- Seed forum categories (used by GET /api/forum/categories)
-INSERT INTO forum_category (id, name, slug, description, icon_url, color, display_order, is_active, created_at)
-VALUES
-    (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', NULL, '#6366f1', 1, TRUE, NOW()),
-    (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', NULL, '#ff5e14', 2, TRUE, NOW())
-ON DUPLICATE KEY UPDATE
-    name = VALUES(name),
-    slug = VALUES(slug),
-    description = VALUES(description),
-    icon_url = VALUES(icon_url),
-    color = VALUES(color),
-    display_order = VALUES(display_order),
-    is_active = VALUES(is_active);
 
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -438,20 +410,7 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_created_at (created_at)
 );
 
-CREATE TABLE IF NOT EXISTS forum_attachment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    type VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
-    url VARCHAR(1000) NOT NULL,
-    file_name VARCHAR(255) NULL,
-    file_size BIGINT NULL,
-    mime_type VARCHAR(100) NULL,
-    display_order INT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_attachment_post_id (post_id),
-    CONSTRAINT fk_forum_attachment_post
-        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
+
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
