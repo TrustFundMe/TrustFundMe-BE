@@ -397,6 +397,21 @@ CREATE TABLE forum_category (
     INDEX idx_forum_category_slug (slug),
     INDEX idx_forum_category_is_active (is_active)
 );
+
+-- Seed forum categories (used by GET /api/forum/categories)
+INSERT INTO forum_category (id, name, slug, description, icon_url, color, display_order, is_active, created_at)
+VALUES
+    (1, 'Chung', 'general', 'Thảo luận chung về mọi chủ đề', NULL, '#6366f1', 1, TRUE, NOW()),
+    (2, 'Chiến dịch', 'campaigns', 'Thảo luận về các chiến dịch gây quỹ', NULL, '#ff5e14', 2, TRUE, NOW())
+ON DUPLICATE KEY UPDATE
+    name = VALUES(name),
+    slug = VALUES(slug),
+    description = VALUES(description),
+    icon_url = VALUES(icon_url),
+    color = VALUES(color),
+    display_order = VALUES(display_order),
+    is_active = VALUES(is_active);
+
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     target_id BIGINT NULL COMMENT 'ID of linked entity (campaign or expenditure)',
