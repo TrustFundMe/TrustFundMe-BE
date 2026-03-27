@@ -6,6 +6,8 @@ import com.trustfund.service.DonationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
@@ -90,6 +92,23 @@ public class PaymentController {
             @RequestParam(name = "limit", defaultValue = "3") int limit) {
         try {
             return ResponseEntity.ok(donationService.getRecentDonors(campaignId, limit));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/my-donations")
+    public ResponseEntity<?> getMyDonations(
+            @RequestParam(name = "limit", defaultValue = "50") int limit) {
+        try {
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            if (authentication == null || authentication.getName() == null) {
+                return ResponseEntity.status(401).body(Map.of("error", "Authentication required"));
+            }
+            Long donorId = Long.parseLong(authentication.getName());
+            return ResponseEntity.ok(donationService.getMyPaidDonations(donorId, limit));
+        } catch (NumberFormatException e) {
+            return ResponseEntity.status(401).body(Map.of("error", "Invalid authentication principal"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }

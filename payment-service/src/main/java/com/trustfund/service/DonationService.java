@@ -26,6 +26,7 @@ import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.client.RestTemplate;
 import com.trustfund.dto.response.CampaignProgressResponse;
+import com.trustfund.dto.response.MyDonationImpactResponse;
 import com.trustfund.dto.response.RecentDonorResponse;
 
 @Slf4j
@@ -397,6 +398,44 @@ public class DonationService {
                                         .amount(d.getTotalAmount())
                                         .createdAt(d.getCreatedAt())
                                         .anonymous(anon)
+                                        .build();
+                }).collect(Collectors.toList());
+        }
+
+        @Transactional(readOnly = true)
+        public List<MyDonationImpactResponse> getMyPaidDonations(Long donorId, int limit) {
+                List<Donation> rows = donationRepository.findByDonorIdAndStatusOrderByCreatedAtDesc(donorId, "PAID");
+                if (limit > 0 && rows.size() > limit) {
+                        rows = rows.subList(0, limit);
+                }
+
+                return rows.stream().map(d -> {
+                        String campaignTitle = null;
+                        if (d.getCampaignId() != null) {
+                                try {
+                                        String url = campaignServiceUrl + "/api/campaigns/" + d.getCampaignId();
+                                        @SuppressWarnings("unchecked")
+                                        Map<String, Object> campaignData = restTemplate.getForObject(url, Map.class);
+                                        if (campaignData != null && campaignData.get("title") != null) {
+                                                campaignTitle = campaignData.get("title").toString();
+                                        }
+                                } catch (Exception e) {
+                                        log.warn("Could not fetch campaign title for campaignId {}: {}",
+                                                        d.getCampaignId(), e.getMessage());
+                                }
+                        }
+
+                        return MyDonationImpactResponse.builder()
+                                        .donationId(d.getId())
+                                        .donorId(d.getDonorId())
+                                        .campaignId(d.getCampaignId())
+                                        .campaignTitle(campaignTitle)
+                                        .donationAmount(d.getDonationAmount())
+                                        .tipAmount(d.getTipAmount())
+                                        .totalAmount(d.getTotalAmount())
+                                        .status(d.getStatus())
+                                        .anonymous(Boolean.TRUE.equals(d.getIsAnonymous()))
+                                        .createdAt(d.getCreatedAt())
                                         .build();
                 }).collect(Collectors.toList());
         }

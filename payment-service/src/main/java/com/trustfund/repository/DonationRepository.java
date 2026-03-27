@@ -24,4 +24,6 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
     @Query("SELECT d FROM Donation d WHERE d.campaignId = :campaignId AND d.status = 'PAID' ORDER BY d.createdAt DESC")
     List<Donation> findRecentPaidDonationsByCampaignId(@Param("campaignId") Long campaignId,
             org.springframework.data.domain.Pageable pageable);
+
+    List<Donation> findByDonorIdAndStatusOrderByCreatedAtDesc(Long donorId, String status);
 }
