@@ -10,6 +10,7 @@ import com.trustfund.repository.DonationRepository;
 import com.trustfund.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +23,14 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.client.RestTemplate;
 import com.trustfund.dto.response.CampaignProgressResponse;
+import com.trustfund.dto.response.MyDonationImpactResponse;
 import com.trustfund.dto.response.RecentDonorResponse;
 
 @Slf4j
@@ -38,6 +43,9 @@ public class DonationService {
         private final DonationItemRepository donationItemRepository;
         private final PaymentRepository paymentRepository;
         private final RestTemplate restTemplate;
+
+        @Qualifier("campaignEnrichmentRestTemplate")
+        private final RestTemplate campaignEnrichmentRestTemplate;
 
         @Value("${app.frontend.url:http://localhost:3000}")
         private String frontendUrl;
@@ -397,6 +405,54 @@ public class DonationService {
                                         .amount(d.getTotalAmount())
                                         .createdAt(d.getCreatedAt())
                                         .anonymous(anon)
+                                        .build();
+                }).collect(Collectors.toList());
+        }
+
+        @Transactional(readOnly = true)
+        public List<MyDonationImpactResponse> getMyPaidDonations(Long donorId, int limit) {
+                List<Donation> rows = donationRepository.findByDonorIdAndStatusOrderByCreatedAtDesc(donorId, "PAID");
+                if (limit > 0 && rows.size() > limit) {
+                        rows = rows.subList(0, limit);
+                }
+
+                Set<Long> uniqueCampaignIds = rows.stream()
+                                .map(Donation::getCampaignId)
+                                .filter(Objects::nonNull)
+                                .collect(Collectors.toCollection(HashSet::new));
+
+                Map<Long, String> campaignTitleById = new HashMap<>();
+                for (Long campaignId : uniqueCampaignIds) {
+                        try {
+                                String url = campaignServiceUrl + "/api/campaigns/" + campaignId;
+                                @SuppressWarnings("unchecked")
+                                Map<String, Object> campaignData = campaignEnrichmentRestTemplate.getForObject(url,
+                                                Map.class);
+                                if (campaignData != null && campaignData.get("title") != null) {
+                                        campaignTitleById.put(campaignId, campaignData.get("title").toString());
+                                }
+                        } catch (Exception e) {
+                                log.warn("Could not fetch campaign title for campaignId {}: {}",
+                                                campaignId, e.getMessage());
+                        }
+                }
+
+                return rows.stream().map(d -> {
+                        String campaignTitle = d.getCampaignId() != null
+                                        ? campaignTitleById.get(d.getCampaignId())
+                                        : null;
+
+                        return MyDonationImpactResponse.builder()
+                                        .donationId(d.getId())
+                                        .donorId(d.getDonorId())
+                                        .campaignId(d.getCampaignId())
+                                        .campaignTitle(campaignTitle)
+                                        .donationAmount(d.getDonationAmount())
+                                        .tipAmount(d.getTipAmount())
+                                        .totalAmount(d.getTotalAmount())
+                                        .status(d.getStatus())
+                                        .anonymous(Boolean.TRUE.equals(d.getIsAnonymous()))
+                                        .createdAt(d.getCreatedAt())
                                         .build();
                 }).collect(Collectors.toList());
         }

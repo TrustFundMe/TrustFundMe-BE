@@ -380,23 +380,10 @@ USE trustfundme_campaign_db;
 DROP TABLE IF EXISTS feed_post_comment_like;
 DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
-DROP TABLE IF EXISTS forum_attachment;
 DROP TABLE IF EXISTS feed_post;
 DROP TABLE IF EXISTS feed_category;
 
-CREATE TABLE forum_category (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    name VARCHAR(100) NOT NULL,
-    slug VARCHAR(100) NOT NULL UNIQUE,
-    description TEXT,
-    icon_url VARCHAR(500),
-    color VARCHAR(20),
-    display_order INT DEFAULT 0,
-    is_active BOOLEAN NOT NULL DEFAULT TRUE,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_category_slug (slug),
-    INDEX idx_forum_category_is_active (is_active)
-);
+
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
     target_id BIGINT NULL COMMENT 'ID of linked entity (campaign or expenditure)',
@@ -423,20 +410,7 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_created_at (created_at)
 );
 
-CREATE TABLE IF NOT EXISTS forum_attachment (
-    id BIGINT PRIMARY KEY AUTO_INCREMENT,
-    post_id BIGINT NOT NULL,
-    type VARCHAR(20) NOT NULL DEFAULT 'IMAGE',
-    url VARCHAR(1000) NOT NULL,
-    file_name VARCHAR(255) NULL,
-    file_size BIGINT NULL,
-    mime_type VARCHAR(100) NULL,
-    display_order INT DEFAULT 0,
-    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_forum_attachment_post_id (post_id),
-    CONSTRAINT fk_forum_attachment_post
-        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
+
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
