@@ -12,8 +12,8 @@ import java.util.List;
 
 public interface UserService {
     List<UserInfo> getAllUsers();
+
     Page<UserInfo> getAllUsers(Pageable pageable);
-    List<UserInfo> getAllStaffs();
 
     List<UserInfo> getAllStaff();
 

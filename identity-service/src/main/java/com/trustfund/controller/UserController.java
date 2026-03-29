@@ -46,12 +46,6 @@ public class UserController {
 
     @GetMapping("/staff")
     @Operation(summary = "Get all staff members", description = "Retrieve all active staff members (authenticated users)")
-    public ResponseEntity<List<UserInfo>> getAllStaffs() {
-        return ResponseEntity.ok(userService.getAllStaffs());
-    }
-
-    @GetMapping("/staff")
-    @Operation(summary = "Get all staff members", description = "Retrieve a list of all staff members (Public)")
     public ResponseEntity<List<UserInfo>> getAllStaff() {
         return ResponseEntity.ok(userService.getAllStaff());
     }
@@ -66,7 +60,8 @@ public class UserController {
     @PreAuthorize("hasRole('ADMIN') or hasRole('STAFF')")
     @Operation(summary = "Create a new user", description = "Create a new user account manually (Admin/Staff only)", security = @SecurityRequirement(name = "bearerAuth"))
     public ResponseEntity<ApiResponse<UserInfo>> createUser(@Valid @RequestBody CreateUserRequest request) {
-        log.info("Create user request - email: {}, fullName: {}, role: {}", request.getEmail(), request.getFullName(), request.getRole());
+        log.info("Create user request - email: {}, fullName: {}, role: {}", request.getEmail(), request.getFullName(),
+                request.getRole());
         UserInfo user = userService.createUser(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(user, "Tạo người dùng thành công"));
     }
@@ -127,7 +122,8 @@ public class UserController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
 
@@ -154,7 +150,8 @@ public class UserController {
 
     private String buildImportMessage(ImportResult r) {
         if (r.getImported() > 0 && r.getSkipped() > 0) {
-            return String.format("Nhập thành công %d người dùng. Bỏ qua %d dòng trùng lặp.", r.getImported(), r.getSkipped());
+            return String.format("Nhập thành công %d người dùng. Bỏ qua %d dòng trùng lặp.", r.getImported(),
+                    r.getSkipped());
         } else if (r.getImported() > 0) {
             return String.format("Nhập thành công %d người dùng.", r.getImported());
         } else if (r.getSkipped() > 0) {
@@ -172,7 +169,8 @@ public class UserController {
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
-                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .contentType(
+                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
                 .body(file);
     }
 }

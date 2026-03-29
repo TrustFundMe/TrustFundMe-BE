@@ -40,21 +40,22 @@ public class ChatController {
     }
 
     @GetMapping
-    @Operation(summary = "Get conversations", description = "Get list of conversations. Only STAFF can view all conversations.")
+    @Operation(summary = "Get conversations", description = "Get list of conversations. STAFF can view all conversations; Fund Owners and Donors can view their own conversations.")
     public ResponseEntity<java.util.List<ConversationResponse>> getConversations() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        // userId is not used when fetching all conversations for staff
+        Long userId = Long.parseLong(authentication.getName());
 
         String currentRole = authentication.getAuthorities().stream()
                 .findFirst()
                 .map(grantedAuthority -> grantedAuthority.getAuthority())
                 .orElse(null);
 
-        if (currentRole == null || !currentRole.equals("ROLE_STAFF")) {
-            throw new com.trustfund.exception.exceptions.ForbiddenException("Only staff can view conversations");
+        if ("ROLE_STAFF".equals(currentRole)) {
+            return ResponseEntity.ok(chatService.getAllConversations());
+        } else {
+            // Fund Owners and Donors can only view their own conversations
+            return ResponseEntity.ok(chatService.getConversations(userId));
         }
-
-        return ResponseEntity.ok(chatService.getAllConversations());
     }
 
     @GetMapping("/campaign/{campaignId}")

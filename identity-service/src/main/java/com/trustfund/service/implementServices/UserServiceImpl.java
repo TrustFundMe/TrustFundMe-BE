@@ -53,19 +53,9 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<UserInfo> getAllStaffs() {
+    public List<UserInfo> getAllStaff() {
         List<User> staffs = userRepository.findAllByRole(User.Role.STAFF);
         return staffs.stream()
-                .map(UserInfo::fromUser)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<UserInfo> getAllStaff() {
-        List<User> staff = userRepository.findAllByRole(User.Role.STAFF);
-        log.info("Retrieved {} staff members", staff.size());
-        return staff.stream()
                 .map(UserInfo::fromUser)
                 .collect(Collectors.toList());
     }
@@ -305,19 +295,19 @@ public class UserServiceImpl implements UserService {
                 }
 
                 emailsInFile.add(email);
-                if (!phone.isEmpty()) phonesInFile.add(phone);
+                if (!phone.isEmpty())
+                    phonesInFile.add(phone);
                 candidateEmails.add(email);
-                if (!phone.isEmpty()) candidatePhones.add(phone);
+                if (!phone.isEmpty())
+                    candidatePhones.add(phone);
                 userByEmail.put(email, u);
             }
 
             // Phase 1b: Batch check DB existence (single query each)
             var existingEmails = new java.util.HashSet<String>(
-                userRepository.findExistingEmails(candidateEmails)
-            );
+                    userRepository.findExistingEmails(candidateEmails));
             var existingPhones = new java.util.HashSet<String>(
-                userRepository.findExistingPhones(candidatePhones)
-            );
+                    userRepository.findExistingPhones(candidatePhones));
 
             // Phase 1c: Final validation against DB
             var validEmails = new java.util.HashSet<String>();
@@ -340,16 +330,17 @@ public class UserServiceImpl implements UserService {
             }
 
             // Phase 2: Build and save valid users
-            // Encode default password ONCE and reuse for all rows (BCrypt is slow, avoid N encodes)
+            // Encode default password ONCE and reuse for all rows (BCrypt is slow, avoid N
+            // encodes)
             String defaultPasswordHash = passwordEncoder.encode("TrustFund123@");
             List<User> validUsers = validEmails.stream()
-                .map(email -> {
-                    User u = userByEmail.get(email);
-                    u.setEmail(email);
-                    u.setPassword(defaultPasswordHash);
-                    return u;
-                })
-                .collect(java.util.stream.Collectors.toList());
+                    .map(email -> {
+                        User u = userByEmail.get(email);
+                        u.setEmail(email);
+                        u.setPassword(defaultPasswordHash);
+                        return u;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
 
             if (!validUsers.isEmpty()) {
                 userRepository.saveAll(validUsers);
