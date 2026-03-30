@@ -42,6 +42,10 @@ public class Donation {
     @Column(name = "total_amount", precision = 19, scale = 4)
     private BigDecimal totalAmount;
 
+    @Builder.Default
+    @Column(name = "is_balance_synchronized")
+    private Boolean isBalanceSynchronized = false;
+
     private String status;
 
     @Column(name = "created_at", nullable = false, updatable = false)

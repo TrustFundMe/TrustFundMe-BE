@@ -11,6 +11,7 @@ import java.util.List;
 public interface CampaignService {
 
     java.util.List<CampaignResponse> getAll();
+
     Page<CampaignResponse> getAll(Pageable pageable);
 
     CampaignResponse getById(Long id);
@@ -30,4 +31,6 @@ public interface CampaignService {
     List<CampaignResponse> getByCategoryId(Long categoryId);
 
     CampaignResponse reviewCampaign(Long id, Long staffId, String status, String rejectionReason);
+
+    void updateBalance(Long id, java.math.BigDecimal amount);
 }

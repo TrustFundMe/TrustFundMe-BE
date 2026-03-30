@@ -33,6 +33,7 @@ public class CampaignResponse {
     private String rejectionReason;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String thankMessage;
 
     // Verification flags
     private boolean kycVerified;

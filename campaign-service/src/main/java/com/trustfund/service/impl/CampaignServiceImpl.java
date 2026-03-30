@@ -8,6 +8,8 @@ import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
 import com.trustfund.repository.CampaignCategoryRepository;
 import com.trustfund.repository.CampaignRepository;
+import com.trustfund.repository.ExpenditureRepository;
+import com.trustfund.model.Expenditure;
 import com.trustfund.service.CampaignService;
 import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
@@ -31,6 +33,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final MediaServiceClient mediaServiceClient;
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
     private final com.trustfund.client.NotificationServiceClient notificationServiceClient;
+    private final ExpenditureRepository expenditureRepository;
 
     @Override
     public List<CampaignResponse> getAll() {
@@ -214,6 +217,23 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign saved = campaignRepository.save(campaign);
         approvalTaskService.completeTask("CAMPAIGN", saved.getId());
 
+        // Sync status with initial expenditure for ITEMIZED campaigns
+        if ("ITEMIZED".equalsIgnoreCase(saved.getType())) {
+            List<Expenditure> expenditures = expenditureRepository.findByCampaignId(saved.getId());
+            for (Expenditure exp : expenditures) {
+                if ("PENDING_REVIEW".equalsIgnoreCase(exp.getStatus())
+                        || "Quỹ mới tạo".equalsIgnoreCase(exp.getPlan())) {
+                    if ("APPROVED".equalsIgnoreCase(status)) {
+                        exp.setStatus("APPROVED");
+                    } else if ("REJECTED".equalsIgnoreCase(status)) {
+                        exp.setStatus("REJECTED");
+                        exp.setRejectReason("expenditure status lần 1 phụ thuộc vào campaign");
+                    }
+                    expenditureRepository.save(exp);
+                }
+            }
+        }
+
         // Send notification if approved or rejected
         if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
             try {
@@ -256,11 +276,12 @@ public class CampaignServiceImpl implements CampaignService {
     private CampaignResponse toCampaignResponse(Campaign campaign) {
         UserVerificationStatusResponse verificationStatus = identityServiceClient
                 .getVerificationStatus(campaign.getFundOwnerId());
-                
+
         String ownerName = null;
         String ownerAvatarUrl = null;
         try {
-            com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient.getUserInfo(campaign.getFundOwnerId());
+            com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient
+                    .getUserInfo(campaign.getFundOwnerId());
             if (userInfo != null) {
                 ownerName = userInfo.getFullName();
                 ownerAvatarUrl = userInfo.getAvatarUrl();
@@ -303,8 +324,15 @@ public class CampaignServiceImpl implements CampaignService {
                 .rejectionReason(campaign.getRejectionReason())
                 .createdAt(campaign.getCreatedAt())
                 .updatedAt(campaign.getUpdatedAt())
+                .thankMessage(campaign.getThankMessage())
                 .kycVerified(verificationStatus != null && verificationStatus.isKycVerified())
                 .bankVerified(verificationStatus != null && verificationStatus.isBankVerified())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void updateBalance(Long id, java.math.BigDecimal amount) {
+        campaignRepository.updateBalance(id, amount);
     }
 }
