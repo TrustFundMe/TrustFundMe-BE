@@ -101,4 +101,13 @@ public class CampaignController {
         return ResponseEntity
                 .ok(campaignService.reviewCampaign(id, staffId, request.getStatus(), request.getRejectionReason()));
     }
+
+    @PutMapping("/{id}/update-balance")
+    @Operation(summary = "Update campaign balance", description = "Adds an amount to the campaign's current balance (Internal use)")
+    public ResponseEntity<Void> updateBalance(
+            @PathVariable("id") Long id,
+            @RequestParam("amount") java.math.BigDecimal amount) {
+        campaignService.updateBalance(id, amount);
+        return ResponseEntity.ok().build();
+    }
 }

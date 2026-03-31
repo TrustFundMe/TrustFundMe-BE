@@ -1,6 +1,7 @@
 package com.trustfund.controller;
 
 import com.trustfund.dto.request.CreatePaymentRequest;
+import com.trustfund.dto.response.CampaignAnalyticsResponse;
 import com.trustfund.dto.response.PaymentResponse;
 import com.trustfund.service.DonationService;
 import lombok.RequiredArgsConstructor;
@@ -111,6 +112,20 @@ public class PaymentController {
             return ResponseEntity.status(401).body(Map.of("error", "Invalid authentication principal"));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/campaign/{campaignId}/analytics")
+    public ResponseEntity<?> getCampaignAnalytics(@PathVariable("campaignId") Long campaignId,
+            @RequestParam(name = "period", defaultValue = "Tháng") String period) {
+        try {
+            CampaignAnalyticsResponse response = donationService.getCampaignAnalytics(campaignId, period);
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Failed to fetch campaign analytics for id: {}", campaignId, e);
+            return ResponseEntity.internalServerError().body(Map.of(
+                    "error", "Internal Server Error",
+                    "message", e.getMessage()));
         }
     }
 }

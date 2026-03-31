@@ -29,6 +29,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.client.RestTemplate;
+import com.trustfund.dto.response.CampaignAnalyticsResponse;
 import com.trustfund.dto.response.CampaignProgressResponse;
 import com.trustfund.dto.response.MyDonationImpactResponse;
 import com.trustfund.dto.response.RecentDonorResponse;
@@ -50,7 +51,7 @@ public class DonationService {
         @Value("${app.frontend.url:http://localhost:3000}")
         private String frontendUrl;
 
-        @Value("${app.campaign-service.url:http://campaign-service}")
+        @Value("${app.campaign-service.url:http://localhost:8082}")
         private String campaignServiceUrl;
 
         @Transactional
@@ -167,7 +168,10 @@ public class DonationService {
 
                                 if (!"PAID".equals(oldDonationStatus) && "PAID".equals(status)) {
                                         processQuantityUpdate(donation);
-                                } else {
+                                }
+
+                                if (!"PAID".equals(status)
+                                                || Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
                                         log.info("No quantity update needed: status transition {} -> {}",
                                                         oldDonationStatus, status);
                                 }
@@ -209,6 +213,12 @@ public class DonationService {
                                         if (!"PAID".equals(oldStatus) && "PAID".equals(realStatus)) {
                                                 processQuantityUpdate(donation);
                                         }
+
+                                        if ("PAID".equals(realStatus)
+                                                        && !Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
+                                                // updateCampaignBalance(donation); // Removed to use FE-driven update
+                                                // as requested
+                                        }
                                 }
                         } catch (Exception e) {
                                 log.error("❌ Failed to verify payment with PayOS for donation {}: {}", donationId,
@@ -222,6 +232,7 @@ public class DonationService {
                 return donationRepository.findById(id).map(donation -> PaymentResponse.builder()
                                 .donationId(donation.getId())
                                 .campaignId(donation.getCampaignId())
+                                .donationAmount(donation.getDonationAmount())
                                 .totalAmount(donation.getTotalAmount())
                                 .status(donation.getPayment() != null ? donation.getPayment().getStatus() : "PENDING")
                                 .paymentLinkId(donation.getPayment() != null ? donation.getPayment().getPaymentLinkId()
@@ -296,7 +307,7 @@ public class DonationService {
                 log.info("📊 Getting campaign progress for campaignId: {}", campaignId);
 
                 // 1. Total raised from paid donations
-                BigDecimal raised = donationRepository.sumTotalAmountByCampaignId(campaignId);
+                BigDecimal raised = donationRepository.sumDonationAmountByCampaignId(campaignId);
                 if (raised == null)
                         raised = BigDecimal.ZERO;
 
@@ -455,5 +466,196 @@ public class DonationService {
                                         .createdAt(d.getCreatedAt())
                                         .build();
                 }).collect(Collectors.toList());
+        }
+
+        @Transactional(readOnly = true)
+        public CampaignAnalyticsResponse getCampaignAnalytics(Long campaignId, String period) {
+                log.info("📈 Calculating analytics for campaignId: {}, period: {}", campaignId, period);
+
+                // 1. Fetch campaign info (balance, approvedAt)
+                BigDecimal currentBalance = BigDecimal.ZERO;
+                java.time.LocalDateTime approvedAt = java.time.LocalDateTime.now();
+                try {
+                        String url = campaignServiceUrl + "/api/campaigns/" + campaignId;
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> campaignData = campaignEnrichmentRestTemplate.getForObject(url, Map.class);
+                        if (campaignData != null) {
+                                if (campaignData.get("balance") != null) {
+                                        currentBalance = new BigDecimal(campaignData.get("balance").toString());
+                                }
+                                if (campaignData.get("approvedAt") != null) {
+                                        approvedAt = java.time.LocalDateTime
+                                                        .parse(campaignData.get("approvedAt").toString());
+                                } else if (campaignData.get("createdAt") != null) {
+                                        approvedAt = java.time.LocalDateTime
+                                                        .parse(campaignData.get("createdAt").toString());
+                                }
+                        }
+                } catch (Exception e) {
+                        log.warn("Could not fetch campaign details for analytics: {}", e.getMessage());
+                }
+
+                // 2. Fetch target amount
+                BigDecimal targetAmount = BigDecimal.ZERO;
+                try {
+                        String goalUrl = campaignServiceUrl + "/api/fundraising-goals/campaign/" + campaignId;
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> goals = restTemplate.getForObject(goalUrl, List.class);
+                        if (goals != null) {
+                                for (Map<String, Object> g : goals) {
+                                        if (Boolean.TRUE.equals(g.get("active"))
+                                                        || Boolean.TRUE.equals(g.get("isActive"))) {
+                                                if (g.get("targetAmount") != null) {
+                                                        targetAmount = new BigDecimal(g.get("targetAmount").toString());
+                                                        break;
+                                                }
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        log.warn("Could not fetch goals for analytics: {}", e.getMessage());
+                }
+
+                // 3. Define time filter based on period
+                java.time.LocalDateTime filterStart = approvedAt;
+                java.time.LocalDateTime now = java.time.LocalDateTime.now();
+
+                if ("Ngày".equalsIgnoreCase(period)) {
+                        filterStart = now.minusDays(1);
+                } else if ("Tuần".equalsIgnoreCase(period)) {
+                        filterStart = now.minusWeeks(1);
+                } else if ("Tháng".equalsIgnoreCase(period)) {
+                        filterStart = now.minusMonths(1);
+                } else if ("Năm".equalsIgnoreCase(period)) {
+                        filterStart = now.minusYears(1);
+                }
+
+                if (filterStart.isBefore(approvedAt)) {
+                        filterStart = approvedAt;
+                }
+
+                // 4. Fetch all transactions (for initial balance calc)
+                List<Donation> allDonations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtAsc(
+                                campaignId,
+                                "PAID");
+                List<Map<String, Object>> allExpenditures = new java.util.ArrayList<>();
+                BigDecimal totalReceived = BigDecimal.ZERO;
+                BigDecimal totalSpent = BigDecimal.ZERO;
+
+                try {
+                        String expUrl = campaignServiceUrl + "/api/expenditures/campaign/" + campaignId;
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> allExps = restTemplate.getForObject(expUrl, List.class);
+                        if (allExps != null) {
+                                for (Map<String, Object> exp : allExps) {
+                                        if ("DISBURSED".equals(exp.get("status"))) {
+                                                allExpenditures.add(exp);
+                                        }
+                                }
+                        }
+                } catch (Exception e) {
+                        log.warn("Could not fetch expenditures for analytics: {}", e.getMessage());
+                }
+
+                // Merge events and calculate running balance
+                class Event {
+                        java.time.LocalDateTime time;
+                        BigDecimal amount;
+                        boolean isWithdrawal;
+
+                        Event(java.time.LocalDateTime t, BigDecimal a, boolean w) {
+                                time = t;
+                                amount = a;
+                                isWithdrawal = w;
+                        }
+                }
+
+                List<Event> events = new java.util.ArrayList<>();
+                for (Donation d : allDonations) {
+                        events.add(new Event(d.getCreatedAt(), d.getDonationAmount(), false));
+                }
+                for (Map<String, Object> exp : allExpenditures) {
+                        java.time.LocalDateTime t = exp.get("updatedAt") != null
+                                        ? java.time.LocalDateTime.parse(exp.get("updatedAt").toString())
+                                        : java.time.LocalDateTime.now();
+                        BigDecimal a = new BigDecimal(exp.get("totalAmount").toString());
+                        events.add(new Event(t, a, true));
+                }
+
+                events.sort(java.util.Comparator.comparing(e -> e.time));
+
+                // Generate Timeline Points
+                List<CampaignAnalyticsResponse.ChartPoint> chartData = new java.util.ArrayList<>();
+                BigDecimal runningBalance = BigDecimal.ZERO;
+
+                // Set date format based on period
+                java.time.format.DateTimeFormatter dtf;
+                if ("Ngày".equalsIgnoreCase(period)) {
+                        dtf = java.time.format.DateTimeFormatter.ofPattern("HH:mm");
+                } else if ("Năm".equalsIgnoreCase(period)) {
+                        dtf = java.time.format.DateTimeFormatter.ofPattern("MM/yy");
+                } else {
+                        dtf = java.time.format.DateTimeFormatter.ofPattern("dd/MM");
+                }
+
+                // Always start with a point at approvedAt (or filterStart)
+                chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                .date(approvedAt.format(dtf))
+                                .balanceGreen(BigDecimal.ZERO)
+                                .build());
+
+                for (Event e : events) {
+                        if (!e.isWithdrawal) {
+                                runningBalance = runningBalance.add(e.amount);
+                                totalReceived = totalReceived.add(e.amount);
+                        } else {
+                                runningBalance = runningBalance.subtract(e.amount);
+                                totalSpent = totalSpent.add(e.amount);
+                        }
+
+                        // Only add to chart if it's within the period
+                        if (e.time.isAfter(filterStart) || e.time.isEqual(filterStart)) {
+                                String dateStr = e.time.format(dtf);
+                                if (!e.isWithdrawal) {
+                                        chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                                        .date(dateStr)
+                                                        .balanceGreen(runningBalance)
+                                                        .build());
+                                } else {
+                                        BigDecimal oldBalance = runningBalance.add(e.amount);
+                                        // Vertical drop visual
+                                        chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                                        .date(dateStr)
+                                                        .balanceRed(oldBalance)
+                                                        .build());
+                                        chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                                        .date(dateStr)
+                                                        .balanceRed(runningBalance)
+                                                        .build());
+                                        chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                                        .date(dateStr)
+                                                        .balanceGreen(runningBalance)
+                                                        .build());
+                                }
+                        }
+                }
+
+                // If no events in period, add a final point to maintain the line
+                if (chartData.size() == 1) {
+                        chartData.add(CampaignAnalyticsResponse.ChartPoint.builder()
+                                        .date(now.format(dtf))
+                                        .balanceGreen(runningBalance)
+                                        .build());
+                }
+
+                return CampaignAnalyticsResponse.builder()
+                                .campaignId(campaignId)
+                                .totalReceived(totalReceived)
+                                .totalSpent(totalSpent)
+                                .currentBalance(currentBalance)
+                                .targetAmount(targetAmount)
+                                .approvedAt(approvedAt)
+                                .chartData(chartData)
+                                .build();
         }
 }

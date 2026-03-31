@@ -13,6 +13,7 @@ public class PaymentResponse {
     private String paymentLinkId;
     private Long donationId;
     private Long campaignId;
+    private BigDecimal donationAmount;
     private BigDecimal totalAmount;
     private String status;
 }

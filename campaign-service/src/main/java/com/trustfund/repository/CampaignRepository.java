@@ -9,9 +9,15 @@ import java.util.List;
 @Repository
 public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
-    org.springframework.data.domain.Page<Campaign> findByFundOwnerId(Long fundOwnerId, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<Campaign> findByFundOwnerId(Long fundOwnerId,
+            org.springframework.data.domain.Pageable pageable);
 
     List<Campaign> findByStatus(String status);
 
     List<Campaign> findByCategoryId(Long categoryId);
+
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.data.jpa.repository.Query("UPDATE Campaign c SET c.balance = c.balance + :amount WHERE c.id = :id")
+    void updateBalance(@org.springframework.data.repository.query.Param("id") Long id,
+            @org.springframework.data.repository.query.Param("amount") java.math.BigDecimal amount);
 }

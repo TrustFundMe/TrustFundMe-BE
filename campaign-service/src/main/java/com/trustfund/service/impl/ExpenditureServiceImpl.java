@@ -153,7 +153,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         // Create Approval Task for the new expenditure
         if ("PENDING_REVIEW".equalsIgnoreCase(savedExpenditure.getStatus())) {
-            approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
+            // SKIP task if it's the first expenditure of an ITEMIZED campaign (handled by
+            // campaign review)
+            boolean isInitialItemized = existingExps.isEmpty() && "ITEMIZED".equalsIgnoreCase(campaign.getType());
+            if (!isInitialItemized) {
+                approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
+            } else {
+                log.info("➔ Skipping task creation for initial ITEMIZED expenditure of campaign {}",
+                        request.getCampaignId());
+            }
         }
 
         return mapToResponse(savedExpenditure);

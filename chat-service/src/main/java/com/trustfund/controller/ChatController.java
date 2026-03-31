@@ -50,12 +50,8 @@ public class ChatController {
                 .map(grantedAuthority -> grantedAuthority.getAuthority())
                 .orElse(null);
 
-        if ("ROLE_STAFF".equals(currentRole)) {
-            return ResponseEntity.ok(chatService.getAllConversations());
-        } else {
-            // Fund Owners and Donors can only view their own conversations
-            return ResponseEntity.ok(chatService.getConversations(userId));
-        }
+        return ResponseEntity.ok(chatService.getConversations(userId));
+
     }
 
     @GetMapping("/campaign/{campaignId}")
