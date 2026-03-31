@@ -15,6 +15,8 @@ public interface MediaRepository extends JpaRepository<Media, Long> {
 
     List<Media> findByExpenditureId(Long expenditureId);
 
+    List<Media> findByExpenditureItemId(Long expenditureItemId);
+
     java.util.Optional<Media> findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(Long campaignId,
             com.trustfund.model.enums.MediaType mediaType);
 }

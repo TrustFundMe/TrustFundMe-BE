@@ -16,6 +16,7 @@ public class RegisterMediaRequest {
     private Long postId;
     private Long campaignId;
     private Long expenditureId;
+    private Long expenditureItemId;
     private Long conversationId;
     private String description;
     private String fileName;

@@ -37,6 +37,7 @@ public class MediaServiceImpl implements MediaService {
                 .campaignId(request.getCampaignId())
                 .conversationId(request.getConversationId())
                 .expenditureId(request.getExpenditureId())
+                .expenditureItemId(request.getExpenditureItemId())
                 .mediaType(finalMediaType)
                 .url(storedFile.publicUrl())
                 .description(request.getDescription())
@@ -102,6 +103,13 @@ public class MediaServiceImpl implements MediaService {
     }
 
     @Override
+    public List<MediaFileResponse> getMediaByExpenditureItemId(Long expenditureItemId) {
+        return mediaRepository.findByExpenditureItemId(expenditureItemId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public MediaFileResponse getFirstImageByCampaignId(Long campaignId) {
         return mediaRepository.findFirstByCampaignIdAndMediaTypeOrderByCreatedAtAsc(campaignId, MediaType.PHOTO)
                 .map(this::mapToResponse)
@@ -122,6 +130,8 @@ public class MediaServiceImpl implements MediaService {
             media.setConversationId(request.getConversationId());
         if (request.getExpenditureId() != null)
             media.setExpenditureId(request.getExpenditureId());
+        if (request.getExpenditureItemId() != null)
+            media.setExpenditureItemId(request.getExpenditureItemId());
         if (request.getDescription() != null)
             media.setDescription(request.getDescription());
 
@@ -139,6 +149,7 @@ public class MediaServiceImpl implements MediaService {
                 .campaignId(request.getCampaignId())
                 .conversationId(request.getConversationId())
                 .expenditureId(request.getExpenditureId())
+                .expenditureItemId(request.getExpenditureItemId())
                 .description(request.getDescription())
                 .fileName(request.getFileName())
                 .contentType(request.getContentType())
@@ -214,6 +225,7 @@ public class MediaServiceImpl implements MediaService {
                 .campaignId(media.getCampaignId())
                 .conversationId(media.getConversationId())
                 .expenditureId(media.getExpenditureId())
+                .expenditureItemId(media.getExpenditureItemId())
                 .mediaType(media.getMediaType())
                 .url(media.getUrl())
                 .description(media.getDescription())

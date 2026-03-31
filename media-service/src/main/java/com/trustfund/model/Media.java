@@ -31,6 +31,9 @@ public class Media {
     @Column(name = "expenditure_id")
     private Long expenditureId;
 
+    @Column(name = "expenditure_item_id")
+    private Long expenditureItemId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "media_type", nullable = false, length = 50)
     private MediaType mediaType;

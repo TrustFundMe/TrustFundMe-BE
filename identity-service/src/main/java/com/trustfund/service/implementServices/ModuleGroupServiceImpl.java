@@ -120,19 +120,10 @@ public class ModuleGroupServiceImpl implements com.trustfund.service.interfaceSe
 
     @Override
     public void delete(Long id) {
-        ModuleGroup group = moduleGroupRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("ModuleGroup not found with id: " + id));
-
-        if (Boolean.FALSE.equals(group.getIsActive())) {
-            throw new BadRequestException("Module group is already inactive");
+        if (!moduleGroupRepository.existsById(id)) {
+            throw new NotFoundException("ModuleGroup not found with id: " + id);
         }
-
-        if (group.getModules() != null) {
-            group.getModules().forEach(module -> module.setIsActive(false));
-        }
-        group.setIsActive(false);
-
-        moduleGroupRepository.save(group);
+        moduleGroupRepository.deleteById(id);
     }
 
     @Override
