@@ -152,15 +152,10 @@ public class ModuleItemServiceImpl implements com.trustfund.service.interfaceSer
 
     @Override
     public void deleteModule(Long id) {
-        Module module = moduleRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Module not found with id: " + id));
-
-        if (!module.getIsActive()) {
-            throw new BadRequestException("Module is already inactive");
+        if (!moduleRepository.existsById(id)) {
+            throw new NotFoundException("Module not found with id: " + id);
         }
-
-        module.setIsActive(false);
-        moduleRepository.save(module);
+        moduleRepository.deleteById(id);
     }
 
     private void validateModuleNameNotSameAsGroup(String moduleName, String groupName) {

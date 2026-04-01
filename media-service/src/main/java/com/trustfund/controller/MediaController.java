@@ -56,12 +56,13 @@ public class MediaController {
             @RequestParam(name = "postId", required = false) Long postId,
             @RequestParam(name = "campaignId", required = false) Long campaignId,
             @RequestParam(name = "expenditureId", required = false) Long expenditureId,
+            @RequestParam(name = "expenditureItemId", required = false) Long expenditureItemId,
             @RequestParam(name = "mediaType", required = false) MediaType mediaType,
             @RequestParam(name = "description", required = false) String description) throws IOException, InterruptedException {
-        
-        System.out.println(">>> MediaController: Uploading file: " + (file != null ? file.getOriginalFilename() : "NULL") 
+
+        System.out.println(">>> MediaController: Uploading file: " + (file != null ? file.getOriginalFilename() : "NULL")
                 + ", size: " + (file != null ? file.getSize() : 0)
-                + ", type: " + mediaType + ", campaignId: " + campaignId);
+                + ", type: " + mediaType + ", campaignId: " + campaignId + ", expenditureItemId: " + expenditureItemId);
 
         if (file == null || file.isEmpty()) {
             System.out.println(">>> MediaController: Upload failed - File is empty");
@@ -73,6 +74,7 @@ public class MediaController {
                 .postId(postId)
                 .campaignId(campaignId)
                 .expenditureId(expenditureId)
+                .expenditureItemId(expenditureItemId)
                 .mediaType(mediaType)
                 .description(description)
                 .build();
@@ -137,6 +139,12 @@ public class MediaController {
     @Operation(summary = "Get media by Expenditure ID", description = "Get all media files associated with an expenditure (evidence)")
     public ResponseEntity<List<MediaFileResponse>> getByExpenditureId(@PathVariable("expenditureId") Long expenditureId) {
         return ResponseEntity.ok(mediaService.getMediaByExpenditureId(expenditureId));
+    }
+
+    @GetMapping("/expenditure-items/{expenditureItemId}")
+    @Operation(summary = "Get media by ExpenditureItem ID", description = "Get all media files associated with an expenditure item")
+    public ResponseEntity<List<MediaFileResponse>> getByExpenditureItemId(@PathVariable("expenditureItemId") Long expenditureItemId) {
+        return ResponseEntity.ok(mediaService.getMediaByExpenditureItemId(expenditureItemId));
     }
 
     @GetMapping("/campaigns/{campaignId}/first-image")

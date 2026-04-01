@@ -17,6 +17,7 @@ public class MediaUploadRequest {
     private Long campaignId;
     private Long conversationId;
     private Long expenditureId;
+    private Long expenditureItemId;
     private MediaType mediaType;
     private String description;
 }

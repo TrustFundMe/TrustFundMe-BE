@@ -18,6 +18,8 @@ public interface MediaService {
 
     List<MediaFileResponse> getMediaByExpenditureId(Long expenditureId);
 
+    List<MediaFileResponse> getMediaByExpenditureItemId(Long expenditureItemId);
+
     MediaFileResponse getFirstImageByCampaignId(Long campaignId);
 
     MediaFileResponse updateMedia(Long id, com.trustfund.model.request.UpdateMediaRequest request);
