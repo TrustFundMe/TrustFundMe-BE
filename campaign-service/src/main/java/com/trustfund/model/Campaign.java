@@ -70,6 +70,11 @@ public class Campaign {
      */
     public static final String STATUS_DELETED = "DELETED";
 
+    /**
+     * Loại quỹ chung - không hiển thị trong danh sách thông thường
+     */
+    public static final String TYPE_GENERAL_FUND = "GENERAL_FUND";
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
