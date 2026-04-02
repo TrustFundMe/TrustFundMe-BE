@@ -2,9 +2,6 @@ package com.trustfund.model.request;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Past;
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.FutureOrPresent;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -16,29 +13,27 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubmitKYCRequest {
-    @NotBlank(message = "ID type is required")
+    @NotBlank(message = "Loại định danh không được để trống")
     private String idType;
 
-    @NotBlank(message = "ID number is required")
+    @NotBlank(message = "Số định danh không được để trống")
     private String idNumber;
 
-    @NotNull(message = "Issue date is required")
-    @Past(message = "Issue date must be in the past")
+    @NotNull(message = "Vui lòng nhập ngày cấp")
     private LocalDate issueDate;
 
-    @NotNull(message = "Expiry date is required")
-    @FutureOrPresent(message = "Expiry date must be in the present or future")
+    @NotNull(message = "Vui lòng nhập ngày hết hạn")
     private LocalDate expiryDate;
 
-    @NotBlank(message = "Issue place is required")
+    @NotBlank(message = "Vui lòng nhập nơi cấp")
     private String issuePlace;
 
-    @NotBlank(message = "Front ID image is required")
+    @NotBlank(message = "Vui lòng tải ảnh mặt trước")
     private String idImageFront;
 
-    @NotBlank(message = "Back ID image is required")
+    // Không bắt buộc với Passport (không có mặt sau)
     private String idImageBack;
 
-    @NotBlank(message = "Selfie image is required")
+    @NotBlank(message = "Vui lòng tải ảnh chân dung")
     private String selfieImage;
 }

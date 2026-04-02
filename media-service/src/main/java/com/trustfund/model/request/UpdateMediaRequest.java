@@ -14,5 +14,6 @@ public class UpdateMediaRequest {
     private Long campaignId;
     private Long conversationId;
     private Long expenditureId;
+    private Long expenditureItemId;
     private String description;
 }
