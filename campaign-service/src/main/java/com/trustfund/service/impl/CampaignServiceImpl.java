@@ -38,8 +38,9 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignResponse> getAll() {
         return campaignRepository
-                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                        "createdAt"))
+                .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                                "createdAt"))
                 .stream()
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
@@ -47,7 +48,7 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public Page<CampaignResponse> getAll(Pageable pageable) {
-        return campaignRepository.findAll(pageable)
+        return campaignRepository.findByTypeNot(Campaign.TYPE_GENERAL_FUND, pageable)
                 .map(this::toCampaignResponse);
     }
 
@@ -60,7 +61,7 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
-        return campaignRepository.findByFundOwnerId(fundOwnerId,
+        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND,
                 org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE,
                         org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
                                 "createdAt")))
@@ -72,7 +73,7 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
             Pageable pageable) {
-        return campaignRepository.findByFundOwnerId(fundOwnerId, pageable)
+        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND, pageable)
                 .map(this::toCampaignResponse);
     }
 
@@ -82,6 +83,11 @@ public class CampaignServiceImpl implements CampaignService {
         // Validate category
         CampaignCategory category = categoryRepository.findById(request.getCategoryId())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid category id"));
+
+        // Protect GENERAL_FUND creation
+        if (Campaign.TYPE_GENERAL_FUND.equalsIgnoreCase(request.getType())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Không có quyền tạo quỹ chung (GENERAL_FUND)");
+        }
 
         // Validate fund owner exists in identity-service
         identityServiceClient.validateUserExists(request.getFundOwnerId());
@@ -167,8 +173,9 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignResponse> getByStatus(String status) {
         return campaignRepository
-                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                        "createdAt"))
+                .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                                "createdAt"))
                 .stream()
                 .filter(c -> c.getStatus().equalsIgnoreCase(status))
                 .map(this::toCampaignResponse)
@@ -178,8 +185,9 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignResponse> getByCategoryId(Long categoryId) {
         return campaignRepository
-                .findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                        "createdAt"))
+                .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
+                                "createdAt"))
                 .stream()
                 .filter(c -> c.getCategory().getId().equals(categoryId))
                 .map(this::toCampaignResponse)
