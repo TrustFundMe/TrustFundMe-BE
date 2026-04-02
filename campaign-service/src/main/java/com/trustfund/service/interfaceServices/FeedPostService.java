@@ -5,6 +5,8 @@ import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
 
+import java.util.List;
+
 public interface FeedPostService {
     FeedPostResponse create(CreateFeedPostRequest request, Long authorId);
 
@@ -36,4 +38,6 @@ public interface FeedPostService {
     FeedPostResponse updateStatusByAdmin(Long id, String status);
 
     int syncAllCommentCounts();
+
+    List<FeedPostResponse> getByTarget(Long targetId, String targetType);
 }

@@ -122,8 +122,8 @@ public class IdentityServiceClient {
         String url = identityServiceUrl + "/api/internal/users/staff-ids";
         try {
             log.debug("Fetching staff IDs from {}", url);
-            Integer[] ids = restTemplate.getForObject(url, Integer[].class);
-            return ids != null ? java.util.Arrays.stream(ids).map(Integer::longValue).collect(java.util.stream.Collectors.toList()) : java.util.Collections.emptyList();
+            Long[] ids = restTemplate.getForObject(url, Long[].class);
+            return ids != null ? java.util.Arrays.asList(ids) : java.util.Collections.emptyList();
         } catch (Exception e) {
             log.error("Failed to fetch staff IDs: {}", e.getMessage());
             return java.util.Collections.emptyList();

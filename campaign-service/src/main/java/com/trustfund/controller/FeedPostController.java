@@ -17,6 +17,8 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+
+import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.web.bind.annotation.*;
@@ -86,6 +88,14 @@ public class FeedPostController {
         String ipAddress = request.getRemoteAddr();
         FeedPostResponse response = feedPostService.getById(id, currentUserId, ipAddress);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/by-target")
+    @Operation(summary = "Get feed posts by target", description = "Get feed posts linked to a specific target (campaign, expenditure, etc.)")
+    public ResponseEntity<List<FeedPostResponse>> getByTarget(
+            @RequestParam("targetId") Long targetId,
+            @RequestParam("targetType") String targetType) {
+        return ResponseEntity.ok(feedPostService.getByTarget(targetId, targetType));
     }
 
     @PatchMapping("/{id}/status")

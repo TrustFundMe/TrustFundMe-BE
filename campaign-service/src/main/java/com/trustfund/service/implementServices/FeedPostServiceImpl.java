@@ -18,6 +18,8 @@ import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 
 @Service
 @RequiredArgsConstructor
@@ -396,7 +398,9 @@ public class FeedPostServiceImpl implements FeedPostService {
             isLiked = feedPostLikeRepository.existsByPostIdAndUserId(entity.getId(), currentUserId);
         }
 
-        UserInfoClient.UserInfo authorInfo = userInfoClient.getUserInfo(entity.getAuthorId());
+        UserInfoClient.UserInfo authorInfo = entity.getAuthorId() != null
+                ? userInfoClient.getUserInfo(entity.getAuthorId())
+                : null;
 
         return FeedPostResponse.builder()
                 .id(entity.getId())
@@ -404,8 +408,8 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .targetType(entity.getTargetType())
                 .targetName(targetName)
                 .authorId(entity.getAuthorId())
-                .authorName(authorInfo.fullName())
-                .authorAvatar(authorInfo.avatarUrl())
+                .authorName(authorInfo != null ? authorInfo.fullName() : null)
+                .authorAvatar(authorInfo != null ? authorInfo.avatarUrl() : null)
                 .visibility(entity.getVisibility())
                 .title(entity.getTitle())
                 .content(entity.getContent())
@@ -423,5 +427,16 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
+    }
+
+    @Override
+    public List<FeedPostResponse> getByTarget(Long targetId, String targetType) {
+        try {
+            return feedPostRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(targetId, targetType)
+                    .stream().map(p -> toResponse(p, null, 0)).collect(java.util.stream.Collectors.toList());
+        } catch (Exception e) {
+            // fallback: return empty list on error
+            return java.util.Collections.emptyList();
+        }
     }
 }
