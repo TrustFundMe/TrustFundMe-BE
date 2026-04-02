@@ -18,6 +18,7 @@ public class ExpenditureResponse {
     private Long campaignId;
     private LocalDateTime evidenceDueAt;
     private String evidenceStatus;
+    private LocalDateTime evidenceSubmittedAt;
     private BigDecimal totalAmount;
     private BigDecimal totalExpectedAmount;
     private BigDecimal variance;

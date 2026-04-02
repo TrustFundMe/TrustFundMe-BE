@@ -97,14 +97,14 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     public List<MediaFileResponse> getMediaByExpenditureId(Long expenditureId) {
-        return mediaRepository.findByExpenditureId(expenditureId).stream()
+        return mediaRepository.findByExpenditureIdAndStatusNot(expenditureId, "DELETED").stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
 
     @Override
     public List<MediaFileResponse> getMediaByExpenditureItemId(Long expenditureItemId) {
-        return mediaRepository.findByExpenditureItemId(expenditureItemId).stream()
+        return mediaRepository.findByExpenditureItemIdAndStatusNot(expenditureItemId, "DELETED").stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

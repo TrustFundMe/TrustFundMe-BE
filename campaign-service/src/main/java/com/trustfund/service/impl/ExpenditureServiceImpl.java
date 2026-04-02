@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -212,6 +213,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .campaignId(expenditure.getCampaignId())
                 .evidenceDueAt(expenditure.getEvidenceDueAt())
                 .evidenceStatus(expenditure.getEvidenceStatus())
+                .evidenceSubmittedAt(expenditure.getEvidenceSubmittedAt())
                 .totalAmount(expenditure.getTotalAmount())
                 .totalExpectedAmount(expenditure.getTotalExpectedAmount())
                 .variance(expenditure.getVariance())
@@ -627,6 +629,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
         expenditure.setEvidenceStatus(status);
+        if ("SUBMITTED".equalsIgnoreCase(status)) {
+            expenditure.setEvidenceSubmittedAt(LocalDateTime.now());
+        }
         Expenditure saved = expenditureRepository.save(expenditure);
 
         if ("SUBMITTED".equalsIgnoreCase(status)) {

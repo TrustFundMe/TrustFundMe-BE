@@ -3,6 +3,8 @@ package com.trustfund.repository;
 import com.trustfund.model.FeedPost;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -36,4 +38,6 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
   @org.springframework.transaction.annotation.Transactional
   @Query("UPDATE FeedPost p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
   void incrementViewCount(@Param("id") Long id);
+
+  List<FeedPost> findByTargetIdAndTargetTypeOrderByCreatedAtDesc(Long targetId, String targetType);
 }
