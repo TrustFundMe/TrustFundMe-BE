@@ -37,6 +37,7 @@ FLUSH PRIVILEGES;
 -- =======================================
 USE trustfundme_campaign_db;
 
+DROP TABLE IF EXISTS internal_transactions;
 DROP TABLE IF EXISTS approval_tasks;
 DROP TABLE IF EXISTS flag_reports;
 DROP TABLE IF EXISTS flags;
@@ -167,49 +168,439 @@ CREATE TABLE `expenditure_items` (
     INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
 );
 
--- expenditure_items
-CREATE TABLE `expenditure_items` (
-    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `expenditure_id` BIGINT NOT NULL,
-    `category` VARCHAR(255) NULL,
-    `quantity` INT NULL,
-    `actual_quantity` INT NULL,
-    `quantity_left` INT NULL,
-    `price` DECIMAL(19, 4) NULL,
-    `expected_price` DECIMAL(19, 4) NULL,
-    `note` VARCHAR(1000) NULL,
-    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (`expenditure_id`) REFERENCES `expenditures`(`id`) ON DELETE CASCADE,
-    INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
-);
-
--- internal_transactions
+-- internal_transactions (Sơ đồ mới)
 CREATE TABLE `internal_transactions` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
     `from_campaign_id` BIGINT NULL,
     `to_campaign_id` BIGINT NULL,
     `amount` DECIMAL(19, 4) NOT NULL,
-    `type` VARCHAR(50) NOT NULL COMMENT 'RECOVERY, SUPPORT, INITIAL',
+    `type` VARCHAR(50) NOT NULL COMMENT 'RECOVERY, SUPPORT',
     `reason` TEXT NULL,
+    `created_by_staff_id` BIGINT NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, APPROVED, REJECTED, COMPLETED',
+    `evidence_image_id` BIGINT NULL COMMENT 'FK media.media.id',
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`from_campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE SET NULL,
     FOREIGN KEY (`to_campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE SET NULL,
     INDEX `idx_int_trans_from` (`from_campaign_id`),
-    INDEX `idx_int_trans_to` (`to_campaign_id`)
+    INDEX `idx_int_trans_to` (`to_campaign_id`),
+    INDEX `idx_int_trans_status` (`status`)
 );
 
 -- approval_tasks
 CREATE TABLE `approval_tasks` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
--- ... rest of the file ...
+    `type` VARCHAR(50) NOT NULL COMMENT 'CAMPAIGN, EXPENDITURE, FLAG',
+    `target_id` BIGINT NOT NULL,
+    `staff_id` BIGINT NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX `idx_approval_tasks_type` (`type`),
+    INDEX `idx_approval_tasks_target_id` (`target_id`),
+    INDEX `idx_approval_tasks_staff_id` (`staff_id`),
+    INDEX `idx_approval_tasks_status` (`status`)
+);
+
+-- =======================================
+-- 3. Schema: identity-service (DB: trustfundme_identity_db)
+-- =======================================
+USE trustfundme_identity_db;
+
+-- =======================================
+-- 3a. Module Groups & Modules (sidebar navigation)
+-- =======================================
+DROP TABLE IF EXISTS modules;
+DROP TABLE IF EXISTS module_groups;
+
+-- module_groups
+CREATE TABLE module_groups (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    description VARCHAR(1000) NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    display_order INT DEFAULT 0,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- modules
+CREATE TABLE modules (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    module_group_id BIGINT NOT NULL,
+    title VARCHAR(100) NOT NULL,
+    url VARCHAR(500) NULL,
+    icon VARCHAR(50) NULL,
+    description VARCHAR(500) NULL,
+    display_order INT DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (module_group_id) REFERENCES module_groups(id) ON DELETE CASCADE
+);
+
+-- =======================================
+-- 3b. Module & Module Group sample data
+-- =======================================
+-- Insert module groups first
+INSERT INTO module_groups (id, name, description, is_active, display_order, created_at, updated_at) VALUES
+    (1, 'Tổng quan', 'Tổng quan hệ thống', TRUE, 1, NOW(), NOW()),
+    (2, 'Quản lý người dùng', 'Quản lý người dùng, vai trò và quyền truy cập', TRUE, 2, NOW(), NOW()),
+    (3, 'Quản lý chiến dịch', 'Quản lý chiến dịch gây quỹ', TRUE, 3, NOW(), NOW()),
+    (4, 'Quản lý quỹ', 'Quản lý chi tiêu và giải ngân', TRUE, 4, NOW(), NOW()),
+    (5, 'Giao dịch', 'Quản lý thanh toán và lịch sử giao dịch', TRUE, 5, NOW(), NOW()),
+    (6, 'Giao tiếp', 'Chat, diễn đàn và thông báo', TRUE, 6, NOW(), NOW()),
+    (7, 'Hệ thống', 'Cấu hình và quản lý hệ thống', TRUE, 7, NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), display_order = VALUES(display_order);
+
+-- Insert modules
+INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_active, created_at, updated_at) VALUES
+    -- Group 1: Tổng quan
+    (1, 1, 'Dashboard', '/dashboard', 'home', 0, TRUE, NOW(), NOW()),
+
+    -- Group 2: Quản lý người dùng
+    (2, 2, 'Người dùng', '/users', 'users', 0, TRUE, NOW(), NOW()),
+    (3, 2, 'Vai trò', '/roles', 'shield', 1, TRUE, NOW(), NOW()),
+    (4, 2, 'Xác minh KYC', '/kyc', 'user-check', 2, TRUE, NOW(), NOW()),
+    (5, 2, 'Tài khoản ngân hàng', '/bank-accounts', 'building', 3, TRUE, NOW(), NOW()),
+
+    -- Group 3: Quản lý chiến dịch
+    (6, 3, 'Chiến dịch', '/campaigns', 'folder', 0, TRUE, NOW(), NOW()),
+    (7, 3, 'Danh mục', '/categories', 'tag', 1, TRUE, NOW(), NOW()),
+    (8, 3, 'Mục tiêu gây quỹ', '/fundraising-goals', 'target', 2, TRUE, NOW(), NOW()),
+    (9, 3, 'Chi tiêu', '/expenditures', 'credit-card', 3, TRUE, NOW(), NOW()),
+    (10, 3, 'Flag / Báo cáo', '/flags', 'flag', 4, TRUE, NOW(), NOW()),
+    (11, 3, 'Nhiệm vụ duyệt', '/tasks', 'clipboard-check', 5, TRUE, NOW(), NOW()),
+
     -- Group 4: Quản lý quỹ
     (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 1, TRUE, NOW(), NOW()),
     (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 2, TRUE, NOW(), NOW()),
     (22, 4, 'Quỹ chung', '/general-fund', 'database', 0, TRUE, NOW(), NOW()),
 
     -- Group 5: Giao dịch
--- ... rest of the file ...
+    (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
+    (15, 5, 'Lịch sử thanh toán', '/payments', 'dollar-sign', 1, TRUE, NOW(), NOW()),
+
+    -- Group 6: Giao giao dịch
+    (16, 6, 'Chat', '/chat', 'message-circle', 0, TRUE, NOW(), NOW()),
+    (17, 6, 'Diễn đàn', '/forum', 'message-square', 1, TRUE, NOW(), NOW()),
+    (18, 6, 'Bài đăng', '/feed', 'rss', 2, TRUE, NOW(), NOW()),
+    (19, 6, 'Thông báo', '/notifications', 'bell', 3, TRUE, NOW(), NOW()),
+
+    -- Group 7: Hệ thống
+    (20, 7, 'Nhóm module', '/module-groups', 'layers', 0, TRUE, NOW(), NOW()),
+    (21, 7, 'Module', '/modules', 'menu', 1, TRUE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE title = VALUES(title), url = VALUES(url), display_order = VALUES(display_order);
+
+DROP TABLE IF EXISTS user_kyc;
+DROP TABLE IF EXISTS otp_tokens;
+DROP TABLE IF EXISTS bank_account;
+DROP TABLE IF EXISTS users;
+
+-- users
+CREATE TABLE users (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    full_name VARCHAR(255) NOT NULL,
+    phone_number VARCHAR(255) UNIQUE,
+    avatar_url VARCHAR(1000),
+    role VARCHAR(50) NOT NULL DEFAULT 'USER',
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    verified BOOLEAN NOT NULL DEFAULT FALSE,
+    ban_reason VARCHAR(1000) NULL,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME,
+    INDEX idx_email (email)
+);
+
+-- bank_account
+CREATE TABLE bank_account (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    bank_code VARCHAR(50) NOT NULL,
+    account_number VARCHAR(50) NOT NULL,
+    account_holder_name VARCHAR(255) NOT NULL,
+    is_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    status VARCHAR(50) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_bank_account_user_id (user_id),
+    CONSTRAINT fk_bank_account_user
+        FOREIGN KEY (user_id) REFERENCES users(id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+);
+
+-- otp_tokens
+CREATE TABLE otp_tokens (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) NOT NULL,
+    otp VARCHAR(6) NOT NULL,
+    expires_at DATETIME NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_email (email),
+    INDEX idx_otp (otp),
+    INDEX idx_expires_at (expires_at)
+);
+
+-- user_kyc
+CREATE TABLE user_kyc (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    id_type VARCHAR(255) NOT NULL,
+    id_number VARCHAR(50) NOT NULL,
+    issue_date DATE NOT NULL,
+    expiry_date DATE NOT NULL,
+    issue_place VARCHAR(255) NOT NULL,
+    id_image_front VARCHAR(1000) NOT NULL,
+    id_image_back VARCHAR(1000) NOT NULL,
+    selfie_image VARCHAR(1000) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    rejection_reason VARCHAR(255) NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT fk_user_kyc_user FOREIGN KEY (user_id) REFERENCES users (id)
+);
+
+-- =======================================
+-- 3.1 Schema: media-service (DB: trustfundme_media_db)
+-- =======================================
+USE trustfundme_media_db;
+
+DROP TABLE IF EXISTS media;
+
+CREATE TABLE media (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NULL,
+    campaign_id BIGINT NULL,
+    conversation_id BIGINT NULL,
+    expenditure_id BIGINT NULL,
+    media_type VARCHAR(50) NOT NULL,
+    url VARCHAR(1000) NOT NULL,
+    description VARCHAR(2000) NULL,
+    status VARCHAR(20) DEFAULT 'PENDING',
+    file_name VARCHAR(255) NULL,
+    content_type VARCHAR(100) NULL,
+    size_bytes BIGINT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_media_post_id (post_id),
+    INDEX idx_media_campaign_id (campaign_id),
+    INDEX idx_media_status (status)
+);
+
+-- =======================================
+-- 3.2 Schema: feed-service (DB: trustfundme_campaign_db)
+-- =======================================
+USE trustfundme_campaign_db;
+
+DROP TABLE IF EXISTS feed_post_comment_like;
+DROP TABLE IF EXISTS feed_post_like;
+DROP TABLE IF EXISTS feed_post_comment;
+DROP TABLE IF EXISTS feed_post;
+
+CREATE TABLE IF NOT EXISTS feed_post (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    target_id BIGINT NULL COMMENT 'ID of linked entity (campaign or expenditure)',
+    target_type VARCHAR(50) NULL COMMENT 'EXPENDITURE or CAMPAIGN',
+    target_name VARCHAR(255) NULL COMMENT 'Cached name of linked entity',
+    author_id BIGINT NOT NULL,
+    author_name VARCHAR(255) NULL COMMENT 'Cached author full name for display',
+    parent_post_id BIGINT NULL,
+    visibility NVARCHAR(50) NOT NULL,
+    title NVARCHAR(255) NULL,
+    content NVARCHAR(2000) NOT NULL,
+    status NVARCHAR(50) NOT NULL DEFAULT 'DRAFT',
+    reply_count INT DEFAULT 0,
+    view_count INT DEFAULT 0,
+    like_count INT DEFAULT 0,
+    comment_count INT DEFAULT 0,
+    is_pinned BOOLEAN DEFAULT FALSE,
+    is_locked BOOLEAN DEFAULT FALSE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_feed_post_author_id (author_id),
+    INDEX idx_feed_post_target (target_id, target_type),
+    INDEX idx_feed_post_parent_post_id (parent_post_id),
+    INDEX idx_feed_post_created_at (created_at)
+);
+
+-- =======================================
+-- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
+-- =======================================
+USE trustfundme_campaign_db;
+
+CREATE TABLE IF NOT EXISTS flags (
+    flag_id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NULL,
+    campaign_id BIGINT NULL,
+    user_id BIGINT NOT NULL,
+    reviewed_by BIGINT NULL,
+    reason NVARCHAR(2000) NOT NULL,
+    status VARCHAR(50) NOT NULL DEFAULT 'PENDING',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_flags_post_id (post_id),
+    INDEX idx_flags_campaign_id (campaign_id),
+    INDEX idx_flags_user_id (user_id),
+    INDEX idx_flags_status (status)
+);
+
+-- user_post_seen: tracks which posts a user has seen
+CREATE TABLE IF NOT EXISTS user_post_seen (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    post_id BIGINT NOT NULL,
+    seen_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_post (user_id, post_id),
+    INDEX idx_user_post_seen_user_id (user_id),
+    INDEX idx_user_post_seen_post_id (post_id),
+    CONSTRAINT fk_user_post_seen_post FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
+);
+
+-- =======================================
+-- 3.4 Schema: chat-service (DB: trustfundme_chat_db)
+-- =======================================
+USE trustfundme_chat_db;
+
+DROP TABLE IF EXISTS messages;
+DROP TABLE IF EXISTS conversations;
+
+CREATE TABLE conversations (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    staff_id BIGINT NULL,
+    fund_owner_id BIGINT NOT NULL,
+    campaign_id BIGINT NULL,
+    last_message_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_conversations_staff_id (staff_id),
+    INDEX idx_conversations_fund_owner_id (fund_owner_id),
+    INDEX idx_conversations_campaign_id (campaign_id),
+    INDEX idx_conversations_last_message_at (last_message_at)
+);
+
+CREATE TABLE messages (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    conversation_id BIGINT NOT NULL,
+    sender_id BIGINT NOT NULL,
+    content VARCHAR(5000) NOT NULL,
+    is_read BOOLEAN NOT NULL DEFAULT FALSE,
+    read_at DATETIME NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_messages_conversation_id (conversation_id),
+    INDEX idx_messages_sender_id (sender_id),
+    INDEX idx_messages_created_at (created_at),
+    INDEX idx_messages_is_read (is_read),
+    CONSTRAINT fk_messages_conversation
+        FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+);
+-- Create table for Appointment Schedules
+CREATE TABLE IF NOT EXISTS appointment_schedules (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    donor_id BIGINT NOT NULL,
+    staff_id BIGINT NOT NULL,
+    start_time DATETIME NOT NULL,
+    end_time DATETIME NOT NULL,
+    status VARCHAR(50) NOT NULL COMMENT 'PENDING, CONFIRMED, CANCELLED, COMPLETED',
+    location VARCHAR(500),
+    purpose TEXT,
+    created_at DATETIME NOT NULL,
+    updated_at DATETIME,
+    INDEX idx_donor_id (donor_id),
+    INDEX idx_staff_id (staff_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =======================================
+-- 3.5 Schema: notification-service (DB: trustfundme_notification_db)
+-- =======================================
+USE trustfundme_notification_db;
+
+DROP TABLE IF EXISTS notification;
+
+CREATE TABLE notification (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    type VARCHAR(100),
+    target_id BIGINT,
+    target_type VARCHAR(50),
+    title VARCHAR(255),
+    content TEXT,
+    data JSON,
+    is_read TINYINT(1) DEFAULT 0,
+    read_at DATETIME,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME,
+    INDEX idx_notification_user_id (user_id),
+    INDEX idx_notification_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Sample Chat Data
+USE trustfundme_chat_db;
+INSERT INTO conversations (id, staff_id, fund_owner_id, campaign_id, last_message_at)
+VALUES
+    (1, 2, 3, 1, NOW()),
+    (2, 2, 5, NULL, NOW())
+ON DUPLICATE KEY UPDATE last_message_at = VALUES(last_message_at);
+
+INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_at)
+VALUES
+    (1, 1, 3, 'Chào staff, tôi muốn hỏi về việc rút tiền đợt 1 cho chiến dịch cứu trợ miền Trung.', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
+    (2, 1, 2, 'Chào bạn, chúng tôi đã nhận được yêu cầu. Đang tiến hành kiểm tra chứng từ.', TRUE, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+    (3, 1, 3, 'Cảm ơn bạn, tôi đã đính kèm thêm hóa đơn VAT rồi nhé.', FALSE, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
+    (4, 2, 5, 'Chào admin, làm sao để tôi có thể trở thành tình nguyện viên?', TRUE, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (5, 2, 2, 'Bạn có thể nhấn vào nút "Become Volunteer" ở trang chủ nhé!', TRUE, DATE_SUB(NOW(), INTERVAL 1 DAY))
+ON DUPLICATE KEY UPDATE content = VALUES(content);
+
+INSERT INTO appointment_schedules (id, donor_id, staff_id, start_time, end_time, status, location, purpose, created_at, updated_at)
+VALUES
+    (1, 5, 2, '2024-03-10 09:00:00', '2024-03-10 10:00:00', 'PENDING', 'Trung tâm cứu trợ ABC', 'Trao đổi về việc ủng hộ nhu yếu phẩm', NOW(), NOW()),
+    (2, 6, 2, '2024-03-11 14:00:00', '2024-03-11 15:00:00', 'CONFIRMED', 'Văn phòng TrustFundMe', 'Ký hợp đồng ủng hộ dài hạn', NOW(), NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+-- =======================================
+-- 4. Sample data
+-- =======================================
+-- Users (passwords are plain text placeholders; replace in real env)
+USE trustfundme_identity_db;
+INSERT INTO users (id, email, password, full_name, phone_number, avatar_url, role, is_active, verified, created_at, updated_at)
+VALUES
+    (1, 'admin@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Admin User',   '0900000001', NULL, 'ADMIN', TRUE, TRUE, NOW(), NOW()),
+    (2, 'staff1@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff 1',      '0900000002', 'https://ui-avatars.com/api/?name=Staff+1&background=random', 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (21, 'staff2@example.com',  '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff 2',      '0900000021', 'https://ui-avatars.com/api/?name=Staff+2&background=random', 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (22, 'staff3@example.com',  '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff 3',      '0900000022', 'https://ui-avatars.com/api/?name=Staff+3&background=random', 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (23, 'staff4@example.com',  '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Staff 4',      '0900000023', 'https://ui-avatars.com/api/?name=Staff+4&background=random', 'STAFF', TRUE, TRUE, NOW(), NOW()),
+    (3, 'owner@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Fund Owner',   '0900000003', 'https://ui-avatars.com/api/?name=Fund+Owner&background=random', 'FUND_OWNER', TRUE, TRUE, NOW(), NOW()),
+    (4, 'user@example.com',     '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Normal User',  '0900000004', 'https://ui-avatars.com/api/?name=Normal+User&background=random', 'USER', TRUE, FALSE, NOW(), NOW()),
+    (5, 'alice@example.com',    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Alice Nguyen', '0900000005', 'https://ui-avatars.com/api/?name=Alice+Nguyen&background=random', 'USER', TRUE, TRUE, NOW(), NOW()),
+    (6, 'bob@example.com',      '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Bob Tran',     '0900000006', 'https://ui-avatars.com/api/?name=Bob+Tran&background=random', 'USER', TRUE, TRUE, NOW(), NOW()),
+    (300, 'unverified@test.com', '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HZWzG3YB1tlRy.fqvM/BG', 'Unverified Tester', '0900000300', 'https://ui-avatars.com/api/?name=Unverified+Tester&background=random', 'USER', TRUE, FALSE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE email = VALUES(email), role = VALUES(role), full_name = VALUES(full_name);
+
+-- Bank accounts (link to sample users)
+INSERT INTO bank_account (id, user_id, bank_code, account_number, account_holder_name, is_verified, status, created_at, updated_at)
+VALUES
+    (1, 3, 'VCB', '123456789', 'Fund Owner', TRUE, 'ACTIVE', NOW(), NOW()),
+    (2, 4, 'ACB', '987654321', 'Normal User', FALSE, 'PENDING', NOW(), NOW())
+ON DUPLICATE KEY UPDATE account_number = VALUES(account_number);
+
+-- Switch back to campaign DB for sample campaign data
+USE trustfundme_campaign_db;
+
+-- Campaign categories
+INSERT INTO campaign_categories (id, name, description, created_at, updated_at)
+VALUES
+    (1, 'Nhân đạo', 'Cứu trợ nhân đạo và hỗ trợ khẩn cấp', NOW(), NOW()),
+    (2, 'Nông nghiệp', 'Phát triển nông nghiệp và hỗ trợ nông dân', NOW(), NOW()),
+    (3, 'Giáo dục', 'Giáo dục, trường học và học bổng', NOW(), NOW()),
+    (4, 'Y tế', 'Y tế, chữa bệnh và hỗ trợ bệnh nhi', NOW(), NOW()),
+    (5, 'Môi trường', 'Bảo vệ môi trường và tái tạo rừng', NOW(), NOW()),
+    (6, 'Động vật', 'Cứu hộ và chăm sóc động vật', NOW(), NOW())
+ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+
 -- Campaigns (fund_owner_id points to user id = 3)
 -- Campaign types: ITEMIZED (quỹ theo khoản mục, tự APPROVED khi tạo chi tiêu)
 --                 AUTHORIZED (quỹ ủy quyền, cần staff duyệt chi tiêu)
@@ -219,7 +610,6 @@ INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_
 VALUES
     (1, 1, 1, NOW(), NULL, 1000000000.00, 'Quỹ chung hệ thống', NULL, 'Quỹ tập trung để điều tiết nguồn vốn cho các chiến dịch khẩn cấp.', NULL, NOW(), NULL, 'APPROVED', NULL, 'GENERAL_FUND', NOW(), NOW()),
     (101, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'APPROVED', NULL, 'ITEMIZED', NOW(), NOW()),
--- ... update other campaign IDs ...
     (102, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW()),
     (103, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
     (104, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
@@ -240,10 +630,6 @@ VALUES
     (107, 107, 150000000.00, 'Trao 30 suất học bổng 5 triệu/suất cho học sinh vượt khó', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VALUES(description);
 
--- Expenditures
--- ... và các bảng khác cần cập nhật campaign_id ...
-
-
 
 -- Expenditures
 -- Mỗi campaign chỉ có 1 expenditure mẫu (UNIQUE campaign_id)
@@ -256,16 +642,16 @@ INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, tot
 VALUES
     -- Campaign 1 (ITEMIZED/ACTIVE): fund owner đã yêu cầu rút tiền
     (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NULL, NULL, NOW(), NOW()),
-    -- Campaign 4 (AUTHORIZED/ACTIVE): đã DISBURSED
-    (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
-    -- Campaign 6 (AUTHORIZED/ACTIVE): chờ staff duyệt
-    (3, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW())
+    -- Campaign 104 (AUTHORIZED/ACTIVE): đã DISBURSED
+    (2, 104, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
+    -- Campaign 106 (AUTHORIZED/ACTIVE): chờ staff duyệt
+    (3, 106, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW())
 ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount), staff_review_id = VALUES(staff_review_id), reject_reason = VALUES(reject_reason);
 
 -- Expenditure Items
 -- exp 1 (Campaign 1 - ITEMIZED): đã WITHDRAWAL_REQUESTED
--- exp 2 (Campaign 4 - AUTHORIZED): đã DISBURSED
--- exp 3 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
+-- exp 2 (Campaign 104 - AUTHORIZED): đã DISBURSED
+-- exp 3 (Campaign 106 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
 INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, quantity_left, price, expected_price, note, created_at, updated_at)
 VALUES
     (1, 'Mì tôm', 500, 0, 500, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
@@ -315,6 +701,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `description` VARCHAR(255) NULL,
     `amount` DECIMAL(19, 4) NOT NULL,
     `qr_code` VARCHAR(1000) NULL,
+    `order_code` BIGINT UNIQUE NULL,
     `payment_link_id` VARCHAR(255) UNIQUE NULL,
     `status` VARCHAR(50) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -330,6 +717,7 @@ CREATE TABLE IF NOT EXISTS `donations` (
     `donation_amount` DECIMAL(19, 4) NULL,
     `tip_amount` DECIMAL(19, 4) NULL,
     `total_amount` DECIMAL(19, 4) NULL,
+    `is_balance_synchronized` BOOLEAN NOT NULL DEFAULT FALSE,
     `status` VARCHAR(50) NULL,
     `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

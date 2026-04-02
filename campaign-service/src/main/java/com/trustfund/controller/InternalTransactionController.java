@@ -24,7 +24,7 @@ public class InternalTransactionController {
     private final InternalTransactionService transactionService;
 
     @PostMapping
-    @Operation(summary = "Tạo giao dịch nội bộ", description = "Chuyên dùng cho Quỹ chung gửi/thu hồi tiền (Staff/Admin)")
+    @Operation(summary = "Tạo giao dịch nội bộ (Propose/Execute)", description = "Chuyên dùng cho Quỹ chung gửi/thu hồi tiền (Staff/Admin)")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<InternalTransaction> create(@Valid @RequestBody InternalTransactionRequest request) {
         InternalTransaction created = transactionService.createTransaction(
@@ -32,8 +32,20 @@ public class InternalTransactionController {
                 request.getToCampaignId(),
                 request.getAmount(),
                 request.getType(),
-                request.getReason());
+                request.getReason(),
+                request.getCreatedByStaffId(),
+                request.getEvidenceImageId(),
+                request.getStatus());
         return ResponseEntity.ok(created);
+    }
+
+    @PutMapping("/{id}/status")
+    @Operation(summary = "Cập nhật trạng thái giao dịch (Duyệt/Hoàn tất)", description = "Chỉ dùng cho Admin duyệt hoặc hoàn tất giao dịch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<InternalTransaction> updateStatus(
+            @PathVariable Long id,
+            @RequestParam com.trustfund.model.enums.InternalTransactionStatus status) {
+        return ResponseEntity.ok(transactionService.updateTransactionStatus(id, status));
     }
 
     @GetMapping("/stats")

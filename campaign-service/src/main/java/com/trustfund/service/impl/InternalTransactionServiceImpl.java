@@ -2,6 +2,7 @@ package com.trustfund.service.impl;
 
 import com.trustfund.model.Campaign;
 import com.trustfund.model.InternalTransaction;
+import com.trustfund.model.enums.InternalTransactionStatus;
 import com.trustfund.model.enums.InternalTransactionType;
 import com.trustfund.repository.CampaignRepository;
 import com.trustfund.repository.InternalTransactionRepository;
@@ -24,33 +25,28 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
     private final InternalTransactionRepository transactionRepository;
     private final CampaignRepository campaignRepository;
 
-    // Quỹ chung cố định ID = 1 (theo init-all-databases.sql)
     private static final Long GENERAL_FUND_ID = 1L;
 
     @Override
     @Transactional
     public InternalTransaction createTransaction(Long fromCampaignId, Long toCampaignId, BigDecimal amount,
-            InternalTransactionType type, String reason) {
+            InternalTransactionType type, String reason, Long createdByStaffId, Long evidenceImageId,
+            InternalTransactionStatus status) {
+
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền phải lớn hơn 0");
         }
 
-        // Kiểm tra campaign tồn tại
+        // Validate campaigns exist
         if (fromCampaignId != null) {
-            Campaign from = campaignRepository.findById(fromCampaignId)
+            campaignRepository.findById(fromCampaignId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Không tìm thấy campaign nguồn: " + fromCampaignId));
-            if (from.getBalance().compareTo(amount) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số dư không đủ: " + from.getTitle());
-            }
-            campaignRepository.updateBalance(fromCampaignId, amount.negate());
+                            "Không tìm thấy nguồn: " + fromCampaignId));
         }
-
         if (toCampaignId != null) {
             campaignRepository.findById(toCampaignId)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Không tìm thấy campaign đích: " + toCampaignId));
-            campaignRepository.updateBalance(toCampaignId, amount);
+                            "Không tìm thấy đích: " + toCampaignId));
         }
 
         InternalTransaction transaction = InternalTransaction.builder()
@@ -59,24 +55,70 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
                 .amount(amount)
                 .type(type)
                 .reason(reason)
+                .createdByStaffId(createdByStaffId)
+                .evidenceImageId(evidenceImageId)
+                .status(status)
                 .build();
 
-        return transactionRepository.save(transaction);
+        InternalTransaction saved = transactionRepository.save(transaction);
+
+        // Nếu trạng thái là COMPLETED ngay lập tức (ví dụ Admin tạo), thì thực hiện
+        // chuyển tiền
+        if (status == InternalTransactionStatus.COMPLETED) {
+            processFundTransfer(saved);
+        }
+
+        return saved;
+    }
+
+    @Override
+    @Transactional
+    public InternalTransaction updateTransactionStatus(Long id, InternalTransactionStatus newStatus) {
+        InternalTransaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+
+        if (tx.getStatus() == InternalTransactionStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Giao dịch đã hoàn tất, không thể thay đổi");
+        }
+
+        InternalTransactionStatus oldStatus = tx.getStatus();
+        tx.setStatus(newStatus);
+
+        InternalTransaction saved = transactionRepository.save(tx);
+
+        // Chỉ trigger chuyển tiền khi chuyển sang COMPLETED
+        if (newStatus == InternalTransactionStatus.COMPLETED && oldStatus != InternalTransactionStatus.COMPLETED) {
+            processFundTransfer(saved);
+        }
+
+        return saved;
+    }
+
+    private void processFundTransfer(InternalTransaction tx) {
+        if (tx.getFromCampaignId() != null) {
+            Campaign from = campaignRepository.findById(tx.getFromCampaignId()).get();
+            if (from.getBalance().compareTo(tx.getAmount()) < 0) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số dư nguồn không đủ");
+            }
+            campaignRepository.updateBalance(tx.getFromCampaignId(), tx.getAmount().negate());
+        }
+
+        if (tx.getToCampaignId() != null) {
+            campaignRepository.updateBalance(tx.getToCampaignId(), tx.getAmount());
+        }
     }
 
     @Override
     public Map<String, BigDecimal> getGeneralFundStats() {
         Campaign generalFund = campaignRepository.findById(GENERAL_FUND_ID)
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Quỹ chung (ID=1)"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy Quỹ chung"));
 
-        // Outcome: Tổng tiền gửi đi từ Quỹ chung (SUPPORT)
-        BigDecimal outcome = transactionRepository.sumAmountByFromCampaignIdAndType(GENERAL_FUND_ID,
-                InternalTransactionType.SUPPORT);
+        // Chỉ tính các giao dịch COMPLETED cho thống kê
+        BigDecimal outcome = transactionRepository.sumAmountByFromCampaignIdAndTypeAndStatus(
+                GENERAL_FUND_ID, InternalTransactionType.SUPPORT, InternalTransactionStatus.COMPLETED);
 
-        // Income: Tổng tiền thu về Quỹ chung (RECOVERY)
-        BigDecimal income = transactionRepository.sumAmountByToCampaignIdAndType(GENERAL_FUND_ID,
-                InternalTransactionType.RECOVERY);
+        BigDecimal income = transactionRepository.sumAmountByToCampaignIdAndTypeAndStatus(
+                GENERAL_FUND_ID, InternalTransactionType.RECOVERY, InternalTransactionStatus.COMPLETED);
 
         Map<String, BigDecimal> stats = new HashMap<>();
         stats.put("balance", generalFund.getBalance());

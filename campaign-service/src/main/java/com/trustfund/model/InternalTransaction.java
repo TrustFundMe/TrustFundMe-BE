@@ -1,11 +1,13 @@
 package com.trustfund.model;
 
+import com.trustfund.model.enums.InternalTransactionStatus;
 import com.trustfund.model.enums.InternalTransactionType;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -38,8 +40,23 @@ public class InternalTransaction {
     @Column(name = "reason", columnDefinition = "TEXT")
     private String reason;
 
+    @Column(name = "created_by_staff_id")
+    private Long createdByStaffId;
+
+    @Column(name = "evidence_image_id")
+    private Long evidenceImageId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", length = 50, nullable = false)
+
+    private InternalTransactionStatus status;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
