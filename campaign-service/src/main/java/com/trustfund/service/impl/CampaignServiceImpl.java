@@ -341,6 +341,9 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     @Transactional
     public void updateBalance(Long id, java.math.BigDecimal amount) {
-        campaignRepository.updateBalance(id, amount);
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
+        campaign.setBalance(campaign.getBalance().add(amount));
+        campaignRepository.save(campaign);
     }
 }
