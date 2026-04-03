@@ -72,6 +72,28 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
     }
 
     @Override
+    public List<InternalTransaction> getAll() {
+        return transactionRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public InternalTransaction getById(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        InternalTransaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+        if (tx.getStatus() == InternalTransactionStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể xóa giao dịch đã hoàn tất");
+        }
+        transactionRepository.deleteById(id);
+    }
+
+    @Override
     @Transactional
     public InternalTransaction updateTransactionStatus(Long id, InternalTransactionStatus newStatus) {
         InternalTransaction tx = transactionRepository.findById(id)
@@ -132,5 +154,15 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
     public List<InternalTransaction> getGeneralFundHistory() {
         return transactionRepository.findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(GENERAL_FUND_ID,
                 GENERAL_FUND_ID);
+    }
+
+    @Override
+    @Transactional
+    public InternalTransaction updateEvidence(Long id, Long evidenceImageId) {
+        InternalTransaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+
+        tx.setEvidenceImageId(evidenceImageId);
+        return transactionRepository.save(tx);
     }
 }
