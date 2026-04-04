@@ -24,6 +24,14 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
       """)
   Page<FeedPost> findVisibleActivePosts(@Param("currentUserId") Long currentUserId, Pageable pageable);
 
+  @Query("""
+      SELECT p FROM FeedPost p
+      WHERE p.authorId = :authorId
+        AND (:status IS NULL OR UPPER(p.status) = UPPER(:status))
+      ORDER BY p.updatedAt DESC
+      """)
+  Page<FeedPost> findMyPosts(@Param("authorId") Long authorId, @Param("status") String status, Pageable pageable);
+
   Long countByCategoryIdAndStatus(Long categoryId, String status);
 
   Page<FeedPost> findByCategoryIdAndStatusOrderByCreatedAtDesc(Long categoryId, String status, Pageable pageable);
