@@ -77,6 +77,8 @@ public class SecurityConfig {
                                                 // Approval tasks
                                                 .requestMatchers(HttpMethod.GET, "/api/admin/tasks/campaign/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/tasks/type/**")
+                                                .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/admin/tasks/staff/**")
                                                 .hasAnyRole("ADMIN", "STAFF")
                                                 .requestMatchers("/api/admin/tasks/**").hasRole("ADMIN")

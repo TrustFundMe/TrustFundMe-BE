@@ -85,4 +85,9 @@ public class ApprovalTaskServiceImpl implements ApprovalTaskService {
     public ApprovalTask getTaskByCampaignId(Long campaignId) {
         return approvalTaskRepository.findByTypeAndTargetId("CAMPAIGN", campaignId).orElse(null);
     }
+
+    @Override
+    public ApprovalTask getTaskByTypeAndTargetId(String type, Long targetId) {
+        return approvalTaskRepository.findByTypeAndTargetId(type, targetId).orElse(null);
+    }
 }

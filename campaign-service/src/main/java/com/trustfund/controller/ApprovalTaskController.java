@@ -22,6 +22,7 @@ import java.util.stream.Collectors;
 public class ApprovalTaskController {
 
     private final ApprovalTaskService approvalTaskService;
+    private final com.trustfund.client.IdentityServiceClient identityServiceClient;
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
@@ -61,12 +62,34 @@ public class ApprovalTaskController {
         return ResponseEntity.ok(convertToResponse(task));
     }
 
+    @GetMapping("/type/{type}/target/{targetId}")
+    @Operation(summary = "Lấy task duyệt theo type và target ID (để hiển thị staff phụ trách)")
+    public ResponseEntity<ApprovalTaskResponse> getTaskByTypeAndTarget(@PathVariable("type") String type, @PathVariable("targetId") Long targetId) {
+        ApprovalTask task = approvalTaskService.getTaskByTypeAndTargetId(type.toUpperCase(), targetId);
+        if (task == null) {
+            return ResponseEntity.ok(ApprovalTaskResponse.builder().build());
+        }
+        return ResponseEntity.ok(convertToResponse(task));
+    }
+
     private ApprovalTaskResponse convertToResponse(ApprovalTask task) {
+        String staffName = null;
+        if (task.getStaffId() != null) {
+            try {
+                com.trustfund.model.response.UserInfoResponse staffInfo = identityServiceClient.getUserInfo(task.getStaffId());
+                if (staffInfo != null) {
+                    staffName = staffInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch staff name for staffId {}: {}", task.getStaffId(), e.getMessage());
+            }
+        }
         return ApprovalTaskResponse.builder()
                 .id(task.getId())
                 .type(task.getType())
                 .targetId(task.getTargetId())
                 .staffId(task.getStaffId())
+                .staffName(staffName)
                 .status(task.getStatus())
                 .createdAt(task.getCreatedAt())
                 .updatedAt(task.getUpdatedAt())
