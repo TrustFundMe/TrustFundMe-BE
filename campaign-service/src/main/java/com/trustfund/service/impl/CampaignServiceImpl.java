@@ -34,6 +34,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
     private final com.trustfund.client.NotificationServiceClient notificationServiceClient;
     private final ExpenditureRepository expenditureRepository;
+    private final com.trustfund.service.InternalTransactionService internalTransactionService;
 
     @Override
     public List<CampaignResponse> getAll() {
@@ -336,6 +337,39 @@ public class CampaignServiceImpl implements CampaignService {
                 .kycVerified(verificationStatus != null && verificationStatus.isKycVerified())
                 .bankVerified(verificationStatus != null && verificationStatus.isBankVerified())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public CampaignResponse pauseCampaign(Long id) {
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
+        campaign.setStatus("PAUSED");
+        return toCampaignResponse(campaignRepository.save(campaign));
+    }
+
+    @Override
+    @Transactional
+    public CampaignResponse closeCampaign(Long id, Long staffId) {
+        Campaign campaign = campaignRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
+
+        // Create recovery transaction if there is a balance
+        if (campaign.getBalance().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            internalTransactionService.createTransaction(
+                    campaign.getId(),
+                    1L, // General Fund ID
+                    campaign.getBalance(),
+                    com.trustfund.model.enums.InternalTransactionType.RECOVERY,
+                    "Thu hồi số dư khi đóng chiến dịch (ID: " + campaign.getId() + ")",
+                    staffId,
+                    null,
+                    com.trustfund.model.enums.InternalTransactionStatus.COMPLETED);
+            campaign.setBalance(java.math.BigDecimal.ZERO);
+        }
+
+        campaign.setStatus("CLOSED");
+        return toCampaignResponse(campaignRepository.save(campaign));
     }
 
     @Override
