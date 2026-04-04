@@ -32,5 +32,9 @@ public interface CampaignService {
 
     CampaignResponse reviewCampaign(Long id, Long staffId, String status, String rejectionReason);
 
+    CampaignResponse pauseCampaign(Long id);
+
+    CampaignResponse closeCampaign(Long id, Long staffId);
+
     void updateBalance(Long id, java.math.BigDecimal amount);
 }

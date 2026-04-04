@@ -110,4 +110,21 @@ public class CampaignController {
         campaignService.updateBalance(id, amount);
         return ResponseEntity.ok().build();
     }
+
+    @PutMapping("/{id}/pause")
+    @Operation(summary = "Pause campaign", description = "Admin or Staff pauses an active campaign")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<CampaignResponse> pauseCampaign(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(campaignService.pauseCampaign(id));
+    }
+
+    @PutMapping("/{id}/close")
+    @Operation(summary = "Close campaign", description = "Admin or Staff closes a campaign completely")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<CampaignResponse> closeCampaign(
+            @PathVariable("id") Long id,
+            org.springframework.security.core.Authentication authentication) {
+        Long staffId = Long.parseLong(authentication.getName());
+        return ResponseEntity.ok(campaignService.closeCampaign(id, staffId));
+    }
 }

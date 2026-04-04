@@ -37,6 +37,7 @@ FLUSH PRIVILEGES;
 -- =======================================
 USE trustfundme_campaign_db;
 
+DROP TABLE IF EXISTS internal_transactions;
 DROP TABLE IF EXISTS approval_tasks;
 DROP TABLE IF EXISTS flag_reports;
 DROP TABLE IF EXISTS flags;
@@ -167,6 +168,27 @@ CREATE TABLE `expenditure_items` (
     INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
 );
 
+-- internal_transactions (Sơ đồ mới)
+CREATE TABLE `internal_transactions` (
+    `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
+    `from_campaign_id` BIGINT NULL,
+    `to_campaign_id` BIGINT NULL,
+    `amount` DECIMAL(19, 4) NOT NULL,
+    `type` VARCHAR(50) NOT NULL COMMENT 'RECOVERY, SUPPORT',
+    `reason` TEXT NULL,
+    `created_by_staff_id` BIGINT NULL,
+    `status` VARCHAR(50) NOT NULL DEFAULT 'PENDING' COMMENT 'PENDING, APPROVED, REJECTED, COMPLETED',
+    `evidence_image_id` BIGINT NULL COMMENT 'FK media.media.id',
+    `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (`from_campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE SET NULL,
+    FOREIGN KEY (`to_campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE SET NULL,
+    INDEX `idx_int_trans_from` (`from_campaign_id`),
+    INDEX `idx_int_trans_to` (`to_campaign_id`),
+    INDEX `idx_int_trans_status` (`status`)
+);
+
 -- approval_tasks
 CREATE TABLE `approval_tasks` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -253,14 +275,15 @@ INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_ac
     (11, 3, 'Nhiệm vụ duyệt', '/tasks', 'clipboard-check', 5, TRUE, NOW(), NOW()),
 
     -- Group 4: Quản lý quỹ
-    (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 0, TRUE, NOW(), NOW()),
-    (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 1, TRUE, NOW(), NOW()),
+    (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 1, TRUE, NOW(), NOW()),
+    (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 2, TRUE, NOW(), NOW()),
+    (22, 4, 'Quỹ chung', '/general-fund', 'database', 0, TRUE, NOW(), NOW()),
 
     -- Group 5: Giao dịch
     (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
     (15, 5, 'Lịch sử thanh toán', '/payments', 'dollar-sign', 1, TRUE, NOW(), NOW()),
 
-    -- Group 6: Giao tiếp
+    -- Group 6: Giao giao dịch
     (16, 6, 'Chat', '/chat', 'message-circle', 0, TRUE, NOW(), NOW()),
     (17, 6, 'Diễn đàn', '/forum', 'message-square', 1, TRUE, NOW(), NOW()),
     (18, 6, 'Bài đăng', '/feed', 'rss', 2, TRUE, NOW(), NOW()),
@@ -347,8 +370,6 @@ CREATE TABLE user_kyc (
 -- =======================================
 -- 3.1 Schema: media-service (DB: trustfundme_media_db)
 -- =======================================
--- Media service không lưu metadata vào DB, chỉ upload lên Supabase và trả về URL
--- DB này giữ lại để sau này có thể dùng cho các tính năng khác
 USE trustfundme_media_db;
 
 DROP TABLE IF EXISTS media;
@@ -373,7 +394,7 @@ CREATE TABLE media (
 );
 
 -- =======================================
--- 3.2 Schema: feed-service (Now merged into DB: trustfundme_campaign_db)
+-- 3.2 Schema: feed-service (DB: trustfundme_campaign_db)
 -- =======================================
 USE trustfundme_campaign_db;
 
@@ -381,8 +402,6 @@ DROP TABLE IF EXISTS feed_post_comment_like;
 DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
 DROP TABLE IF EXISTS feed_post;
-DROP TABLE IF EXISTS feed_category;
-
 
 CREATE TABLE IF NOT EXISTS feed_post (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -409,8 +428,6 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
 );
-
-
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
@@ -587,28 +604,30 @@ ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 -- Campaigns (fund_owner_id points to user id = 3)
 -- Campaign types: ITEMIZED (quỹ theo khoản mục, tự APPROVED khi tạo chi tiêu)
 --                 AUTHORIZED (quỹ ủy quyền, cần staff duyệt chi tiêu)
+--                 GENERAL_FUND (quỹ chung hệ thống)
 -- Campaign statuses: PENDING_APPROVAL (mới gửi duyệt), APPROVED (đang gây quỹ), DRAFT (nháp)
 INSERT INTO campaigns (id, fund_owner_id, approved_by_staff, approved_at, thank_message, balance, title, cover_image, description, category_id, start_date, end_date, status, rejection_reason, type, created_at, updated_at)
 VALUES
-    (1, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'APPROVED', NULL, 'ITEMIZED', NOW(), NOW()),
-    (2, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW()),
-    (3, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
-    (4, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
-    (5, 3, NULL, NULL, NULL, 0.00, 'Trồng 1000 cây xanh phủ xanh đồi trọc', NULL, 'Chung tay đóng góp cây giống để phục hồi rừng đầu nguồn, bảo vệ môi trường bền vững.', 5, NOW(), DATE_ADD(NOW(), INTERVAL 120 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
-    (6, 3, 2, NOW(), NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
-    (7, 3, NULL, NULL, NULL, 0.00, 'Học bổng Chắp cánh ước mơ 2024', NULL, 'Trao học bổng cho học sinh nghèo vượt khó tại các tỉnh miền núi phía Bắc.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 45 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW())
+    (1, 1, 1, NOW(), NULL, 1000000000.00, 'Quỹ chung hệ thống', NULL, 'Quỹ tập trung để điều tiết nguồn vốn cho các chiến dịch khẩn cấp.', NULL, NOW(), NULL, 'APPROVED', NULL, 'GENERAL_FUND', NOW(), NOW()),
+    (101, 3, 2, NOW(), 'Cảm ơn tấm lòng vàng của các bạn dành cho miền Trung!', 50000000.00, 'Cứu trợ lũ lụt khẩn cấp miền Trung 2024', NULL, 'Chiến dịch tập trung cung cấp nhu yếu phẩm khẩn cấp cho bà con vùng lũ Quảng Bình, Quảng Trị.', 1, NOW(), DATE_ADD(NOW(), INTERVAL 30 DAY), 'APPROVED', NULL, 'ITEMIZED', NOW(), NOW()),
+    (102, 3, NULL, NULL, NULL, 0.00, 'Hỗ trợ cây giống tái thiết sau bão', NULL, 'Cung cấp cây giống và vật tư nông nghiệp để bà con ổn định cuộc sống sau mùa lũ.', 2, NOW(), DATE_ADD(NOW(), INTERVAL 60 DAY), 'DRAFT', NULL, 'ITEMIZED', NOW(), NOW()),
+    (103, 3, NULL, NULL, NULL, 0.00, 'Xây trường cho em vùng cao Hà Giang', NULL, 'Góp gạch xây dựng điểm trường mầm non kiên cố cho trẻ em tại vùng sâu vùng xa Hà Giang.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 90 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
+    (104, 3, 2, NOW(), NULL, 25000000.00, 'Quỹ hỗ trợ bệnh nhi ung thư nghèo', NULL, 'Hỗ trợ chi phí điều trị và thuốc men cho các bệnh nhi mắc bệnh hiểm nghèo có hoàn cảnh đặc biệt.', 4, NOW(), DATE_ADD(NOW(), INTERVAL 365 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (105, 3, NULL, NULL, NULL, 0.00, 'Trồng 1000 cây xanh phủ xanh đồi trọc', NULL, 'Chung tay đóng góp cây giống để phục hồi rừng đầu nguồn, bảo vệ môi trường bền vững.', 5, NOW(), DATE_ADD(NOW(), INTERVAL 120 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW()),
+    (106, 3, 2, NOW(), NULL, 12000000.00, 'Cứu hộ và chăm sóc chó mèo bị bỏ rơi', NULL, 'Xây dựng mái ấm và cung cấp thức ăn, y tế cho các bạn động vật bị bỏ rơi hoặc ngược đãi.', 6, NOW(), DATE_ADD(NOW(), INTERVAL 180 DAY), 'APPROVED', NULL, 'AUTHORIZED', NOW(), NOW()),
+    (107, 3, NULL, NULL, NULL, 0.00, 'Học bổng Chắp cánh ước mơ 2024', NULL, 'Trao học bổng cho học sinh nghèo vượt khó tại các tỉnh miền núi phía Bắc.', 3, NOW(), DATE_ADD(NOW(), INTERVAL 45 DAY), 'PENDING_APPROVAL', NULL, 'ITEMIZED', NOW(), NOW())
 ON DUPLICATE KEY UPDATE title = VALUES(title), category_id = VALUES(category_id), status = VALUES(status), type = VALUES(type), description = VALUES(description);
 
 -- Fundraising goals (mỗi chiến dịch có 1 mục tiêu gây quỹ)
 INSERT INTO fundraising_goals (id, campaign_id, target_amount, description, is_active, created_at, updated_at)
 VALUES
-    (1, 1, 100000000.00, 'Ngân sách cho 2000 phần quà cứu trợ (mì tôm, nước, thuốc)', TRUE, NOW(), NOW()),
-    (2, 2, 50000000.00, 'Hỗ trợ 500 hộ dân cây giống lúa và ngô', TRUE, NOW(), NOW()),
-    (3, 3, 200000000.00, 'Xây dựng 1 điểm trường mầm non kiên cố 2 phòng học', TRUE, NOW(), NOW()),
-    (4, 4, 500000000.00, 'Hỗ trợ chi phí điều trị cho 50 bệnh nhi trong 1 năm', TRUE, NOW(), NOW()),
-    (5, 5, 30000000.00, 'Mua 1000 cây giống và thuê nhân công trồng rừng', TRUE, NOW(), NOW()),
-    (6, 6, 80000000.00, 'Chi phí vận hành mái ấm cho 100 thú cưng trong 6 tháng', TRUE, NOW(), NOW()),
-    (7, 7, 150000000.00, 'Trao 30 suất học bổng 5 triệu/suất cho học sinh vượt khó', TRUE, NOW(), NOW())
+    (101, 101, 100000000.00, 'Ngân sách cho 2000 phần quà cứu trợ (mì tôm, nước, thuốc)', TRUE, NOW(), NOW()),
+    (102, 102, 50000000.00, 'Hỗ trợ 500 hộ dân cây giống lúa và ngô', TRUE, NOW(), NOW()),
+    (103, 103, 200000000.00, 'Xây dựng 1 điểm trường mầm non kiên cố 2 phòng học', TRUE, NOW(), NOW()),
+    (104, 104, 500000000.00, 'Hỗ trợ chi phí điều trị cho 50 bệnh nhi trong 1 năm', TRUE, NOW(), NOW()),
+    (105, 105, 30000000.00, 'Mua 1000 cây giống và thuê nhân công trồng rừng', TRUE, NOW(), NOW()),
+    (106, 106, 80000000.00, 'Chi phí vận hành mái ấm cho 100 thú cưng trong 6 tháng', TRUE, NOW(), NOW()),
+    (107, 107, 150000000.00, 'Trao 30 suất học bổng 5 triệu/suất cho học sinh vượt khó', TRUE, NOW(), NOW())
 ON DUPLICATE KEY UPDATE target_amount = VALUES(target_amount), description = VALUES(description);
 
 
@@ -623,16 +642,16 @@ INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, tot
 VALUES
     -- Campaign 1 (ITEMIZED/ACTIVE): fund owner đã yêu cầu rút tiền
     (1, 1, DATE_ADD(NOW(), INTERVAL 3 DAY), 'PENDING', 0.00, 15000000.00, 15000000.00, 'Chi mua nhu yếu phẩm đợt 1 cho huyện Lệ Thủy', 'WITHDRAWAL_REQUESTED', TRUE, NULL, NULL, NOW(), NOW()),
-    -- Campaign 4 (AUTHORIZED/ACTIVE): đã DISBURSED
-    (2, 4, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
-    -- Campaign 6 (AUTHORIZED/ACTIVE): chờ staff duyệt
-    (3, 6, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW())
+    -- Campaign 104 (AUTHORIZED/ACTIVE): đã DISBURSED
+    (2, 104, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 5000000.00, 5000000.00, 0.00, 'Mua thiết bị y tế đợt 1', 'DISBURSED', TRUE, 2, NULL, NOW(), NOW()),
+    -- Campaign 106 (AUTHORIZED/ACTIVE): chờ staff duyệt
+    (3, 106, DATE_ADD(NOW(), INTERVAL 5 DAY), 'PENDING', 0.00, 8000000.00, 8000000.00, 'Mua thức ăn và thuốc thú y', 'PENDING_REVIEW', FALSE, NULL, NULL, NOW(), NOW())
 ON DUPLICATE KEY UPDATE plan = VALUES(plan), status = VALUES(status), total_expected_amount = VALUES(total_expected_amount), staff_review_id = VALUES(staff_review_id), reject_reason = VALUES(reject_reason);
 
 -- Expenditure Items
 -- exp 1 (Campaign 1 - ITEMIZED): đã WITHDRAWAL_REQUESTED
--- exp 2 (Campaign 4 - AUTHORIZED): đã DISBURSED
--- exp 3 (Campaign 6 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
+-- exp 2 (Campaign 104 - AUTHORIZED): đã DISBURSED
+-- exp 3 (Campaign 106 - AUTHORIZED): PENDING_REVIEW, chờ staff duyệt
 INSERT INTO expenditure_items (expenditure_id, category, quantity, actual_quantity, quantity_left, price, expected_price, note, created_at, updated_at)
 VALUES
     (1, 'Mì tôm', 500, 0, 500, 0.00, 15000.00, 'Thùng mì tôm Hảo Hảo', NOW(), NOW()),
@@ -682,6 +701,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `description` VARCHAR(255) NULL,
     `amount` DECIMAL(19, 4) NOT NULL,
     `qr_code` VARCHAR(1000) NULL,
+    `order_code` BIGINT UNIQUE NULL,
     `payment_link_id` VARCHAR(255) UNIQUE NULL,
     `status` VARCHAR(50) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -697,6 +717,7 @@ CREATE TABLE IF NOT EXISTS `donations` (
     `donation_amount` DECIMAL(19, 4) NULL,
     `tip_amount` DECIMAL(19, 4) NULL,
     `total_amount` DECIMAL(19, 4) NULL,
+    `is_balance_synchronized` BOOLEAN NOT NULL DEFAULT FALSE,
     `status` VARCHAR(50) NULL,
     `is_anonymous` BOOLEAN NOT NULL DEFAULT FALSE,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

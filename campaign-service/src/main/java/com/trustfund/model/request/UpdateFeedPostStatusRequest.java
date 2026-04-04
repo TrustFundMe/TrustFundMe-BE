@@ -14,6 +14,6 @@ import lombok.NoArgsConstructor;
 public class UpdateFeedPostStatusRequest {
 
     @NotBlank
-    @Pattern(regexp = "DRAFT|PUBLISHED")
+    @Pattern(regexp = "DRAFT|PUBLISHED|ALLOWED_EDIT")
     private String status;
 }
