@@ -75,8 +75,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         if (!existingExps.isEmpty()) {
             // Chỉ kiểm tra khoản chi gần nhất (ID cao nhất)
-            Expenditure latestExp = existingExps.stream()
-                    .max(java.util.Comparator.comparingLong(Expenditure::getId))
+            ExpenditureResponse latestExp = existingExps.stream()
+                    .max(java.util.Comparator.comparingLong(ExpenditureResponse::getId))
                     .orElse(null);
 
             if (latestExp != null) {
