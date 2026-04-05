@@ -422,6 +422,29 @@ public class FeedPostServiceImpl implements FeedPostService {
         return toResponse(post, null, null);
     }
 
+    @Override
+    public FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        boolean hasTitle = request.getTitle() != null && !request.getTitle().isBlank();
+        boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
+
+        if (!hasTitle && !hasContent) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
+        }
+
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved, null, null);
+    }
+
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
         // Resolve targetName based on targetType
         String targetName = null;
