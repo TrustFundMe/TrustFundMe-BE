@@ -32,15 +32,20 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
     private final FeedPostCommentLikeRepository feedPostCommentLikeRepository;
     private final IdentityServiceClient identityServiceClient;
 
+    private void assertPostNotLocked(Long postId) {
+        FeedPost post = feedPostRepository.findById(postId)
+                .orElseThrow(() -> new NotFoundException("Feed post not found"));
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new ForbiddenException("Bài viết đang khóa tương tác");
+        }
+    }
+
     @Override
     @Transactional
     public FeedPostCommentResponse create(Long postId, CreateFeedPostCommentRequest request, Long authorId) {
+        assertPostNotLocked(postId);
         FeedPost post = feedPostRepository.findById(postId)
                 .orElseThrow(() -> new NotFoundException("Feed post not found"));
-
-        if (Boolean.TRUE.equals(post.getIsLocked())) {
-            throw new ForbiddenException("Bình luận đang bị khóa");
-        }
 
         if (request.getParentCommentId() != null) {
             feedPostCommentRepository.findById(request.getParentCommentId())
@@ -91,6 +96,8 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
         FeedPostComment comment = feedPostCommentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Comment not found"));
 
+        assertPostNotLocked(comment.getPostId());
+
         if (!comment.getUserId().equals(currentUserId)) {
             throw new ForbiddenException("Not allowed to edit this comment");
         }
@@ -106,6 +113,8 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
     public void delete(Long commentId, Long currentUserId) {
         FeedPostComment comment = feedPostCommentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Comment not found"));
+
+        assertPostNotLocked(comment.getPostId());
 
         if (!comment.getUserId().equals(currentUserId)) {
             FeedPost post = feedPostRepository.findById(comment.getPostId())
@@ -135,6 +144,8 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
     public FeedPostCommentResponse toggleLike(Long commentId, Long currentUserId) {
         FeedPostComment comment = feedPostCommentRepository.findById(commentId)
                 .orElseThrow(() -> new NotFoundException("Comment not found"));
+
+        assertPostNotLocked(comment.getPostId());
 
         boolean alreadyLiked = feedPostCommentLikeRepository.existsByCommentIdAndUserId(commentId, currentUserId);
 

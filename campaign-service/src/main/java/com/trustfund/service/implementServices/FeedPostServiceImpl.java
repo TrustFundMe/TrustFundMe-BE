@@ -293,6 +293,10 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
         }
 
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết đang khóa tương tác");
+        }
+
         boolean exists = feedPostLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
         if (exists) {
             feedPostLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
