@@ -370,7 +370,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (status == null || status.isBlank()) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
-        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
+        if (!status.equals("DRAFT") && !status.equals("PUBLISHED") && !status.equals("HIDDEN") && !status.equals("ALLOWED_EDIT")) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
         post.setStatus(status);
