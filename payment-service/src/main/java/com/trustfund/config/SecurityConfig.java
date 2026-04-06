@@ -30,6 +30,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/payments/create").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/donation/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/payments/donations/**")
+                                                .permitAll()
                                                 .requestMatchers("/api/payments/expenditure-item/**").permitAll()
                                                 .requestMatchers("/actuator/**").permitAll()
                                                 .requestMatchers(

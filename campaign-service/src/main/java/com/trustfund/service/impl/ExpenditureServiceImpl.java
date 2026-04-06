@@ -17,7 +17,6 @@ import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
 import com.trustfund.client.IdentityServiceClient;
 import com.trustfund.client.NotificationServiceClient;
-
 import com.trustfund.model.response.BankAccountResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -362,6 +361,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             try {
+                // ITEMIZED: dùng balance hiện tại (toàn bộ quỹ vật phẩm đã nhận)
+                // AUTHORIZED: dùng amount từ expenditure (số kế hoạch) vì balance chứ nhiều đợt
+                BigDecimal disbursementAmount;
+                if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+                    disbursementAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+                    log.info("➔ ITEMIZED disbursement for expenditure {}: using campaign balance {}", id, disbursementAmount);
+                } else {
+                    // AUTHORIZED: lấy từ transaction đã tạo khi withdrawal request, fallback về expenditure totalExpectedAmount
+                    disbursementAmount = (transaction.getAmount() != null && transaction.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                            ? transaction.getAmount()
+                            : expenditure.getTotalExpectedAmount();
+                }
+                transaction.setAmount(disbursementAmount);
                 transaction.setStatus("COMPLETED");
 
                 // Luôn coi Admin (ID 1) là người chuyển tiền trong các giao dịch PAYOUT
@@ -392,7 +404,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 // Trừ số dư chiến dịch khi giải ngân
                 campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
                 
-                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {}", id);
+                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id, disbursementAmount, campaign.getId());
 
             } catch (Exception e) {
                 log.error("❌ ERROR: Failed to complete transaction for disbursement: {}", e.getMessage());
@@ -471,12 +483,25 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
+        // Xác định số tiền rút: ITEMIZED dùng balance hiện tại của campaign, MONEY dùng totalExpectedAmount
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+        log.info("requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}",
+                id, expenditure.getCampaignId(), campaign.getType(), campaign.getBalance(), expenditure.getTotalExpectedAmount());
+
+        BigDecimal withdrawAmount = expenditure.getTotalExpectedAmount();
+        if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            withdrawAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+            log.info("➔ ITEMIZED withdrawal request for expenditure {}: current campaignBalance={}", id, withdrawAmount);
+        }
+
+        log.info("requestWithdrawal DEBUG: withdrawAmount will be saved = {}", withdrawAmount);
+
         // Tạo bản ghi giao dịch PENDING
         ExpenditureTransaction transaction = ExpenditureTransaction.builder()
                 .expenditure(expenditure)
-                .amount(expenditure.getTotalExpectedAmount())
+                .amount(withdrawAmount)
                 .fromUserId(1L)
-                .toUserId(campaignService.getById(expenditure.getCampaignId()).getFundOwnerId())
+                .toUserId(campaign.getFundOwnerId())
                 .type("PAYOUT")
                 .status("PENDING")
                 .createdAt(java.time.LocalDateTime.now())
@@ -766,8 +791,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         transaction = transactionRepository.save(transaction);
         
-        // Cộng số dư chiến dịch khi thực hiện hoàn tiền
-        campaignService.updateBalance(campaign.getId(), amount);
+        // 794-795: Người dùng yêu cầu: Hoàn tiền dư từ đợt chi tiêu không cập nhật số dư (balance) chiến dịch
+        // campaignService.updateBalance(campaign.getId(), amount);
 
         return mapToTransactionResponse(transaction);
     }
