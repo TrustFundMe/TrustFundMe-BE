@@ -24,6 +24,7 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class FeedPostServiceImpl implements FeedPostService {
+    private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of("DRAFT", "PUBLISHED", "REJECTED", "HIDDEN");
 
     private final FeedPostRepository feedPostRepository;
     private final MediaServiceClient mediaServiceClient;
@@ -112,6 +113,27 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
+    public org.springframework.data.domain.Page<FeedPostResponse> getMyFeedPosts(Long currentUserId, String status,
+            org.springframework.data.domain.Pageable pageable) {
+        if (currentUserId == null) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        String normalizedStatus = null;
+        if (status != null && !status.isBlank()) {
+            if (!status.equalsIgnoreCase("ALL")) {
+                normalizedStatus = status.toUpperCase();
+                if (!VALID_STATUSES.contains(normalizedStatus)) {
+                    throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
+                }
+            }
+        }
+
+        return feedPostRepository.findMyPosts(currentUserId, normalizedStatus, pageable)
+                .map(post -> toResponse(post, currentUserId, null));
+    }
+
+    @Override
     public FeedPostResponse updateStatus(Long id, Long currentUserId, String status) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
@@ -128,11 +150,12 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
 
-        if (!status.equals("DRAFT") && !status.equals("PUBLISHED")) {
+        String normalizedStatus = status.toUpperCase();
+        if (!VALID_STATUSES.contains(normalizedStatus)) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
 
-        post.setStatus(status);
+        post.setStatus(normalizedStatus);
         FeedPost saved = feedPostRepository.save(post);
         return toResponse(saved, currentUserId, null);
     }
@@ -270,6 +293,10 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
         }
 
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết đang khóa tương tác");
+        }
+
         boolean exists = feedPostLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
         if (exists) {
             feedPostLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
@@ -370,12 +397,56 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (status == null || status.isBlank()) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Status is required");
         }
-        if (!status.equals("DRAFT") && !status.equals("PUBLISHED") && !status.equals("HIDDEN") && !status.equals("ALLOWED_EDIT")) {
+        String normalizedStatus = status.toUpperCase();
+        if (!VALID_STATUSES.contains(normalizedStatus)) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid status");
         }
-        post.setStatus(status);
+        post.setStatus(normalizedStatus);
         feedPostRepository.save(post);
         return toResponse(post, null, null);
+    }
+
+    @Override
+    public FeedPostResponse approveByAdmin(Long id) {
+        return updateStatusByAdmin(id, "PUBLISHED");
+    }
+
+    @Override
+    public FeedPostResponse rejectByAdmin(Long id) {
+        return updateStatusByAdmin(id, "REJECTED");
+    }
+
+    @Override
+    public FeedPostResponse hideByAdmin(Long id) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+        post.setStatus("HIDDEN");
+        post.setIsLocked(true);
+        feedPostRepository.save(post);
+        return toResponse(post, null, null);
+    }
+
+    @Override
+    public FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        boolean hasTitle = request.getTitle() != null && !request.getTitle().isBlank();
+        boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
+
+        if (!hasTitle && !hasContent) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
+        }
+
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved, null, null);
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {

@@ -62,13 +62,35 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
 
         InternalTransaction saved = transactionRepository.save(transaction);
 
-        // Nếu trạng thái là COMPLETED ngay lập tức (ví dụ Admin tạo), thì thực hiện
-        // chuyển tiền
-        if (status == InternalTransactionStatus.COMPLETED) {
+        // Nếu trạng thái là COMPLETED hoặc APPROVED ngay lập tức, thì thực hiện chuyển
+        // tiền
+        if (status == InternalTransactionStatus.COMPLETED || status == InternalTransactionStatus.APPROVED) {
             processFundTransfer(saved);
         }
 
         return saved;
+    }
+
+    @Override
+    public List<InternalTransaction> getAll() {
+        return transactionRepository.findAllByOrderByCreatedAtDesc();
+    }
+
+    @Override
+    public InternalTransaction getById(Long id) {
+        return transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        InternalTransaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+        if (tx.getStatus() == InternalTransactionStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Không thể xóa giao dịch đã hoàn tất");
+        }
+        transactionRepository.deleteById(id);
     }
 
     @Override
@@ -86,8 +108,12 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
 
         InternalTransaction saved = transactionRepository.save(tx);
 
-        // Chỉ trigger chuyển tiền khi chuyển sang COMPLETED
-        if (newStatus == InternalTransactionStatus.COMPLETED && oldStatus != InternalTransactionStatus.COMPLETED) {
+        // Chỉ trigger chuyển tiền khi chuyển sang COMPLETED hoặc APPROVED
+        boolean willTransfer = (newStatus == InternalTransactionStatus.COMPLETED
+                || newStatus == InternalTransactionStatus.APPROVED);
+        boolean hasTransferred = (oldStatus == InternalTransactionStatus.COMPLETED
+                || oldStatus == InternalTransactionStatus.APPROVED);
+        if (willTransfer && !hasTransferred) {
             processFundTransfer(saved);
         }
 
@@ -95,16 +121,41 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
     }
 
     private void processFundTransfer(InternalTransaction tx) {
-        if (tx.getFromCampaignId() != null) {
-            Campaign from = campaignRepository.findById(tx.getFromCampaignId()).get();
-            if (from.getBalance().compareTo(tx.getAmount()) < 0) {
-                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số dư nguồn không đủ");
-            }
-            campaignRepository.updateBalance(tx.getFromCampaignId(), tx.getAmount().negate());
-        }
+        System.out.println("\n[SYSTEM DIAGNOSTIC] ======= TRACING BALANCE UPDATE =======");
+        System.out.println("[DIAGNOSTIC] Transaction ID: " + tx.getId());
+        System.out.println("[DIAGNOSTIC] Amount from TX Object: " + tx.getAmount().toPlainString() + " (Scale: "
+                + tx.getAmount().scale() + ")");
 
-        if (tx.getToCampaignId() != null) {
-            campaignRepository.updateBalance(tx.getToCampaignId(), tx.getAmount());
+        try {
+            if (tx.getFromCampaignId() != null) {
+                Campaign from = campaignRepository.findById(tx.getFromCampaignId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Không tìm thấy quỹ nguồn ID: " + tx.getFromCampaignId()));
+
+                System.out.println("[DIAGNOSTIC] Source Campaign (ID: " + from.getId() + ") Balance Before: "
+                        + from.getBalance().toPlainString());
+                from.setBalance(from.getBalance().subtract(tx.getAmount()));
+                System.out.println("[DIAGNOSTIC] Source Campaign (ID: " + from.getId() + ") Calculated After: "
+                        + from.getBalance().toPlainString());
+                campaignRepository.save(from);
+            }
+
+            if (tx.getToCampaignId() != null) {
+                Campaign to = campaignRepository.findById(tx.getToCampaignId())
+                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                                "Không tìm thấy quỹ đích ID: " + tx.getToCampaignId()));
+
+                System.out.println("[DIAGNOSTIC] Dest Campaign (ID: " + to.getId() + ") Balance Before: "
+                        + to.getBalance().toPlainString());
+                to.setBalance(to.getBalance().add(tx.getAmount()));
+                System.out.println("[DIAGNOSTIC] Dest Campaign (ID: " + to.getId() + ") Calculated After: "
+                        + to.getBalance().toPlainString());
+                campaignRepository.save(to);
+            }
+            System.out.println("[SYSTEM DIAGNOSTIC] ======= TRACE COMPLETED =======\n");
+        } catch (Exception e) {
+            System.err.println("[DIAGNOSTIC ERROR] " + e.getMessage());
+            throw e;
         }
     }
 
@@ -132,5 +183,15 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
     public List<InternalTransaction> getGeneralFundHistory() {
         return transactionRepository.findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(GENERAL_FUND_ID,
                 GENERAL_FUND_ID);
+    }
+
+    @Override
+    @Transactional
+    public InternalTransaction updateEvidence(Long id, Long evidenceImageId) {
+        InternalTransaction tx = transactionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Giao dịch không tồn tại"));
+
+        tx.setEvidenceImageId(evidenceImageId);
+        return transactionRepository.save(tx);
     }
 }

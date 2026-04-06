@@ -13,9 +13,17 @@ public interface InternalTransactionService {
             InternalTransactionType type, String reason, Long createdByStaffId, Long evidenceImageId,
             InternalTransactionStatus status);
 
+    List<InternalTransaction> getAll();
+
+    InternalTransaction getById(Long id);
+
     InternalTransaction updateTransactionStatus(Long id, InternalTransactionStatus status);
+
+    void delete(Long id);
 
     Map<String, BigDecimal> getGeneralFundStats();
 
     List<InternalTransaction> getGeneralFundHistory();
+
+    InternalTransaction updateEvidence(Long id, Long evidenceImageId);
 }

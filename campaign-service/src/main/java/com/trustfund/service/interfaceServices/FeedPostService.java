@@ -14,6 +14,8 @@ public interface FeedPostService {
 
     org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId, org.springframework.data.domain.Pageable pageable);
 
+    org.springframework.data.domain.Page<FeedPostResponse> getMyFeedPosts(Long currentUserId, String status, org.springframework.data.domain.Pageable pageable);
+
     FeedPostResponse updateStatus(Long id, Long currentUserId, String status);
 
     FeedPostResponse updateVisibility(Long id, Long currentUserId, String currentRole, String visibility);
@@ -36,6 +38,14 @@ public interface FeedPostService {
     FeedPostResponse toggleLock(Long id);
 
     FeedPostResponse updateStatusByAdmin(Long id, String status);
+
+    FeedPostResponse approveByAdmin(Long id);
+
+    FeedPostResponse rejectByAdmin(Long id);
+
+    FeedPostResponse hideByAdmin(Long id);
+
+    FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request);
 
     int syncAllCommentCounts();
 

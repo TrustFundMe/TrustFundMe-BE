@@ -10,4 +10,5 @@ public interface ApprovalTaskService {
     List<ApprovalTask> getTasksByStaff(Long staffId);
     ApprovalTask completeTask(String type, Long targetId);
     ApprovalTask getTaskByCampaignId(Long campaignId);
+    ApprovalTask getTaskByTypeAndTargetId(String type, Long targetId);
 }

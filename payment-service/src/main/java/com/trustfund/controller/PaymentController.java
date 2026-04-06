@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -126,6 +127,26 @@ public class PaymentController {
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Internal Server Error",
                     "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/donations/summary")
+    public ResponseEntity<?> getDonationSummary(
+            @RequestParam("expenditureItemIds") String expenditureItemIdsStr) {
+        try {
+            log.info("getDonationSummary called with: {}", expenditureItemIdsStr);
+            List<Long> ids = java.util.Arrays.stream(expenditureItemIdsStr.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::parseLong)
+                    .collect(java.util.stream.Collectors.toList());
+            log.info("Parsed ids: {}", ids);
+            List<Map<String, Object>> result = donationService.getDonationSummaryByExpenditureItems(ids);
+            log.info("Returning {} entries", result.size());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Failed to get donation summary: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 }

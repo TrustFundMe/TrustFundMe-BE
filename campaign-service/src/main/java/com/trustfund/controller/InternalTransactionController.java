@@ -39,6 +39,20 @@ public class InternalTransactionController {
         return ResponseEntity.ok(created);
     }
 
+    @GetMapping
+    @Operation(summary = "Lấy tất cả giao dịch nội bộ")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<List<InternalTransaction>> getAll() {
+        return ResponseEntity.ok(transactionService.getAll());
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Lấy giao dịch nội bộ theo ID")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<InternalTransaction> getById(@PathVariable Long id) {
+        return ResponseEntity.ok(transactionService.getById(id));
+    }
+
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái giao dịch (Duyệt/Hoàn tất)", description = "Chỉ dùng cho Admin duyệt hoặc hoàn tất giao dịch")
     @PreAuthorize("hasRole('ADMIN')")
@@ -46,6 +60,23 @@ public class InternalTransactionController {
             @PathVariable Long id,
             @RequestParam com.trustfund.model.enums.InternalTransactionStatus status) {
         return ResponseEntity.ok(transactionService.updateTransactionStatus(id, status));
+    }
+
+    @PutMapping("/{id}/evidence")
+    @Operation(summary = "Cập nhật ảnh minh chứng giao dịch", description = "Dành cho Admin/Staff tải lên ảnh minh chứng")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<InternalTransaction> updateEvidence(
+            @PathVariable Long id,
+            @RequestParam Long evidenceImageId) {
+        return ResponseEntity.ok(transactionService.updateEvidence(id, evidenceImageId));
+    }
+
+    @DeleteMapping("/{id}")
+    @Operation(summary = "Xóa giao dịch nội bộ (chỉ khi chưa COMPLETED)")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        transactionService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/stats")

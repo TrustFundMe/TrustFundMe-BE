@@ -72,6 +72,36 @@ public class FeedPostController {
         return ResponseEntity.ok(feedPostService.getActiveFeedPosts(currentUserId, pageable));
     }
 
+    @GetMapping("/my")
+    @Operation(summary = "Get my feed posts", description = "Get feed posts created by the authenticated user with optional status filter")
+    public ResponseEntity<Page<FeedPostResponse>> getMyFeedPosts(
+            @RequestParam(name = "status", required = false) String status,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "updatedAt,desc") String sort) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication == null || !authentication.isAuthenticated()
+                || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
+        }
+
+        Long currentUserId;
+        try {
+            currentUserId = Long.parseLong(authentication.getName());
+        } catch (NumberFormatException ex) {
+            throw new com.trustfund.exception.exceptions.UnauthorizedException("Invalid authentication principal");
+        }
+
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        return ResponseEntity.ok(feedPostService.getMyFeedPosts(currentUserId, status, pageable));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get feed post detail", description = "Get detail of a feed post by id")
     public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id, jakarta.servlet.http.HttpServletRequest request) {
@@ -214,6 +244,35 @@ public class FeedPostController {
     public ResponseEntity<FeedPostResponse> updateStatusByAdmin(@PathVariable("id") Long id,
                                                                 @Valid @RequestBody UpdateFeedPostStatusRequest request) {
         return ResponseEntity.ok(feedPostService.updateStatusByAdmin(id, request.getStatus()));
+    }
+
+    @PatchMapping("/admin/{id}/approve")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Approve feed post (Admin)", description = "Approve and publish a feed post")
+    public ResponseEntity<FeedPostResponse> approveByAdmin(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(feedPostService.approveByAdmin(id));
+    }
+
+    @PatchMapping("/admin/{id}/reject")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Reject feed post (Admin)", description = "Reject a feed post")
+    public ResponseEntity<FeedPostResponse> rejectByAdmin(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(feedPostService.rejectByAdmin(id));
+    }
+
+    @PatchMapping("/admin/{id}/hide")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Hide feed post (Admin)", description = "Hide and lock a feed post")
+    public ResponseEntity<FeedPostResponse> hideByAdmin(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(feedPostService.hideByAdmin(id));
+    }
+
+    @PatchMapping("/admin/{id}/content")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Update feed post content (Admin)", description = "Update title/content without author check")
+    public ResponseEntity<FeedPostResponse> updateContentByAdmin(@PathVariable("id") Long id,
+                                                                 @Valid @RequestBody UpdateFeedPostContentRequest request) {
+        return ResponseEntity.ok(feedPostService.updateContentByAdmin(id, request));
     }
 
     @PostMapping("/admin/sync-counts")

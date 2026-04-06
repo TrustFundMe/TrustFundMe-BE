@@ -14,17 +14,19 @@ import java.util.List;
 @Repository
 public interface InternalTransactionRepository extends JpaRepository<InternalTransaction, Long> {
 
-    List<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId);
+        List<InternalTransaction> findAllByOrderByCreatedAtDesc();
 
-    @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId = :campaignId AND t.type = :type AND t.status = :status")
-    BigDecimal sumAmountByFromCampaignIdAndTypeAndStatus(
-            @Param("campaignId") Long campaignId,
-            @Param("type") InternalTransactionType type,
-            @Param("status") InternalTransactionStatus status);
+        List<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId);
 
-    @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.toCampaignId = :campaignId AND t.type = :type AND t.status = :status")
-    BigDecimal sumAmountByToCampaignIdAndTypeAndStatus(
-            @Param("campaignId") Long campaignId,
-            @Param("type") InternalTransactionType type,
-            @Param("status") InternalTransactionStatus status);
+        @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId = :campaignId AND t.type = :type AND t.status = :status")
+        BigDecimal sumAmountByFromCampaignIdAndTypeAndStatus(
+                        @Param("campaignId") Long campaignId,
+                        @Param("type") InternalTransactionType type,
+                        @Param("status") InternalTransactionStatus status);
+
+        @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.toCampaignId = :campaignId AND t.type = :type AND t.status = :status")
+        BigDecimal sumAmountByToCampaignIdAndTypeAndStatus(
+                        @Param("campaignId") Long campaignId,
+                        @Param("type") InternalTransactionType type,
+                        @Param("status") InternalTransactionStatus status);
 }
