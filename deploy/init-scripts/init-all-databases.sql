@@ -278,6 +278,7 @@ INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_ac
     (12, 4, 'Yêu cầu giải ngân', '/payouts', 'clipboard-check', 1, TRUE, NOW(), NOW()),
     (13, 4, 'Lịch sử giải ngân', '/payout-history', 'history', 2, TRUE, NOW(), NOW()),
     (22, 4, 'Quỹ chung', '/general-fund', 'database', 0, TRUE, NOW(), NOW()),
+    (23, 4, 'Tổng quan quỹ', '/funds-overview', 'chart-bar', 3, TRUE, NOW(), NOW()),
 
     -- Group 5: Giao dịch
     (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
