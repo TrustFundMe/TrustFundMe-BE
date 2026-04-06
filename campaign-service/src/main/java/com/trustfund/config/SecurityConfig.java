@@ -52,6 +52,7 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance").permitAll()
                                                 .requestMatchers("/api/campaigns/**").authenticated()
                                                 // Fundraising Goals endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**")
