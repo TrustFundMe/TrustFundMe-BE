@@ -6,6 +6,8 @@ import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.request.UpdateDisbursementProofRequest;
+import com.trustfund.model.request.CreateRefundRequest;
+import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -118,5 +120,18 @@ public class ExpenditureController {
     @Operation(summary = "Cập nhật trạng thái minh chứng", description = "Cập nhật trạng thái của bằng chứng chi tiêu (Ví dụ: SUBMITTED).")
     public ResponseEntity<ExpenditureResponse> updateEvidenceStatus(@PathVariable("id") Long id, @RequestParam("status") String status) {
         return ResponseEntity.ok(expenditureService.updateEvidenceStatus(id, status));
+    }
+
+    @PostMapping("/{id}/refund")
+    @Operation(summary = "Tạo yêu cầu hoàn tiền dư", description = "Fund owner gửi tiền dư về cho admin. Bao gồm số tài khoản người gửi, người nhận và minh chứng chuyển khoản.")
+    public ResponseEntity<ExpenditureTransactionResponse> createRefund(
+            @PathVariable("id") Long expenditureId,
+            @Valid @RequestBody CreateRefundRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        ExpenditureTransactionResponse result = expenditureService.createRefund(
+                expenditureId, request.getAmount(), userId, request.getProofUrl(),
+                request.getFromBankCode(), request.getFromAccountNumber(), request.getFromAccountHolderName(),
+                request.getToBankCode(), request.getToAccountNumber(), request.getToAccountHolderName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
     }
 }

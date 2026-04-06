@@ -6,9 +6,12 @@ import com.trustfund.model.response.FlagResponse;
 import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.CampaignFollowRepository;
 import com.trustfund.repository.CampaignRepository;
+import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.client.NotificationServiceClient;
+import com.trustfund.client.UserInfoClient;
 import com.trustfund.model.Campaign;
 import com.trustfund.model.CampaignFollow;
+import com.trustfund.model.FeedPost;
 import com.trustfund.model.request.NotificationRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +33,9 @@ public class FlagServiceImpl implements FlagService {
     private final ApprovalTaskService approvalTaskService;
     private final CampaignFollowRepository campaignFollowRepository;
     private final CampaignRepository campaignRepository;
+    private final FeedPostRepository feedPostRepository;
     private final NotificationServiceClient notificationServiceClient;
+    private final UserInfoClient userInfoClient;
 
     @Override
     @Transactional
@@ -112,13 +117,21 @@ public class FlagServiceImpl implements FlagService {
     @Transactional
     public FlagResponse reviewFlag(Long flagId, Long adminId, String status) {
         Flag flag = flagRepository.findById(flagId)
-                .orElseThrow(() -> new RuntimeException("Flag not found with id: " + flagId));
+                .orElseThrow(() -> new RuntimeException("Flag not found: " + flagId));
+
+        // Only allow PENDING or RESOLVED
+        if (status == null || (!status.equalsIgnoreCase("PENDING") && !status.equalsIgnoreCase("RESOLVED"))) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ. Chỉ chấp nhận PENDING hoặc RESOLVED.");
+        }
 
         flag.setReviewedBy(adminId);
         flag.setStatus(status);
 
         Flag updatedFlag = flagRepository.save(flag);
-        approvalTaskService.completeTask("FLAG", updatedFlag.getId());
+
+        if ("RESOLVED".equalsIgnoreCase(status)) {
+            approvalTaskService.completeTask("FLAG", updatedFlag.getId());
+        }
 
         // Gửi thông báo cho người đã báo cáo về kết quả xử lý
         sendFlagReviewNotification(updatedFlag);
@@ -175,7 +188,7 @@ public class FlagServiceImpl implements FlagService {
     private void sendFlagReviewNotification(Flag flag) {
         try {
             boolean isResolved = "RESOLVED".equalsIgnoreCase(flag.getStatus());
-            String title = isResolved ? "Báo cáo của bạn đã được chấp nhận" : "Báo cáo của bạn đã bị từ chối";
+            String title = isResolved ? "Báo cáo của bạn đã được chấp nhận" : "Báo cáo của bạn đã được xử lý";
 
             String targetName = "";
             if (flag.getCampaignId() != null) {
@@ -186,8 +199,8 @@ public class FlagServiceImpl implements FlagService {
             }
 
             String content = isResolved
-                    ? "Cảm ơn bạn! Báo cáo về " + targetName + " của bạn đã được quản trị viên phê duyệt và xử lý."
-                    : "Báo cáo về " + targetName + " của bạn đã bị từ chối sau khi quản trị viên xem xét.";
+                    ? "Cảm ơn bạn! Báo cáo về " + targetName + " của bạn đã được quản trị viên xử lý."
+                    : "Báo cáo về " + targetName + " của bạn đã được quản trị viên xem xét.";
 
             Map<String, Object> data = new HashMap<>();
             data.put("flagId", flag.getId());
@@ -216,7 +229,7 @@ public class FlagServiceImpl implements FlagService {
     }
 
     private FlagResponse mapToResponse(Flag flag) {
-        return FlagResponse.builder()
+        FlagResponse.FlagResponseBuilder builder = FlagResponse.builder()
                 .id(flag.getId())
                 .postId(flag.getPostId())
                 .campaignId(flag.getCampaignId())
@@ -224,7 +237,54 @@ public class FlagServiceImpl implements FlagService {
                 .reviewedBy(flag.getReviewedBy())
                 .reason(flag.getReason())
                 .status(flag.getStatus())
-                .createdAt(flag.getCreatedAt())
-                .build();
+                .createdAt(flag.getCreatedAt());
+
+        // Reporter info
+        UserInfoClient.UserInfo reporterInfo = userInfoClient.getUserInfo(flag.getUserId());
+        builder.reporterName(reporterInfo.fullName())
+               .reporterAvatarUrl(reporterInfo.avatarUrl());
+
+        // Campaign detail
+        if (flag.getCampaignId() != null) {
+            Campaign campaign = campaignRepository.findById(flag.getCampaignId()).orElse(null);
+            if (campaign != null) {
+                UserInfoClient.UserInfo authorInfo = userInfoClient.getUserInfo(campaign.getFundOwnerId());
+                builder.campaign(FlagResponse.CampaignDetail.builder()
+                        .id(campaign.getId())
+                        .title(campaign.getTitle())
+                        .description(campaign.getDescription())
+                        .imageUrl(campaign.getCoverImage() != null ? "/api/media/" + campaign.getCoverImage() : null)
+                        .status(campaign.getStatus())
+                        .raisedAmount(campaign.getBalance() != null ? campaign.getBalance().longValue() : null)
+                        .authorId(campaign.getFundOwnerId())
+                        .authorName(authorInfo.fullName())
+                        .createdAt(campaign.getCreatedAt())
+                        .build());
+            }
+        }
+
+        // Post detail
+        if (flag.getPostId() != null) {
+            FeedPost post = feedPostRepository.findById(flag.getPostId()).orElse(null);
+            if (post != null) {
+                UserInfoClient.UserInfo authorInfo = userInfoClient.getUserInfo(post.getAuthorId());
+                builder.post(FlagResponse.PostDetail.builder()
+                        .id(post.getId())
+                        .title(post.getTitle())
+                        .content(post.getContent())
+                        .status(post.getStatus())
+                        .authorId(post.getAuthorId())
+                        .authorName(authorInfo.fullName())
+                        .authorAvatarUrl(authorInfo.avatarUrl())
+                        .likeCount(post.getLikeCount())
+                        .commentCount(post.getCommentCount())
+                        .viewCount(post.getViewCount())
+                        .isLocked(post.getIsLocked())
+                        .createdAt(post.getCreatedAt())
+                        .build());
+            }
+        }
+
+        return builder.build();
     }
 }

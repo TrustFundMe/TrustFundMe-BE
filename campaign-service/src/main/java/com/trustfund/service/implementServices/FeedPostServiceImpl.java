@@ -293,6 +293,10 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
         }
 
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết đang khóa tương tác");
+        }
+
         boolean exists = feedPostLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
         if (exists) {
             feedPostLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
@@ -420,6 +424,29 @@ public class FeedPostServiceImpl implements FeedPostService {
         post.setIsLocked(true);
         feedPostRepository.save(post);
         return toResponse(post, null, null);
+    }
+
+    @Override
+    public FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        boolean hasTitle = request.getTitle() != null && !request.getTitle().isBlank();
+        boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
+
+        if (!hasTitle && !hasContent) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
+        }
+
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved, null, null);
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {

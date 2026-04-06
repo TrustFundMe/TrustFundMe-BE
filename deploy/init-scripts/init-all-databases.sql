@@ -109,10 +109,10 @@ CREATE TABLE campaign_follows (
     INDEX idx_campaign_follows_followed_at (followed_at)
 );
 
--- expenditures (1 expenditure mẫu cho mỗi campaign)
+-- expenditures (Nhiều đợt chi tiêu cho mỗi campaign)
 CREATE TABLE `expenditures` (
     `id` BIGINT PRIMARY KEY AUTO_INCREMENT,
-    `campaign_id` BIGINT NOT NULL UNIQUE,
+    `campaign_id` BIGINT NOT NULL,
     `evidence_due_at` DATETIME NULL,
     `evidence_status` VARCHAR(50) NULL,
     `total_amount` DECIMAL(19, 4) NULL,
@@ -748,8 +748,8 @@ INSERT INTO fundraising_goals (campaign_id, target_amount, description, is_activ
 VALUES (10, 500000000, 'Ngân sách hỗ trợ khẩn cấp', TRUE);
 
 -- Expenditure for campaign 10 (AUTHORIZED)
-INSERT INTO expenditures (id, campaign_id, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, created_at)
-VALUES (10, 10, 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', 'WITHDRAWAL_REQUESTED', true, NOW());
+INSERT INTO expenditures (id, campaign_id, evidence_due_at, evidence_status, total_amount, total_expected_amount, variance, plan, status, is_withdrawal_requested, staff_review_id, reject_reason, created_at, updated_at)
+VALUES (10, 10, DATE_ADD(NOW(), INTERVAL 7 DAY), 'PENDING', 0, 15000000, 15000000, 'Mua 300 suất quà nhu yếu phẩm', 'WITHDRAWAL_REQUESTED', TRUE, NULL, NULL, NOW(), NOW());
 
 -- Transaction for expenditure 10
 INSERT INTO expenditure_transactions (expenditure_id, amount, from_user_id, to_user_id, from_bank_code, from_account_number, from_account_holder_name, to_bank_code, to_account_number, to_account_holder_name, type, status)
@@ -760,3 +760,81 @@ VALUES
     (2, 5000000, 1, 4, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'TPB', '123456789012', 'TRAN THI B', 'PAYOUT', 'COMPLETED'),
     -- expenditure_id=3 (PENDING_REVIEW): rejected payout (example)
     (3, 8000000, 1, 5, 'VCB', '0011001234567', 'TRUSTFUND ADMIN', 'ACB', '987654321098', 'LE VAN C', 'PAYOUT', 'REJECTED');
+
+-- =======================================
+-- 6b. Sample Data: payment-service (trustfundme_payment_db)
+-- =======================================
+USE trustfundme_payment_db;
+
+-- Payments
+INSERT INTO payments (id, description, amount, qr_code, payment_link_id, status, created_at, updated_at)
+VALUES
+    (1, 'Quyên góp cứu trợ miền Trung', 500000, NULL, 'PAY_001', 'PAID', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
+    (2, 'Ủng hộ nhu yếu phẩm', 200000, NULL, 'PAY_002', 'PAID', DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
+    (3, 'Đóng góp cứu trợ', 1000000, NULL, 'PAY_003', 'PAID', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (4, 'Quyên góp vùng lũ', 300000, NULL, 'PAY_004', 'PAID', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (5, 'Ủng hộ bệnh nhi', 500000, NULL, 'PAY_005', 'PAID', DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+    (6, 'Quyên góp campaign 10', 200000, NULL, 'PAY_006', 'PAID', NOW(), NOW()),
+    (7, 'Quyên góp campaign 10', 300000, NULL, 'PAY_007', 'PAID', NOW(), NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+-- Donations
+INSERT INTO donations (id, donor_id, campaign_id, payment_id, donation_amount, tip_amount, total_amount, status, is_anonymous, created_at, updated_at)
+VALUES
+    -- Donations cho Campaign 1 (ITEMIZED) - với item-level mapping
+    (1, 4, 1, 1, 500000, 0, 500000, 'PAID', FALSE, DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
+    (2, 5, 1, 2, 200000, 0, 200000, 'PAID', FALSE, DATE_SUB(NOW(), INTERVAL 4 DAY), DATE_SUB(NOW(), INTERVAL 4 DAY)),
+    (3, 6, 1, 3, 1000000, 0, 1000000, 'PAID', FALSE, DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (4, 4, 1, 4, 300000, 0, 300000, 'PAID', FALSE, DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    -- Donations cho Campaign 10 (AUTHORIZED) - không map item
+    (5, 5, 10, 5, 500000, 0, 500000, 'PAID', FALSE, DATE_SUB(NOW(), INTERVAL 1 DAY), DATE_SUB(NOW(), INTERVAL 1 DAY)),
+    (6, 6, 10, 6, 200000, 0, 200000, 'PAID', FALSE, NOW(), NOW()),
+    (7, 4, 10, 7, 300000, 0, 300000, 'PAID', FALSE, NOW(), NOW())
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+
+-- Donation Items (map donation vào expenditure_item_id)
+-- Campaign 1: expenditure items 1 (Mì tôm), 2 (Nước sạch), 3 (Lương khô)
+-- Donation 1 (500k): 20 Mì tôm (20×15000=300k) + 4 Nước sạch (4×5000=200k)
+-- Donation 2 (200k): 13 Mì tôm + 1 Nước sạch
+-- Donation 3 (1M): 40 Mì tôm + 80 Nước sạch + 32 Lương khô
+-- Donation 4 (300k): 10 Mì tôm + 40 Nước sạch + 4 Lương khô
+INSERT INTO donation_items (id, donation_id, expenditure_item_id, quantity, amount, created_at)
+VALUES
+    -- Donation 1
+    (1, 1, 1, 20, 300000, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+    (2, 1, 2, 4, 200000, DATE_SUB(NOW(), INTERVAL 5 DAY)),
+    -- Donation 2
+    (3, 2, 1, 13, 195000, DATE_SUB(NOW(), INTERVAL 4 DAY)),
+    (4, 2, 2, 1, 5000, DATE_SUB(NOW(), INTERVAL 4 DAY)),
+    -- Donation 3
+    (5, 3, 1, 40, 600000, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (6, 3, 2, 80, 400000, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    (7, 3, 3, 32, 400000, DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    -- Donation 4
+    (8, 4, 1, 10, 150000, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (9, 4, 2, 40, 200000, DATE_SUB(NOW(), INTERVAL 2 DAY)),
+    (10, 4, 3, 4, 50000, DATE_SUB(NOW(), INTERVAL 2 DAY))
+ON DUPLICATE KEY UPDATE quantity = VALUES(quantity);
+
+-- =======================================
+-- 6c. Sample Data: approval_tasks
+-- =======================================
+USE trustfundme_campaign_db;
+
+-- Campaign approval tasks
+INSERT INTO approval_tasks (id, type, target_id, staff_id, status, created_at, updated_at)
+VALUES
+    -- Campaign 1: đã APPROVED bởi Staff 2
+    (1, 'CAMPAIGN', 1, 2, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 10 DAY), DATE_SUB(NOW(), INTERVAL 10 DAY)),
+    -- Campaign 3: đang PENDING (chưa staff)
+    (2, 'CAMPAIGN', 3, NULL, 'PENDING', DATE_SUB(NOW(), INTERVAL 7 DAY), DATE_SUB(NOW(), INTERVAL 7 DAY)),
+    -- Campaign 5: đang PENDING
+    (3, 'CAMPAIGN', 5, NULL, 'PENDING', DATE_SUB(NOW(), INTERVAL 5 DAY), DATE_SUB(NOW(), INTERVAL 5 DAY)),
+    -- Campaign 7: đang PENDING
+    (4, 'CAMPAIGN', 7, NULL, 'PENDING', DATE_SUB(NOW(), INTERVAL 3 DAY), DATE_SUB(NOW(), INTERVAL 3 DAY)),
+    -- Expenditure 2 (Campaign 4 - AUTHORIZED): đã COMPLETED
+    (5, 'EXPENDITURE', 2, 2, 'COMPLETED', DATE_SUB(NOW(), INTERVAL 8 DAY), DATE_SUB(NOW(), INTERVAL 6 DAY)),
+    -- Expenditure 3 (Campaign 6 - AUTHORIZED): đang PENDING
+    (6, 'EXPENDITURE', 3, NULL, 'PENDING', DATE_SUB(NOW(), INTERVAL 2 DAY), DATE_SUB(NOW(), INTERVAL 2 DAY))
+ON DUPLICATE KEY UPDATE status = VALUES(status);
+

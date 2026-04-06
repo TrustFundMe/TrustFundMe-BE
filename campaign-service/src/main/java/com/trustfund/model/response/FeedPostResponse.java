@@ -1,6 +1,7 @@
 package com.trustfund.model.response;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -38,8 +39,11 @@ public class FeedPostResponse {
      * If not requested by service layer, this may be null.
      */
     private Integer flagCount;
+    @JsonProperty("isLiked")
     private Boolean isLiked;
+    @JsonProperty("isPinned")
     private Boolean isPinned;
+    @JsonProperty("isLocked")
     private Boolean isLocked;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

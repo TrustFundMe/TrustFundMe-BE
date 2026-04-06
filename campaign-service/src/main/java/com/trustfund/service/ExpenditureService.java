@@ -39,5 +39,7 @@ public interface ExpenditureService {
 
     ExpenditureResponse updateEvidenceStatus(Long id, String status);
 
-    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl);
+    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl,
+            String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
+            String toBankCode, String toAccountNumber, String toAccountHolderName);
 }

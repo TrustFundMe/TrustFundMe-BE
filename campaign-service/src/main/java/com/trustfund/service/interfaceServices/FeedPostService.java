@@ -45,6 +45,8 @@ public interface FeedPostService {
 
     FeedPostResponse hideByAdmin(Long id);
 
+    FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request);
+
     int syncAllCommentCounts();
 
     List<FeedPostResponse> getByTarget(Long targetId, String targetType);

@@ -267,6 +267,14 @@ public class FeedPostController {
         return ResponseEntity.ok(feedPostService.hideByAdmin(id));
     }
 
+    @PatchMapping("/admin/{id}/content")
+    @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
+    @Operation(summary = "Update feed post content (Admin)", description = "Update title/content without author check")
+    public ResponseEntity<FeedPostResponse> updateContentByAdmin(@PathVariable("id") Long id,
+                                                                 @Valid @RequestBody UpdateFeedPostContentRequest request) {
+        return ResponseEntity.ok(feedPostService.updateContentByAdmin(id, request));
+    }
+
     @PostMapping("/admin/sync-counts")
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Sync comment counts (Admin)", description = "Recalculate and fix commentCount/replyCount for all posts")

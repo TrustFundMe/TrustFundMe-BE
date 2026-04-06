@@ -658,4 +658,31 @@ public class DonationService {
                                 .chartData(chartData)
                                 .build();
         }
+
+        @Transactional(readOnly = true)
+        public List<Map<String, Object>> getDonationSummaryByExpenditureItems(List<Long> expenditureItemIds) {
+                if (expenditureItemIds == null || expenditureItemIds.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+
+                List<DonationItem> items = donationItemRepository
+                        .findByExpenditureItemIdInAndDonationStatusJpql(expenditureItemIds, "PAID");
+
+                // Group by expenditureItemId and sum quantities
+                Map<Long, Integer> donatedQtyByItem = items.stream()
+                        .collect(Collectors.groupingBy(
+                                DonationItem::getExpenditureItemId,
+                                Collectors.summingInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
+                        ));
+
+                // Build result: expenditureItemId -> { plannedQty, donatedQty }
+                List<Map<String, Object>> result = new java.util.ArrayList<>();
+                for (Long itemId : expenditureItemIds) {
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("expenditureItemId", itemId);
+                        entry.put("donatedQuantity", donatedQtyByItem.getOrDefault(itemId, 0));
+                        result.add(entry);
+                }
+                return result;
+        }
 }
