@@ -55,7 +55,8 @@ public class ExpenditureController {
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái chi tiêu", description = "Cập nhật trạng thái duyệt của khoản chi tiêu (Yêu cầu quyền Staff hoặc Admin).")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<ExpenditureResponse> updateStatus(@PathVariable("id") Long id, @Valid @RequestBody com.trustfund.model.request.ReviewExpenditureRequest request) {
+    public ResponseEntity<ExpenditureResponse> updateStatus(@PathVariable("id") Long id,
+            @Valid @RequestBody com.trustfund.model.request.ReviewExpenditureRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureStatus(id, request));
     }
 
@@ -102,7 +103,8 @@ public class ExpenditureController {
 
     @PutMapping("/items/{itemId}/update-quantity")
     @Operation(summary = "Cập nhật số lượng vật phẩm (từ hệ thống thanh toán)", description = "Cập nhật số lượng đã nhận và còn lại của một hạng mục.")
-    public ResponseEntity<Void> updateQuantity(@PathVariable("itemId") Long itemId, @RequestParam("amount") Integer amount) {
+    public ResponseEntity<Void> updateQuantity(@PathVariable("itemId") Long itemId,
+            @RequestParam("amount") Integer amount) {
         expenditureService.updateExpenditureItemQuantity(itemId, amount);
         return ResponseEntity.ok().build();
     }
@@ -116,7 +118,14 @@ public class ExpenditureController {
 
     @PatchMapping("/{id}/evidence-status")
     @Operation(summary = "Cập nhật trạng thái minh chứng", description = "Cập nhật trạng thái của bằng chứng chi tiêu (Ví dụ: SUBMITTED).")
-    public ResponseEntity<ExpenditureResponse> updateEvidenceStatus(@PathVariable("id") Long id, @RequestParam("status") String status) {
+    public ResponseEntity<ExpenditureResponse> updateEvidenceStatus(@PathVariable("id") Long id,
+            @RequestParam("status") String status) {
         return ResponseEntity.ok(expenditureService.updateEvidenceStatus(id, status));
+    }
+
+    @GetMapping("/status/{status}")
+    @Operation(summary = "Lấy danh sách chi tiêu theo trạng thái", description = "Lấy danh sách các khoản chi tiêu dựa trên trạng thái (Ví dụ: DISBURSED).")
+    public ResponseEntity<List<ExpenditureResponse>> getByStatus(@PathVariable("status") String status) {
+        return ResponseEntity.ok(expenditureService.getExpendituresByStatus(status));
     }
 }

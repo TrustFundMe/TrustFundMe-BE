@@ -28,4 +28,5 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
     List<Donation> findByCampaignIdAndStatusOrderByCreatedAtAsc(Long campaignId, String status);
 
     List<Donation> findByDonorIdAndStatusOrderByCreatedAtDesc(Long donorId, String status);
+    List<Donation> findByStatusOrderByCreatedAtDesc(String status);
 }

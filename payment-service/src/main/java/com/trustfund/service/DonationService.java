@@ -658,4 +658,8 @@ public class DonationService {
                                 .chartData(chartData)
                                 .build();
         }
+
+        public List<Donation> getDonationsByStatus(String status) {
+                return donationRepository.findByStatusOrderByCreatedAtDesc(status);
+        }
 }

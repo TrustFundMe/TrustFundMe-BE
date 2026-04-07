@@ -9,5 +9,8 @@ import java.util.List;
 @Repository
 public interface ExpenditureTransactionRepository extends JpaRepository<ExpenditureTransaction, Long> {
     List<ExpenditureTransaction> findByExpenditureId(Long expenditureId);
+
     List<ExpenditureTransaction> findByExpenditureIdAndTypeAndStatus(Long expenditureId, String type, String status);
+
+    List<ExpenditureTransaction> findByTypeAndStatus(String type, String status);
 }

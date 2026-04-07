@@ -40,4 +40,6 @@ public interface ExpenditureService {
     ExpenditureResponse updateEvidenceStatus(Long id, String status);
 
     ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl);
+
+    List<ExpenditureResponse> getExpendituresByStatus(String status);
 }

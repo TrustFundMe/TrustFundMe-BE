@@ -719,4 +719,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         return mapToTransactionResponse(transaction);
     }
+
+    @Override
+    public List<ExpenditureResponse> getExpendituresByStatus(String status) {
+        return expenditureRepository.findByStatusOrderByCreatedAtDesc(status).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 }

@@ -128,4 +128,13 @@ public class PaymentController {
                     "message", e.getMessage()));
         }
     }
+
+    @GetMapping("/status/{status}")
+    public ResponseEntity<?> getDonationsByStatus(@PathVariable("status") String status) {
+        try {
+            return ResponseEntity.ok(donationService.getDonationsByStatus(status));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 }
