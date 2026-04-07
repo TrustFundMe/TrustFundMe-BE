@@ -51,4 +51,10 @@ public class FeedPostResponse {
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime updatedAt;
+
+    /**
+     * List of media attachments (images/files) associated with this post.
+     * Fetched from media-service by postId.
+     */
+    private java.util.List<java.util.Map<String, Object>> attachments;
 }

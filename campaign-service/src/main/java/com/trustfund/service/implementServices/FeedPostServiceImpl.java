@@ -473,6 +473,9 @@ public class FeedPostServiceImpl implements FeedPostService {
                 ? userInfoClient.getUserInfo(entity.getAuthorId())
                 : null;
 
+        // Fetch media attachments for this post from media-service
+        java.util.List<java.util.Map<String, Object>> attachments = mediaServiceClient.getMediaByPostId(entity.getId());
+
         return FeedPostResponse.builder()
                 .id(entity.getId())
                 .targetId(entity.getTargetId())
@@ -497,6 +500,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .isLocked(entity.getIsLocked())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .attachments(attachments)
                 .build();
     }
 

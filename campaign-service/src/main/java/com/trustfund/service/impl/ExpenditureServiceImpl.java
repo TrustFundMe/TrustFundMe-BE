@@ -791,8 +791,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         transaction = transactionRepository.save(transaction);
         
-        // 794-795: Người dùng yêu cầu: Hoàn tiền dư từ đợt chi tiêu không cập nhật số dư (balance) chiến dịch
-        // campaignService.updateBalance(campaign.getId(), amount);
+        // Cộng số tiền hoàn dư vào balance chiến dịch
+        campaignService.updateBalance(campaign.getId(), amount);
+        log.info("✅ Refund: credited {} back to campaign {} balance", amount, campaign.getId());
 
         return mapToTransactionResponse(transaction);
     }
