@@ -42,4 +42,8 @@ public interface ExpenditureService {
     ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl,
             String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
             String toBankCode, String toAccountNumber, String toAccountHolderName);
+
+    java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId);
+
+    java.io.ByteArrayInputStream exportItemsToExcelTemplate();
 }

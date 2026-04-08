@@ -12,6 +12,7 @@ import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.service.CampaignService;
+import com.trustfund.utils.ExpenditureExcelHelper;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
@@ -796,5 +797,16 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         log.info("✅ Refund: credited {} back to campaign {} balance", amount, campaign.getId());
 
         return mapToTransactionResponse(transaction);
+    }
+
+    @Override
+    public java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId) {
+        List<ExpenditureItemResponse> items = getExpenditureItemsByCampaign(campaignId);
+        return ExpenditureExcelHelper.itemsToExcel(items);
+    }
+
+    @Override
+    public java.io.ByteArrayInputStream exportItemsToExcelTemplate() {
+        return ExpenditureExcelHelper.itemsToExcelTemplate();
     }
 }
