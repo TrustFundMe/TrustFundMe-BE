@@ -6,6 +6,8 @@ import com.trustfund.repository.ExpenditureTransactionRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -33,6 +35,28 @@ public class ExpenditureTransactionController {
                 .collect(Collectors.toList());
 
         return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/type/{type}/status/{status}/paginated")
+    @Operation(summary = "Lấy danh sách giao dịch phân trang", description = "Lấy danh sách PAYOUT hoặc REFUND có status nhất định với phân trang")
+    public ResponseEntity<Page<ExpenditureTransactionResponse>> getByTypeAndStatusPaginated(
+            @PathVariable("type") String type,
+            @PathVariable("status") String status,
+            Pageable pageable) {
+
+        Page<ExpenditureTransaction> transactions = repository.findByTypeAndStatus(type, status, pageable);
+        Page<ExpenditureTransactionResponse> responses = transactions.map(this::mapToResponse);
+
+        return ResponseEntity.ok(responses);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Lấy chi tiết giao dịch theo ID", description = "Lấy chi tiết một giao dịch chi tiêu/hoàn tiền theo ID")
+    public ResponseEntity<ExpenditureTransactionResponse> getById(@PathVariable("id") Long id) {
+        return repository.findById(id)
+                .map(this::mapToResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
     private ExpenditureTransactionResponse mapToResponse(ExpenditureTransaction tx) {

@@ -27,7 +27,9 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.client.RestTemplate;
 import com.trustfund.dto.response.CampaignAnalyticsResponse;
 import com.trustfund.dto.response.CampaignProgressResponse;
@@ -661,5 +663,9 @@ public class DonationService {
 
         public List<Donation> getDonationsByStatus(String status) {
                 return donationRepository.findByStatusOrderByCreatedAtDesc(status);
+        }
+
+        public Page<Donation> getDonationsByStatusPaginated(String status, Pageable pageable) {
+                return donationRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
         }
 }

@@ -6,6 +6,7 @@ import com.trustfund.dto.response.PaymentResponse;
 import com.trustfund.service.DonationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -134,6 +135,18 @@ public class PaymentController {
         try {
             return ResponseEntity.ok(donationService.getDonationsByStatus(status));
         } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/status/{status}/paginated")
+    public ResponseEntity<?> getDonationsByStatusPaginated(
+            @PathVariable("status") String status,
+            Pageable pageable) {
+        try {
+            return ResponseEntity.ok(donationService.getDonationsByStatusPaginated(status, pageable));
+        } catch (Exception e) {
+            log.error("Failed to fetch paginated donations", e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }

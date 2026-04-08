@@ -1,6 +1,8 @@
 package com.trustfund.repository;
 
 import com.trustfund.model.ExpenditureTransaction;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -13,4 +15,6 @@ public interface ExpenditureTransactionRepository extends JpaRepository<Expendit
     List<ExpenditureTransaction> findByExpenditureIdAndTypeAndStatus(Long expenditureId, String type, String status);
 
     List<ExpenditureTransaction> findByTypeAndStatus(String type, String status);
+
+    Page<ExpenditureTransaction> findByTypeAndStatus(String type, String status, Pageable pageable);
 }
