@@ -12,12 +12,12 @@ import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.service.CampaignService;
+import com.trustfund.utils.ExpenditureExcelHelper;
 import com.trustfund.repository.ExpenditureItemRepository;
 import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.ExpenditureService;
 import com.trustfund.client.IdentityServiceClient;
 import com.trustfund.client.NotificationServiceClient;
-
 import com.trustfund.model.response.BankAccountResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +25,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
+import org.springframework.jdbc.core.JdbcTemplate;
+import jakarta.annotation.PostConstruct;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -42,6 +45,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
     private final NotificationServiceClient notificationServiceClient;
+    private final JdbcTemplate jdbcTemplate;
+
+    @PostConstruct
+    public void cleanupOldDatabaseConstraints() {
+        try {
+            log.info("Checking and removing old unique constraints on expenditures table...");
+            // Thử xóa UNIQUE constraint/index cũ ở field campaign_id nếu tồn tại (do code cũ)
+            jdbcTemplate.execute("ALTER TABLE expenditures DROP INDEX campaign_id");
+            log.info("✅ Successfully dropped old 'campaign_id' unique index.");
+        } catch (Exception e) {
+            log.info("Old unique index for 'campaign_id' not found or already dropped. Safe to ignore.");
+        }
+    }
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
 
     @Override
@@ -58,44 +74,25 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         List<ExpenditureResponse> existingExps = getExpendituresByCampaign(request.getCampaignId());
 
         if (!existingExps.isEmpty()) {
-            if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
-                boolean hasActiveExp = existingExps.stream().anyMatch(e -> !"DISBURSED".equalsIgnoreCase(e.getStatus())
-                        && !"REJECTED".equalsIgnoreCase(e.getStatus()));
+            // Chỉ kiểm tra khoản chi gần nhất (ID cao nhất)
+            ExpenditureResponse latestExp = existingExps.stream()
+                    .max(java.util.Comparator.comparingLong(ExpenditureResponse::getId))
+                    .orElse(null);
 
-                if (hasActiveExp) {
+            if (latestExp != null) {
+                boolean isDisbursed = "DISBURSED".equalsIgnoreCase(latestExp.getStatus());
+                boolean isRejected = "REJECTED".equalsIgnoreCase(latestExp.getStatus());
+                boolean hasEvidence = "SUBMITTED".equalsIgnoreCase(latestExp.getEvidenceStatus())
+                        || "APPROVED".equalsIgnoreCase(latestExp.getEvidenceStatus());
+
+                if (!isDisbursed && !isRejected) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Quỹ ủy quyền chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân hoặc bị từ chối.");
+                            "Chỉ được tạo khoản chi mới khi khoản chi gần nhất đã được giải ngân hoặc bị từ chối.");
                 }
 
-                // Kiểm tra bằng chứng giải ngân cho các khoản DISBURSED
-                boolean allDisbursedHaveProof = existingExps.stream()
-                        .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
-                        .allMatch(e -> e.getTransactions().stream()
-                                .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
-                                .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
-
-                if (!allDisbursedHaveProof) {
+                if (isDisbursed && !hasEvidence) {
                     throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Vui lòng nộp bằng chứng giải ngân cho khoản chi trước đó.");
-                }
-            } else if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
-                boolean hasActiveExp = existingExps.stream()
-                        .anyMatch(e -> !"DISBURSED".equalsIgnoreCase(e.getStatus()));
-
-                if (hasActiveExp) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Quỹ vật phẩm chỉ được tạo khoản chi mới khi khoản chi hiện tại đã được giải ngân.");
-                }
-
-                boolean allDisbursedHaveProof = existingExps.stream()
-                        .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
-                        .allMatch(e -> e.getTransactions().stream()
-                                .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()))
-                                .anyMatch(t -> t.getProofUrl() != null && !t.getProofUrl().isBlank()));
-
-                if (!allDisbursedHaveProof) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Vui lòng nộp bằng chứng cho khoản chi đã giải ngân trước khi tạo khoản chi mới.");
+                            "Vui lòng nộp báo cáo minh chứng sử dụng vốn cho khoản chi đã giải ngân trước khi tạo khoản chi mới.");
                 }
             }
         }
@@ -106,7 +103,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
         }
 
-        String initialStatus = "PENDING_REVIEW";
+        // ITEMIZED: tự động APPROVED (fund owner tự quản lý, có thể rút tiền ngay)
+        // AUTHORIZED: cần staff duyệt trước (PENDING_REVIEW)
+        String initialStatus = "ITEMIZED".equalsIgnoreCase(campaign.getType()) ? "APPROVED" : "PENDING_REVIEW";
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         BigDecimal totalExpectedAmount = BigDecimal.ZERO;
@@ -154,14 +153,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         // Create Approval Task for the new expenditure
         if ("PENDING_REVIEW".equalsIgnoreCase(savedExpenditure.getStatus())) {
-            // SKIP task if it's the first expenditure of an ITEMIZED campaign (handled by
-            // campaign review)
-            boolean isInitialItemized = existingExps.isEmpty() && "ITEMIZED".equalsIgnoreCase(campaign.getType());
-            if (!isInitialItemized) {
-                approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
-            } else {
-                log.info("➔ Skipping task creation for initial ITEMIZED expenditure of campaign {}",
-                        request.getCampaignId());
+            com.trustfund.model.ApprovalTask task = approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
+            if (task != null && task.getStaffId() != null) {
+                savedExpenditure.setStaffReviewId(task.getStaffId());
+                expenditureRepository.save(savedExpenditure);
             }
         }
 
@@ -171,7 +166,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId) {
-        return expenditureRepository.findByCampaignId(campaignId).stream()
+        List<Expenditure> expenditures = expenditureRepository.findByCampaignId(campaignId);
+        log.info("getExpendituresByCampaign({}): found {} expenditures", campaignId, expenditures.size());
+        return expenditures.stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
@@ -208,39 +205,58 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     private ExpenditureResponse mapToResponse(Expenditure expenditure) {
-        return ExpenditureResponse.builder()
-                .id(expenditure.getId())
-                .campaignId(expenditure.getCampaignId())
-                .evidenceDueAt(expenditure.getEvidenceDueAt())
-                .evidenceStatus(expenditure.getEvidenceStatus())
-                .evidenceSubmittedAt(expenditure.getEvidenceSubmittedAt())
-                .totalAmount(expenditure.getTotalAmount())
-                .totalExpectedAmount(expenditure.getTotalExpectedAmount())
-                .variance(expenditure.getVariance())
-                .isWithdrawalRequested(expenditure.getIsWithdrawalRequested())
-                .plan(expenditure.getPlan())
-                .status(expenditure.getStatus())
-                .staffReviewId(expenditure.getStaffReviewId())
-                .rejectReason(expenditure.getRejectReason())
-                .createdAt(expenditure.getCreatedAt())
-                .updatedAt(expenditure.getUpdatedAt())
-                .transactions(expenditure.getTransactions() != null ? expenditure.getTransactions().stream()
+        log.info("mapToResponse: expenditureId={}, campaignId={}, status={}",
+                expenditure.getId(), expenditure.getCampaignId(), expenditure.getStatus());
+        try {
+            List<ExpenditureTransactionResponse> txResponses = java.util.Collections.emptyList();
+            if (expenditure.getTransactions() != null) {
+                txResponses = expenditure.getTransactions().stream()
                         .map(this::mapToTransactionResponse)
-                        .collect(Collectors.toList()) : java.util.Collections.emptyList())
-                .disbursementProofUrl(expenditure.getTransactions() != null ? expenditure.getTransactions().stream()
+                        .collect(java.util.stream.Collectors.toList());
+            }
+
+            String proofUrl = null;
+            if (expenditure.getTransactions() != null) {
+                var payoutTx = expenditure.getTransactions().stream()
                         .filter(t -> "PAYOUT".equalsIgnoreCase(t.getType()) && t.getProofUrl() != null
                                 && t.getCreatedAt() != null)
                         .sorted((a, b) -> b.getCreatedAt().compareTo(a.getCreatedAt()))
-                        .map(ExpenditureTransaction::getProofUrl)
                         .findFirst()
-                        .orElse(null) : null)
-                .build();
+                        .orElse(null);
+                if (payoutTx != null) {
+                    proofUrl = payoutTx.getProofUrl();
+                }
+            }
+
+            return ExpenditureResponse.builder()
+                    .id(expenditure.getId())
+                    .campaignId(expenditure.getCampaignId())
+                    .evidenceDueAt(expenditure.getEvidenceDueAt())
+                    .evidenceStatus(expenditure.getEvidenceStatus())
+                    .evidenceSubmittedAt(expenditure.getEvidenceSubmittedAt())
+                    .totalAmount(expenditure.getTotalAmount())
+                    .totalExpectedAmount(expenditure.getTotalExpectedAmount())
+                    .variance(expenditure.getVariance())
+                    .isWithdrawalRequested(expenditure.getIsWithdrawalRequested())
+                    .plan(expenditure.getPlan())
+                    .status(expenditure.getStatus())
+                    .staffReviewId(expenditure.getStaffReviewId())
+                    .rejectReason(expenditure.getRejectReason())
+                    .createdAt(expenditure.getCreatedAt())
+                    .updatedAt(expenditure.getUpdatedAt())
+                    .transactions(txResponses)
+                    .disbursementProofUrl(proofUrl)
+                    .build();
+        } catch (Exception e) {
+            log.error("Error mapping expenditure {}: {}", expenditure.getId(), e.getMessage(), e);
+            throw e;
+        }
     }
 
     private ExpenditureTransactionResponse mapToTransactionResponse(ExpenditureTransaction t) {
         return ExpenditureTransactionResponse.builder()
                 .id(t.getId())
-                .expenditureId(t.getExpenditure().getId())
+                .expenditureId(t.getExpenditure() != null ? t.getExpenditure().getId() : null)
                 .fromUserId(t.getFromUserId())
                 .toUserId(t.getToUserId())
                 .amount(t.getAmount())
@@ -346,6 +362,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             try {
+                // ITEMIZED: dùng balance hiện tại (toàn bộ quỹ vật phẩm đã nhận)
+                // AUTHORIZED: dùng amount từ expenditure (số kế hoạch) vì balance chứ nhiều đợt
+                BigDecimal disbursementAmount;
+                if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+                    disbursementAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+                    log.info("➔ ITEMIZED disbursement for expenditure {}: using campaign balance {}", id, disbursementAmount);
+                } else {
+                    // AUTHORIZED: lấy từ transaction đã tạo khi withdrawal request, fallback về expenditure totalExpectedAmount
+                    disbursementAmount = (transaction.getAmount() != null && transaction.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                            ? transaction.getAmount()
+                            : expenditure.getTotalExpectedAmount();
+                }
+                transaction.setAmount(disbursementAmount);
                 transaction.setStatus("COMPLETED");
 
                 // Luôn coi Admin (ID 1) là người chuyển tiền trong các giao dịch PAYOUT
@@ -372,7 +401,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 }
 
                 transactionRepository.save(transaction);
-                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {}", id);
+                
+                // Trừ số dư chiến dịch khi giải ngân
+                campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
+                
+                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id, disbursementAmount, campaign.getId());
 
             } catch (Exception e) {
                 log.error("❌ ERROR: Failed to complete transaction for disbursement: {}", e.getMessage());
@@ -451,12 +484,25 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
+        // Xác định số tiền rút: ITEMIZED dùng balance hiện tại của campaign, MONEY dùng totalExpectedAmount
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+        log.info("requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}",
+                id, expenditure.getCampaignId(), campaign.getType(), campaign.getBalance(), expenditure.getTotalExpectedAmount());
+
+        BigDecimal withdrawAmount = expenditure.getTotalExpectedAmount();
+        if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            withdrawAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+            log.info("➔ ITEMIZED withdrawal request for expenditure {}: current campaignBalance={}", id, withdrawAmount);
+        }
+
+        log.info("requestWithdrawal DEBUG: withdrawAmount will be saved = {}", withdrawAmount);
+
         // Tạo bản ghi giao dịch PENDING
         ExpenditureTransaction transaction = ExpenditureTransaction.builder()
                 .expenditure(expenditure)
-                .amount(expenditure.getTotalExpectedAmount())
+                .amount(withdrawAmount)
                 .fromUserId(1L)
-                .toUserId(campaignService.getById(expenditure.getCampaignId()).getFundOwnerId())
+                .toUserId(campaign.getFundOwnerId())
                 .type("PAYOUT")
                 .status("PENDING")
                 .createdAt(java.time.LocalDateTime.now())
@@ -681,43 +727,87 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     @Transactional
     public ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId,
-            String proofUrl) {
+            String proofUrl,
+            String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
+            String toBankCode, String toAccountNumber, String toAccountHolderName) {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                         "Expenditure not found: " + expenditureId));
 
+        // Lấy campaign để biết fundOwnerId
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+        Long fundOwnerId = campaign.getFundOwnerId();
+
+        // Mặc định toUser = admin (1L)
+        Long toUserId = 1L;
+
+        // Tự động fetch bank info từ identity service
+        String resolvedFromBankCode = null;
+        String resolvedFromAccountNumber = null;
+        String resolvedFromAccountHolderName = null;
+        String resolvedToBankCode = null;
+        String resolvedToAccountNumber = null;
+        String resolvedToAccountHolderName = null;
+
+        try {
+            // Lấy bank info người gửi (fund owner)
+            BankAccountResponse fromBank = identityServiceClient.getPrimaryBankAccount(fundOwnerId);
+            if (fromBank != null) {
+                resolvedFromBankCode = fromBank.getBankCode();
+                resolvedFromAccountNumber = fromBank.getAccountNumber();
+                resolvedFromAccountHolderName = fromBank.getAccountHolderName();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch from-bank details for refund (userId={}): {}", fundOwnerId, e.getMessage());
+        }
+
+        try {
+            // Lấy bank info người nhận (admin)
+            BankAccountResponse toBank = identityServiceClient.getPrimaryBankAccount(toUserId);
+            if (toBank != null) {
+                resolvedToBankCode = toBank.getBankCode();
+                resolvedToAccountNumber = toBank.getAccountNumber();
+                resolvedToAccountHolderName = toBank.getAccountHolderName();
+            }
+        } catch (Exception e) {
+            log.warn("Could not fetch to-bank details for refund (adminId={}): {}", toUserId, e.getMessage());
+        }
+
         ExpenditureTransaction transaction = ExpenditureTransaction.builder()
                 .expenditure(expenditure)
-                .fromUserId(fromUserId)
-                .toUserId(1L) // Admin
+                .fromUserId(fundOwnerId)
+                .toUserId(toUserId)
                 .amount(amount)
                 .type("REFUND")
                 .status("COMPLETED")
                 .proofUrl(proofUrl)
+                .fromBankCode(resolvedFromBankCode)
+                .fromAccountNumber(resolvedFromAccountNumber)
+                .fromAccountHolderName(resolvedFromAccountHolderName)
+                .toBankCode(resolvedToBankCode)
+                .toAccountNumber(resolvedToAccountNumber)
+                .toAccountHolderName(resolvedToAccountHolderName)
                 .createdAt(java.time.LocalDateTime.now())
                 .build();
 
-        try {
-            BankAccountResponse fromBank = identityServiceClient.getPrimaryBankAccount(fromUserId);
-            if (fromBank != null) {
-                transaction.setFromBankCode(fromBank.getBankCode());
-                transaction.setFromAccountNumber(fromBank.getAccountNumber());
-                transaction.setFromAccountHolderName(fromBank.getAccountHolderName());
-            }
-
-            BankAccountResponse toBank = identityServiceClient.getPrimaryBankAccount(1L);
-            if (toBank != null) {
-                transaction.setToBankCode(toBank.getBankCode());
-                transaction.setToAccountNumber(toBank.getAccountNumber());
-                transaction.setToAccountHolderName(toBank.getAccountHolderName());
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ Warning: Could not fetch bank details for refund: {}", e.getMessage());
-        }
-
         transaction = transactionRepository.save(transaction);
+        
+        // Cộng số tiền hoàn dư vào balance chiến dịch
+        campaignService.updateBalance(campaign.getId(), amount);
+        log.info("✅ Refund: credited {} back to campaign {} balance", amount, campaign.getId());
 
         return mapToTransactionResponse(transaction);
+    }
+
+    @Override
+    public java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId) {
+        List<ExpenditureItemResponse> items = getExpenditureItemsByCampaign(campaignId);
+        return ExpenditureExcelHelper.itemsToExcel(items);
+    }
+
+    @Override
+    public java.io.ByteArrayInputStream exportItemsToExcelTemplate() {
+        return ExpenditureExcelHelper.itemsToExcelTemplate();
     }
 
     @Override

@@ -377,7 +377,12 @@ public class CampaignServiceImpl implements CampaignService {
     public void updateBalance(Long id, java.math.BigDecimal amount) {
         Campaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
-        campaign.setBalance(campaign.getBalance().add(amount));
+        
+        java.math.BigDecimal oldBalance = campaign.getBalance() != null ? campaign.getBalance() : java.math.BigDecimal.ZERO;
+        campaign.setBalance(oldBalance.add(amount));
         campaignRepository.save(campaign);
+        
+        org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                .info("➔ [BALANCE_UPDATE] Campaign {}: {} -> {} (delta: {})", id, oldBalance, campaign.getBalance(), amount);
     }
 }

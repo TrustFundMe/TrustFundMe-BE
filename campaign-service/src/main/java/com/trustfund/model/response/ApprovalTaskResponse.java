@@ -16,6 +16,7 @@ public class ApprovalTaskResponse {
     private String type;
     private Long targetId;
     private Long staffId;
+    private String staffName;
     private String status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

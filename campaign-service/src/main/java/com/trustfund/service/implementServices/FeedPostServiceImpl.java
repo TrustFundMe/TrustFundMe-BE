@@ -293,6 +293,10 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
         }
 
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết đang khóa tương tác");
+        }
+
         boolean exists = feedPostLikeRepository.existsByPostIdAndUserId(postId, currentUserId);
         if (exists) {
             feedPostLikeRepository.deleteByPostIdAndUserId(postId, currentUserId);
@@ -422,6 +426,29 @@ public class FeedPostServiceImpl implements FeedPostService {
         return toResponse(post, null, null);
     }
 
+    @Override
+    public FeedPostResponse updateContentByAdmin(Long id, UpdateFeedPostContentRequest request) {
+        FeedPost post = feedPostRepository.findById(id)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        boolean hasTitle = request.getTitle() != null && !request.getTitle().isBlank();
+        boolean hasContent = request.getContent() != null && !request.getContent().isBlank();
+
+        if (!hasTitle && !hasContent) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
+        }
+
+        if (request.getTitle() != null) {
+            post.setTitle(request.getTitle());
+        }
+        if (request.getContent() != null) {
+            post.setContent(request.getContent());
+        }
+
+        FeedPost saved = feedPostRepository.save(post);
+        return toResponse(saved, null, null);
+    }
+
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
         // Resolve targetName based on targetType
         String targetName = null;
@@ -445,6 +472,9 @@ public class FeedPostServiceImpl implements FeedPostService {
         UserInfoClient.UserInfo authorInfo = entity.getAuthorId() != null
                 ? userInfoClient.getUserInfo(entity.getAuthorId())
                 : null;
+
+        // Fetch media attachments for this post from media-service
+        java.util.List<java.util.Map<String, Object>> attachments = mediaServiceClient.getMediaByPostId(entity.getId());
 
         return FeedPostResponse.builder()
                 .id(entity.getId())
@@ -470,6 +500,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .isLocked(entity.getIsLocked())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .attachments(attachments)
                 .build();
     }
 

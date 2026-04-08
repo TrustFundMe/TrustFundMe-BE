@@ -95,7 +95,7 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Payment Service - Create donation and fetch donation details are public for
         // guests
-        if (path.equals("/api/payments/create") || path.startsWith("/api/payments/donation/")) {
+        if (path.equals("/api/payments/create") || path.startsWith("/api/payments/donation/") || path.startsWith("/api/payments/donations/")) {
             return method == HttpMethod.POST || method == HttpMethod.GET;
         }
 

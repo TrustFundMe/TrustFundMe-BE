@@ -52,6 +52,7 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance").permitAll()
                                                 .requestMatchers("/api/campaigns/**").authenticated()
                                                 // Fundraising Goals endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**")
@@ -76,6 +77,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/user-post-seen/**").authenticated()
                                                 // Approval tasks
                                                 .requestMatchers(HttpMethod.GET, "/api/admin/tasks/campaign/**")
+                                                .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/admin/tasks/type/**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/admin/tasks/staff/**")
                                                 .hasAnyRole("ADMIN", "STAFF")

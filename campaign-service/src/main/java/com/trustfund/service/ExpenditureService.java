@@ -39,7 +39,13 @@ public interface ExpenditureService {
 
     ExpenditureResponse updateEvidenceStatus(Long id, String status);
 
-    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl);
+    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl,
+            String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
+            String toBankCode, String toAccountNumber, String toAccountHolderName);
+
+    java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId);
+
+    java.io.ByteArrayInputStream exportItemsToExcelTemplate();
 
     List<ExpenditureResponse> getExpendituresByStatus(String status);
 }

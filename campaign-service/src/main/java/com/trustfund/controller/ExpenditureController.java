@@ -6,15 +6,21 @@ import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.request.UpdateDisbursementProofRequest;
+import com.trustfund.model.request.CreateRefundRequest;
+import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.service.ExpenditureService;
+import com.trustfund.utils.ExpenditureExcelHelper;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -121,6 +127,63 @@ public class ExpenditureController {
     public ResponseEntity<ExpenditureResponse> updateEvidenceStatus(@PathVariable("id") Long id,
             @RequestParam("status") String status) {
         return ResponseEntity.ok(expenditureService.updateEvidenceStatus(id, status));
+    }
+
+    @PostMapping("/{id}/refund")
+    @Operation(summary = "Tạo yêu cầu hoàn tiền dư", description = "Fund owner gửi tiền dư về cho admin. Bao gồm số tài khoản người gửi, người nhận và minh chứng chuyển khoản.")
+    public ResponseEntity<ExpenditureTransactionResponse> createRefund(
+            @PathVariable("id") Long expenditureId,
+            @Valid @RequestBody CreateRefundRequest request,
+            @RequestHeader(value = "X-User-Id", required = false) Long userId) {
+        ExpenditureTransactionResponse result = expenditureService.createRefund(
+                expenditureId, request.getAmount(), userId, request.getProofUrl(),
+                request.getFromBankCode(), request.getFromAccountNumber(), request.getFromAccountHolderName(),
+                request.getToBankCode(), request.getToAccountNumber(), request.getToAccountHolderName());
+        return ResponseEntity.status(HttpStatus.CREATED).body(result);
+    }
+
+    @GetMapping("/campaign/{campaignId}/export")
+    @Operation(summary = "Xuất Excel hạng mục chi tiêu", description = "Xuất toàn bộ hạng mục chi tiêu của chiến dịch ra file Excel. Tên file: KhoanChi_ddMMyyyy.xlsx")
+    public ResponseEntity<byte[]> exportItemsToExcel(@PathVariable("campaignId") Long campaignId) {
+        java.io.ByteArrayInputStream data = expenditureService.exportItemsToExcel(campaignId);
+        String filename = "KhoanChi_" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(data.readAllBytes());
+    }
+
+    @GetMapping("/import/template")
+    @Operation(summary = "Tải file mẫu Excel nhập khoản chi", description = "Tải file mẫu Excel với dữ liệu minh hoạ để người dùng nhập theo.")
+    public ResponseEntity<byte[]> downloadTemplate() {
+        java.io.ByteArrayInputStream data = expenditureService.exportItemsToExcelTemplate();
+        String filename = "KhoanChi_Mau_" + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
+                .contentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
+                .body(data.readAllBytes());
+    }
+
+    @PostMapping("/import")
+    @Operation(summary = "Nhập hạng mục chi tiêu từ Excel", description = "Đọc file Excel và trả về danh sách hạng mục chi tiêu để xem trước trước khi tạo khoản chi.")
+    public ResponseEntity<?> importItemsFromExcel(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "File không được để trống"));
+        }
+        if (!ExpenditureExcelHelper.hasExcelFormat(file)) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "Vui lòng upload file Excel (.xlsx hoặc .xls)"));
+        }
+        try {
+            java.util.List<CreateExpenditureItemRequest> items = ExpenditureExcelHelper.excelToItems(file.getInputStream());
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", true,
+                    "message", "Đọc " + items.size() + " hạng mục từ file Excel thành công",
+                    "data", items
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Không thể đọc file Excel: " + e.getMessage()));
+        }
     }
 
     @GetMapping("/status/{status}")

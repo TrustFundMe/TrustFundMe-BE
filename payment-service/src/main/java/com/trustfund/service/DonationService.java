@@ -1,6 +1,7 @@
 package com.trustfund.service;
 
 import com.trustfund.dto.request.CreatePaymentRequest;
+import com.trustfund.dto.response.CheckItemLimitResponse;
 import com.trustfund.dto.response.PaymentResponse;
 import com.trustfund.model.Donation;
 import com.trustfund.model.DonationItem;
@@ -55,6 +56,9 @@ public class DonationService {
 
         @Value("${app.campaign-service.url:http://localhost:8082}")
         private String campaignServiceUrl;
+
+        @Value("${app.identity-service.url:http://localhost:8081}")
+        private String identityServiceUrl;
 
         @Transactional
         public PaymentResponse createPayment(CreatePaymentRequest request) throws Exception {
@@ -168,8 +172,10 @@ public class DonationService {
                                 donation.setStatus(status);
                                 donationRepository.save(donation);
 
-                                if (!"PAID".equals(oldDonationStatus) && "PAID".equals(status)) {
-                                        processQuantityUpdate(donation);
+                                if ("PAID".equals(status)) {
+                                    processQuantityUpdate(donation);
+                                    // Use syncBalanceForDonation to ensure locking if other threads are sync-ing
+                                    this.syncBalanceForDonation(donation.getId());
                                 }
 
                                 if (!"PAID".equals(status)
@@ -212,14 +218,10 @@ public class DonationService {
                                         }
                                         donationRepository.save(donation);
 
-                                        if (!"PAID".equals(oldStatus) && "PAID".equals(realStatus)) {
+                                        if ("PAID".equals(realStatus)) {
                                                 processQuantityUpdate(donation);
-                                        }
-
-                                        if ("PAID".equals(realStatus)
-                                                        && !Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
-                                                // updateCampaignBalance(donation); // Removed to use FE-driven update
-                                                // as requested
+                                                // Fetch again with lock for balance sync
+                                                this.syncBalanceForDonation(donation.getId());
                                         }
                                 }
                         } catch (Exception e) {
@@ -243,19 +245,32 @@ public class DonationService {
                                 .orElseThrow(() -> new RuntimeException("Donation not found with id: " + id));
         }
 
-        public Map<String, Object> checkExpenditureItemLimit(Long expenditureItemId, Integer requestedQuantity) {
+        public CheckItemLimitResponse checkExpenditureItemLimit(Long expenditureItemId, Integer requestedQuantity) {
+                if (expenditureItemId == null || expenditureItemId <= 0) {
+                        throw new IllegalArgumentException("Invalid expenditure item ID: " + expenditureItemId);
+                }
                 try {
                         String url = campaignServiceUrl + "/api/expenditures/items/" + expenditureItemId;
+                        log.info("Calling campaign-service: {}", url);
                         @SuppressWarnings("unchecked")
                         Map<String, Object> itemData = restTemplate.getForObject(url, Map.class);
 
                         if (itemData == null) {
-                                throw new RuntimeException("Expenditure item not found in campaign service");
+                                log.warn("Campaign service returned null for item {}", expenditureItemId);
+                                return CheckItemLimitResponse.builder()
+                                        .canDonateMore(false)
+                                        .quantityLeft(0)
+                                        .message("Không thể xác minh số lượng vật phẩm. Vui lòng thử lại.")
+                                        .checkSuccessful(false)
+                                        .build();
                         }
 
-                        // Just read directly what campaign-service tells us is the quantityLeft
-                        Integer quantityLeftFromDB = (Integer) itemData.get("quantityLeft");
-                        int quantityLeft = (quantityLeftFromDB != null) ? quantityLeftFromDB : 0;
+                        // Safe parse quantityLeft (could be Integer, Long, BigDecimal from Java)
+                        Object qtyLeftObj = itemData.get("quantityLeft");
+                        int quantityLeft = 0;
+                        if (qtyLeftObj != null && qtyLeftObj instanceof Number) {
+                                quantityLeft = ((Number) qtyLeftObj).intValue();
+                        }
 
                         log.info("➔ Pre-payment Check limits: Item {} has quantity_left = {}", expenditureItemId,
                                         quantityLeft);
@@ -263,16 +278,24 @@ public class DonationService {
                         int requested = (requestedQuantity != null) ? requestedQuantity : 1;
                         boolean canDonateMore = requested <= quantityLeft;
 
-                        Map<String, Object> response = new HashMap<>();
-                        response.put("canDonateMore", canDonateMore);
-                        response.put("quantityLeft", quantityLeft);
-                        response.put("message", canDonateMore ? "Có thể nhận thêm"
+                        return CheckItemLimitResponse.builder()
+                                .canDonateMore(canDonateMore)
+                                .quantityLeft(quantityLeft)
+                                .message(canDonateMore ? "Có thể nhận thêm"
                                         : "Số lượng quyên góp vượt quá giới hạn cho phép. Hiện tại chỉ còn lại: "
-                                                        + quantityLeft);
-                        return response;
+                                                        + quantityLeft)
+                                .checkSuccessful(true)
+                                .build();
                 } catch (Exception e) {
-                        log.error("Error checking expenditure item limit", e);
-                        throw new RuntimeException("Could not verify expenditure item limit: " + e.getMessage());
+                        log.error("Error checking expenditure item limit for id {}: {} - {}",
+                                expenditureItemId, e.getClass().getName(), e.getMessage(), e);
+                        // Return 200 with checkSuccessful=false instead of throwing 400
+                        return CheckItemLimitResponse.builder()
+                                .canDonateMore(false)
+                                .quantityLeft(0)
+                                .message("Không thể xác minh số lượng vật phẩm: " + e.getMessage())
+                                .checkSuccessful(false)
+                                .build();
                 }
         }
 
@@ -294,14 +317,30 @@ public class DonationService {
                                                 + amountToDeduct;
 
                                 log.info("➔ Calling campaign-service: PUT {}", updateUrl);
-                                restTemplate.put(updateUrl, null);
+                                // Use exchange to properly handle HTTP errors
+                                restTemplate.exchange(updateUrl,
+                                                org.springframework.http.HttpMethod.PUT,
+                                                null,
+                                                String.class);
                                 log.info("✅ SUCCESS: Deducted {} from quantityLeft for ExpenditureItem {}",
                                                 amountToDeduct, item.getExpenditureItemId());
                         } catch (Exception e) {
-                                log.error("❌ FAILED to deduct quantity for ExpenditureItem {}: {}",
-                                                item.getExpenditureItemId(), e.getMessage());
+                                log.error("❌ FAILED to deduct quantity for ExpenditureItem {}: {} - {}",
+                                                item.getExpenditureItemId(), e.getClass().getName(), e.getMessage(), e);
                         }
                 }
+        }
+
+        /**
+         * Sync quantityLeft cho expenditure items của 1 donation cụ thể.
+         * Dùng khi webhook không hoạt động (local dev) để FE gọi sau khi payment thành công.
+         */
+        public void syncQuantityForDonation(Long donationId) {
+                log.info("🔄 syncing quantity for donation: {}", donationId);
+                Donation donation = donationRepository.findById(donationId)
+                                .orElseThrow(() -> new IllegalArgumentException("Donation not found: " + donationId));
+                processQuantityUpdate(donation);
+                log.info("✅ Sync quantity completed for donation {}", donationId);
         }
 
         @Transactional(readOnly = true)
@@ -390,7 +429,7 @@ public class DonationService {
                         if (!anon && d.getDonorId() != null) {
                                 try {
                                         // Use internal API as identified in identity-service
-                                        String userUrl = "http://identity-service/api/internal/users/" + d.getDonorId();
+                                        String userUrl = identityServiceUrl + "/api/internal/users/" + d.getDonorId();
                                         log.info("➔ Fetching internal donor info from: {}", userUrl);
                                         @SuppressWarnings("unchecked")
                                         Map<String, Object> userData = restTemplate.getForObject(userUrl, Map.class);
@@ -405,8 +444,12 @@ public class DonationService {
                                                 }
                                         }
                                 } catch (Exception e) {
-                                        log.warn("⚠️ Could not fetch user info from identity-service internal API for donorId {}: {}",
+                                        log.warn("⚠️ Could not fetch user info from identity-service for donorId {}, using fallback name: {}",
                                                         d.getDonorId(), e.getMessage());
+                                        // identity-service unavailable: show generic name instead of anonymous
+                                        if (!anon) {
+                                                name = "Người ủng hộ";
+                                        }
                                 }
                         }
 
@@ -659,6 +702,90 @@ public class DonationService {
                                 .approvedAt(approvedAt)
                                 .chartData(chartData)
                                 .build();
+        }
+
+        @Transactional(readOnly = true)
+        public List<Map<String, Object>> getDonationSummaryByExpenditureItems(List<Long> expenditureItemIds) {
+                if (expenditureItemIds == null || expenditureItemIds.isEmpty()) {
+                        return java.util.Collections.emptyList();
+                }
+
+                List<DonationItem> items = donationItemRepository
+                        .findByExpenditureItemIdInAndDonationStatusJpql(expenditureItemIds, "PAID");
+
+                // Group by expenditureItemId and sum quantities
+                Map<Long, Integer> donatedQtyByItem = items.stream()
+                        .collect(Collectors.groupingBy(
+                                DonationItem::getExpenditureItemId,
+                                Collectors.summingInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
+                        ));
+
+                // Build result: expenditureItemId -> { plannedQty, donatedQty }
+                List<Map<String, Object>> result = new java.util.ArrayList<>();
+                for (Long itemId : expenditureItemIds) {
+                        Map<String, Object> entry = new HashMap<>();
+                        entry.put("expenditureItemId", itemId);
+                        entry.put("donatedQuantity", donatedQtyByItem.getOrDefault(itemId, 0));
+                        result.add(entry);
+                }
+                return result;
+        }
+        /**
+         * Đồng bộ balance cho chiến dịch từ 1 donation cụ thể (Idempotent).
+         * Dùng khi webhook không hoạt động (local dev) để FE gọi chủ động.
+         */
+        @Transactional
+        public void syncBalanceForDonation(Long donationId) {
+                log.info("➔ [DEBUG] syncBalanceForDonation called for id: {}", donationId);
+                donationRepository.findByIdWithLock(donationId).ifPresentOrElse(
+                        donation -> {
+                                log.info("➔ [DEBUG] Found donation {} with status {} and syncStatus {}", 
+                                        donation.getId(), donation.getStatus(), donation.getIsBalanceSynchronized());
+                                this.updateCampaignBalance(donation);
+                        },
+                        () -> log.warn("➔ [DEBUG] Donation {} NOT FOUND in database", donationId)
+                );
+        }
+
+        @Transactional
+        public void updateCampaignBalance(Donation donation) {
+                if (donation == null) {
+                        log.warn("Cannot update balance: donation is null");
+                        return;
+                }
+
+                log.info("➔ [DEBUG] updateCampaignBalance starting for donation {}. Status: {}, IsSynced: {}", 
+                                donation.getId(), donation.getStatus(), donation.getIsBalanceSynchronized());
+
+                if (!"PAID".equals(donation.getStatus())) {
+                        log.warn("➔ [DEBUG] Skip balance update: donation {} is not PAID (current status: {})", 
+                                        donation.getId(), donation.getStatus());
+                        return;
+                }
+
+                if (Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
+                        log.info("➔ [DEBUG] Balance already synchronized for donation {}. Skipping.", donation.getId());
+                        return;
+                }
+
+                try {
+                        log.info("🚀 [DEBUG] SYNCHRONIZING balance for donation {}: campaignId={}, amount={}",
+                                        donation.getId(), donation.getCampaignId(), donation.getDonationAmount());
+
+                        String updateUrl = campaignServiceUrl + "/api/campaigns/" + donation.getCampaignId()
+                                        + "/update-balance?amount=" + donation.getDonationAmount();
+
+                        log.info("➔ [DEBUG] Calling campaign-service: PUT {}", updateUrl);
+                        restTemplate.exchange(updateUrl, org.springframework.http.HttpMethod.PUT, null, Void.class);
+
+                        donation.setIsBalanceSynchronized(true);
+                        donationRepository.save(donation);
+                        log.info("✅ [DEBUG] SUCCESS: Balance synchronized for donation {}", donation.getId());
+                } catch (Exception e) {
+                        log.error("❌ [DEBUG] FAILED to update campaign balance for donation {}: {} - {}", 
+                                        donation.getId(), e.getClass().getName(), e.getMessage());
+                        throw e; // Relaunch to let transation roll back if necessary or let controller handle
+                }
         }
 
         public List<Donation> getDonationsByStatus(String status) {

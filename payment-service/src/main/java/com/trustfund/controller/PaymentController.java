@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -70,12 +71,41 @@ public class PaymentController {
         }
     }
 
+    @PostMapping("/donation/{id}/sync-balance")
+    public ResponseEntity<?> syncBalance(@PathVariable("id") Long id) {
+        try {
+            donationService.syncBalanceForDonation(id);
+            return ResponseEntity.ok(Map.of("message", "Balance synced successfully"));
+        } catch (Exception e) {
+            log.error("Sync balance failed for donation {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/donation/{id}/sync-quantity")
+    public ResponseEntity<?> syncQuantity(@PathVariable("id") Long id) {
+        try {
+            donationService.syncQuantityForDonation(id);
+            return ResponseEntity.ok(Map.of("message", "Quantity synced successfully"));
+        } catch (Exception e) {
+            log.error("Sync quantity failed for donation {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/expenditure-item/{id}/check")
     public ResponseEntity<?> checkExpenditureItem(@PathVariable("id") Long id,
             @RequestParam(name = "quantity", required = false) Integer quantity) {
+        if (id == null || id <= 0) {
+            log.error("Bad request for item {}: Invalid ID", id);
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid expenditure item ID: " + id));
+        }
         try {
             return ResponseEntity.ok(donationService.checkExpenditureItemLimit(id, quantity));
         } catch (Exception e) {
+            // Should not reach here anymore since service handles all exceptions internally
+            // But keep as safety net for unexpected errors
+            log.error("Unexpected error checking item {}: {}", id, e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
@@ -127,6 +157,26 @@ public class PaymentController {
             return ResponseEntity.internalServerError().body(Map.of(
                     "error", "Internal Server Error",
                     "message", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/donations/summary")
+    public ResponseEntity<?> getDonationSummary(
+            @RequestParam("expenditureItemIds") String expenditureItemIdsStr) {
+        try {
+            log.info("getDonationSummary called with: {}", expenditureItemIdsStr);
+            List<Long> ids = java.util.Arrays.stream(expenditureItemIdsStr.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(Long::parseLong)
+                    .collect(java.util.stream.Collectors.toList());
+            log.info("Parsed ids: {}", ids);
+            List<Map<String, Object>> result = donationService.getDonationSummaryByExpenditureItems(ids);
+            log.info("Returning {} entries", result.size());
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            log.error("Failed to get donation summary: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 
