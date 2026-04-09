@@ -21,6 +21,7 @@ public class ExpenditureResponse {
     private LocalDateTime evidenceSubmittedAt;
     private BigDecimal totalAmount;
     private BigDecimal totalExpectedAmount;
+    private BigDecimal totalReceivedAmount;
     private BigDecimal variance;
     private Boolean isWithdrawalRequested;
     private String plan;

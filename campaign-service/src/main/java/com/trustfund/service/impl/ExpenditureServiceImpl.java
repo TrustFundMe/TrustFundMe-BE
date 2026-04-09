@@ -51,13 +51,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public void cleanupOldDatabaseConstraints() {
         try {
             log.info("Checking and removing old unique constraints on expenditures table...");
-            // Thử xóa UNIQUE constraint/index cũ ở field campaign_id nếu tồn tại (do code cũ)
+            // Thử xóa UNIQUE constraint/index cũ ở field campaign_id nếu tồn tại (do code
+            // cũ)
             jdbcTemplate.execute("ALTER TABLE expenditures DROP INDEX campaign_id");
             log.info("✅ Successfully dropped old 'campaign_id' unique index.");
         } catch (Exception e) {
             log.info("Old unique index for 'campaign_id' not found or already dropped. Safe to ignore.");
         }
     }
+
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
 
     @Override
@@ -103,9 +105,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
         }
 
-        // ITEMIZED: tự động APPROVED (fund owner tự quản lý, có thể rút tiền ngay)
+        // ITEMIZED: cần staff duyệt trước (PENDING_REVIEW) — giống AUTHORIZED
         // AUTHORIZED: cần staff duyệt trước (PENDING_REVIEW)
-        String initialStatus = "ITEMIZED".equalsIgnoreCase(campaign.getType()) ? "APPROVED" : "PENDING_REVIEW";
+        String initialStatus = "PENDING_REVIEW";
 
         BigDecimal totalAmount = BigDecimal.ZERO;
         BigDecimal totalExpectedAmount = BigDecimal.ZERO;
@@ -122,12 +124,23 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         BigDecimal variance = totalExpectedAmount.subtract(totalAmount);
 
+        // Tính totalReceivedAmount: ITEMIZED = campaign.balance (đã bao gồm dư kỳ trước
+        // + variance đã hoàn),
+        // AUTHORIZED = totalExpectedAmount
+        BigDecimal totalReceivedAmount;
+        if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            totalReceivedAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+        } else {
+            totalReceivedAmount = totalExpectedAmount;
+        }
+
         Expenditure expenditure = Expenditure.builder()
                 .campaignId(request.getCampaignId())
                 .evidenceDueAt(request.getEvidenceDueAt())
                 .evidenceStatus(request.getEvidenceStatus() != null ? request.getEvidenceStatus() : "PENDING")
                 .totalAmount(totalAmount)
                 .totalExpectedAmount(totalExpectedAmount)
+                .totalReceivedAmount(totalReceivedAmount)
                 .variance(variance)
                 .plan(request.getPlan())
                 .status(initialStatus)
@@ -153,7 +166,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         // Create Approval Task for the new expenditure
         if ("PENDING_REVIEW".equalsIgnoreCase(savedExpenditure.getStatus())) {
-            com.trustfund.model.ApprovalTask task = approvalTaskService.createAndAssignTask("EXPENDITURE", savedExpenditure.getId());
+            com.trustfund.model.ApprovalTask task = approvalTaskService.createAndAssignTask("EXPENDITURE",
+                    savedExpenditure.getId());
             if (task != null && task.getStaffId() != null) {
                 savedExpenditure.setStaffReviewId(task.getStaffId());
                 expenditureRepository.save(savedExpenditure);
@@ -178,6 +192,21 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return expenditureItemRepository.findByExpenditureCampaignId(campaignId).stream()
                 .map(this::mapToItemResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId) {
+        List<Expenditure> expenditures = expenditureRepository.findByCampaignIdOrderByCreatedAtDesc(campaignId);
+        // Tìm expenditure APPROVED mới nhất
+        for (Expenditure exp : expenditures) {
+            if ("APPROVED".equalsIgnoreCase(exp.getStatus())) {
+                return expenditureItemRepository.findByExpenditureId(exp.getId()).stream()
+                        .map(this::mapToItemResponse)
+                        .collect(Collectors.toList());
+            }
+        }
+        // Không có expenditure APPROVED nào
+        return null;
     }
 
     private ExpenditureItemResponse mapToItemResponse(ExpenditureItem item) {
@@ -236,6 +265,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .evidenceSubmittedAt(expenditure.getEvidenceSubmittedAt())
                     .totalAmount(expenditure.getTotalAmount())
                     .totalExpectedAmount(expenditure.getTotalExpectedAmount())
+                    .totalReceivedAmount(expenditure.getTotalReceivedAmount())
                     .variance(expenditure.getVariance())
                     .isWithdrawalRequested(expenditure.getIsWithdrawalRequested())
                     .plan(expenditure.getPlan())
@@ -257,6 +287,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return ExpenditureTransactionResponse.builder()
                 .id(t.getId())
                 .expenditureId(t.getExpenditure() != null ? t.getExpenditure().getId() : null)
+                .campaignId(t.getExpenditure() != null ? t.getExpenditure().getCampaignId() : null)
                 .fromUserId(t.getFromUserId())
                 .toUserId(t.getToUserId())
                 .amount(t.getAmount())
@@ -362,17 +393,29 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
             try {
-                // ITEMIZED: dùng balance hiện tại (toàn bộ quỹ vật phẩm đã nhận)
+                // ITEMIZED: dùng balance hiện tại (toàn bộ quỹ vật phẩm Tổng quyên góp)
                 // AUTHORIZED: dùng amount từ expenditure (số kế hoạch) vì balance chứ nhiều đợt
                 BigDecimal disbursementAmount;
                 if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
-                    disbursementAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
-                    log.info("➔ ITEMIZED disbursement for expenditure {}: using campaign balance {}", id, disbursementAmount);
+                    // ITEMIZED: dùng transaction.amount đã được set đúng ở requestWithdrawal
+                    // (luôn dùng campaign.balance tại thời điểm withdrawal, không dùng
+                    // totalReceivedAmount vì bị stale nếu có refund sau khi tạo expenditure)
+                    disbursementAmount = (transaction.getAmount() != null
+                            && transaction.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                                    ? transaction.getAmount()
+                                    : (expenditure.getTotalReceivedAmount() != null
+                                            ? expenditure.getTotalReceivedAmount()
+                                            : BigDecimal.ZERO);
+                    log.info(
+                            "➔ ITEMIZED disbursement for expenditure {}: using transaction.amount {} (vs stale totalReceivedAmount {})",
+                            id, disbursementAmount, expenditure.getTotalReceivedAmount());
                 } else {
-                    // AUTHORIZED: lấy từ transaction đã tạo khi withdrawal request, fallback về expenditure totalExpectedAmount
-                    disbursementAmount = (transaction.getAmount() != null && transaction.getAmount().compareTo(BigDecimal.ZERO) > 0)
-                            ? transaction.getAmount()
-                            : expenditure.getTotalExpectedAmount();
+                    // AUTHORIZED: lấy từ transaction đã tạo khi withdrawal request, fallback về
+                    // expenditure totalExpectedAmount
+                    disbursementAmount = (transaction.getAmount() != null
+                            && transaction.getAmount().compareTo(BigDecimal.ZERO) > 0)
+                                    ? transaction.getAmount()
+                                    : expenditure.getTotalExpectedAmount();
                 }
                 transaction.setAmount(disbursementAmount);
                 transaction.setStatus("COMPLETED");
@@ -401,11 +444,16 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 }
 
                 transactionRepository.save(transaction);
-                
+
+                // Cập nhật totalReceivedAmount của expenditure = số tiền transaction thực tế
+                expenditure.setTotalReceivedAmount(disbursementAmount);
+                expenditureRepository.save(expenditure);
+
                 // Trừ số dư chiến dịch khi giải ngân
                 campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
-                
-                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id, disbursementAmount, campaign.getId());
+
+                log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id,
+                        disbursementAmount, campaign.getId());
 
             } catch (Exception e) {
                 log.error("❌ ERROR: Failed to complete transaction for disbursement: {}", e.getMessage());
@@ -484,15 +532,20 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
-        // Xác định số tiền rút: ITEMIZED dùng balance hiện tại của campaign, MONEY dùng totalExpectedAmount
+        // Xác định số tiền rút: ITEMIZED dùng balance hiện tại của campaign, MONEY dùng
+        // totalExpectedAmount
         CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
-        log.info("requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}",
-                id, expenditure.getCampaignId(), campaign.getType(), campaign.getBalance(), expenditure.getTotalExpectedAmount());
+        log.info(
+                "requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}",
+                id, expenditure.getCampaignId(), campaign.getType(), campaign.getBalance(),
+                expenditure.getTotalExpectedAmount());
 
         BigDecimal withdrawAmount = expenditure.getTotalExpectedAmount();
         if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            // ITEMIZED: luôn dùng campaign.balance (đã bao gồm dư kỳ trước + variance đã
+            // hoàn)
             withdrawAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
-            log.info("➔ ITEMIZED withdrawal request for expenditure {}: current campaignBalance={}", id, withdrawAmount);
+            log.info("➔ ITEMIZED withdrawal request for expenditure {}: campaign.balance={}", id, withdrawAmount);
         }
 
         log.info("requestWithdrawal DEBUG: withdrawAmount will be saved = {}", withdrawAmount);
@@ -662,9 +715,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Giữ nguyên totalReceivedAmount (đã được set đúng từ disbursement)
+        // Chỉ cập nhật totalExpectedAmount, totalAmount và variance
         expenditure.setTotalExpectedAmount(totalExpectedAmount);
         expenditure.setTotalAmount(totalAmount);
-        expenditure.setVariance(totalExpectedAmount.subtract(totalAmount));
+        expenditure.setVariance(
+                (expenditure.getTotalReceivedAmount() != null ? expenditure.getTotalReceivedAmount() : BigDecimal.ZERO)
+                        .subtract(totalAmount));
 
         return expenditureRepository.save(expenditure);
     }
@@ -791,7 +848,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .build();
 
         transaction = transactionRepository.save(transaction);
-        
+
         // Cộng số tiền hoàn dư vào balance chiến dịch
         campaignService.updateBalance(campaign.getId(), amount);
         log.info("✅ Refund: credited {} back to campaign {} balance", amount, campaign.getId());
@@ -808,5 +865,14 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     public java.io.ByteArrayInputStream exportItemsToExcelTemplate() {
         return ExpenditureExcelHelper.itemsToExcelTemplate();
+    }
+
+    @Override
+    public List<ExpenditureTransactionResponse> getAllTransactions() {
+        List<ExpenditureTransaction> all = transactionRepository.findAll();
+        log.info("getAllTransactions: found {} transactions", all.size());
+        return all.stream()
+                .map(this::mapToTransactionResponse)
+                .collect(Collectors.toList());
     }
 }

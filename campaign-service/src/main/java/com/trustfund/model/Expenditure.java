@@ -48,6 +48,9 @@ public class Expenditure {
     @Column(name = "variance", precision = 19, scale = 4)
     private BigDecimal variance;
 
+    @Column(name = "total_received_amount", precision = 19, scale = 4)
+    private BigDecimal totalReceivedAmount;
+
     @Column(name = "is_withdrawal_requested", nullable = false)
     @Builder.Default
     private Boolean isWithdrawalRequested = false;
