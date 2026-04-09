@@ -16,6 +16,7 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
   @Query("""
       SELECT p FROM FeedPost p
       WHERE p.status IN ('PUBLISHED')
+        AND p.isLocked = false
         AND (
           p.visibility IN ('PUBLIC', 'FOLLOWERS')
           OR (p.visibility = 'PRIVATE' AND p.authorId = :currentUserId)
