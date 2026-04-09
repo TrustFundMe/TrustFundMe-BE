@@ -208,4 +208,10 @@ public class ExpenditureController {
                     .body(java.util.Map.of("error", "Không thể đọc file Excel: " + e.getMessage()));
         }
     }
+
+    @GetMapping("/status/{status}")
+    @Operation(summary = "Lấy danh sách chi tiêu theo trạng thái", description = "Lấy danh sách các khoản chi tiêu dựa trên trạng thái (Ví dụ: DISBURSED).")
+    public ResponseEntity<List<ExpenditureResponse>> getByStatus(@PathVariable("status") String status) {
+        return ResponseEntity.ok(expenditureService.getExpendituresByStatus(status));
+    }
 }

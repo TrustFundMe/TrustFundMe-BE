@@ -59,6 +59,16 @@ public class FeedPostServiceImpl implements FeedPostService {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
 
+        // Locked posts are hidden from public users (staff/admin can still view)
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            boolean isStaffOrAdmin = false;
+            // Note: isStaffOrAdmin requires currentUserId to check roles from identity-service
+            // For simplicity, locked posts are only accessible to the post author or via admin endpoints
+            if (currentUserId == null || !currentUserId.equals(post.getAuthorId())) {
+                throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết này đã bị khóa");
+            }
+        }
+
         String visibility = post.getVisibility();
         if (visibility == null || visibility.isBlank()) {
             throw new com.trustfund.exception.exceptions.BadRequestException("Invalid visibility");
@@ -508,7 +518,10 @@ public class FeedPostServiceImpl implements FeedPostService {
     public List<FeedPostResponse> getByTarget(Long targetId, String targetType) {
         try {
             return feedPostRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(targetId, targetType)
-                    .stream().map(p -> toResponse(p, null, 0)).collect(java.util.stream.Collectors.toList());
+                    .stream()
+                    .filter(p -> !Boolean.TRUE.equals(p.getIsLocked()))
+                    .map(p -> toResponse(p, null, 0))
+                    .collect(java.util.stream.Collectors.toList());
         } catch (Exception e) {
             // fallback: return empty list on error
             return java.util.Collections.emptyList();

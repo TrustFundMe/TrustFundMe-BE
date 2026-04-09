@@ -7,6 +7,8 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -91,5 +93,12 @@ public class InternalTransactionController {
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
     public ResponseEntity<List<InternalTransaction>> getHistory() {
         return ResponseEntity.ok(transactionService.getGeneralFundHistory());
+    }
+
+    @GetMapping("/history/paginated")
+    @Operation(summary = "Lấy lịch sử giao dịch Quỹ chung (Phân trang)", description = "Trả về danh sách giao dịch liên quan đến Quỹ chung có phân trang")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<Page<InternalTransaction>> getHistoryPaginated(Pageable pageable) {
+        return ResponseEntity.ok(transactionService.getGeneralFundHistoryPaginated(pageable));
     }
 }

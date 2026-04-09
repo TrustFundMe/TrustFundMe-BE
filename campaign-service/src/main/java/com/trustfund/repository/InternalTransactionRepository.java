@@ -3,6 +3,8 @@ package com.trustfund.repository;
 import com.trustfund.model.InternalTransaction;
 import com.trustfund.model.enums.InternalTransactionStatus;
 import com.trustfund.model.enums.InternalTransactionType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -17,6 +19,9 @@ public interface InternalTransactionRepository extends JpaRepository<InternalTra
         List<InternalTransaction> findAllByOrderByCreatedAtDesc();
 
         List<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId);
+
+        Page<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId,
+                        Pageable pageable);
 
         @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId = :campaignId AND t.type = :type AND t.status = :status")
         BigDecimal sumAmountByFromCampaignIdAndTypeAndStatus(

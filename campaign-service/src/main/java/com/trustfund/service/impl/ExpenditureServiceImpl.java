@@ -875,4 +875,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .map(this::mapToTransactionResponse)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public List<ExpenditureResponse> getExpendituresByStatus(String status) {
+        return expenditureRepository.findByStatusOrderByCreatedAtDesc(status).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 }

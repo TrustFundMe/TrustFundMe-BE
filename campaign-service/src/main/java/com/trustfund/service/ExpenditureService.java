@@ -50,3 +50,6 @@ public interface ExpenditureService {
     java.io.ByteArrayInputStream exportItemsToExcelTemplate();
 
     List<ExpenditureTransactionResponse> getAllTransactions();
+
+    List<ExpenditureResponse> getExpendituresByStatus(String status);
+}

@@ -3,6 +3,8 @@ package com.trustfund.service;
 import com.trustfund.model.InternalTransaction;
 import com.trustfund.model.enums.InternalTransactionStatus;
 import com.trustfund.model.enums.InternalTransactionType;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -24,6 +26,8 @@ public interface InternalTransactionService {
     Map<String, BigDecimal> getGeneralFundStats();
 
     List<InternalTransaction> getGeneralFundHistory();
+
+    Page<InternalTransaction> getGeneralFundHistoryPaginated(Pageable pageable);
 
     InternalTransaction updateEvidence(Long id, Long evidenceImageId);
 }
