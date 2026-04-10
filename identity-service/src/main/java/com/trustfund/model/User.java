@@ -50,6 +50,10 @@ public class User {
     @Column(name = "ban_reason", length = 1000)
     private String banReason;
 
+    @Column(name = "trust_score", nullable = false)
+    @Builder.Default
+    private Integer trustScore = 0;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

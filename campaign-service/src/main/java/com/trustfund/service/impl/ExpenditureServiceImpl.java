@@ -45,6 +45,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
     private final NotificationServiceClient notificationServiceClient;
+    private final com.trustfund.service.TrustScoreService trustScoreService;
     private final JdbcTemplate jdbcTemplate;
 
     @PostConstruct
@@ -371,6 +372,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             } else if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
                 log.info("➔ Expenditure {} (ITEMIZED) approved but requires manual withdrawal request", id);
             }
+
+            // Trust Score: cộng điểm nộp đúng hạn hoặc trừ điểm nộp muộn
+            // Chỉ cộng nếu evidence chưa được submit (tránh trùng với updateEvidenceStatus)
+            // → Điểm uy tín nộp minh chứng được xử lý trong updateEvidenceStatus (khi SUBMITTED)
         }
 
         // Logic Giải ngân (DISBURSED)
@@ -739,6 +744,21 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         if ("SUBMITTED".equalsIgnoreCase(status)) {
             approvalTaskService.createAndAssignTask("EVIDENCE", id);
+
+            // Trust Score: cộng/trừ điểm khi nộp minh chứng đúng hạn hoặc muộn
+            try {
+                CampaignResponse camp = campaignService.getById(expenditure.getCampaignId());
+                LocalDateTime dueAt = expenditure.getEvidenceDueAt();
+                LocalDateTime now = LocalDateTime.now();
+                boolean isOnTime = dueAt == null || !dueAt.isBefore(now);
+                String ruleKey = isOnTime ? "ON_TIME_SUBMIT" : "LATE_SUBMIT";
+                String description = isOnTime
+                        ? "Chi tiêu cho chiến dịch '" + camp.getTitle() + "' nộp minh chứng đúng hạn"
+                        : "Chi tiêu cho chiến dịch '" + camp.getTitle() + "' nộp minh chứng muộn";
+                trustScoreService.addScore(camp.getFundOwnerId(), ruleKey, id, "EXPENDITURE", description);
+            } catch (Exception e) {
+                log.error("Error updating trust score for evidence submission of expenditure {}: {}", id, e.getMessage());
+            }
         } else if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
             approvalTaskService.completeTask("EVIDENCE", id);
 

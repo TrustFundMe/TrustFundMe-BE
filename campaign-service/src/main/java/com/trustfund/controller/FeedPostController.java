@@ -6,10 +6,12 @@ import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostStatusRequest;
 import com.trustfund.model.request.UpdateFeedPostVisibilityRequest;
 import com.trustfund.model.response.FeedPostResponse;
+import com.trustfund.service.TrustScoreService;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,9 +31,11 @@ import org.springframework.web.bind.annotation.*;
 public class FeedPostController {
 
     private final FeedPostService feedPostService;
-    
-    public FeedPostController(FeedPostService feedPostService) {
+    private final TrustScoreService trustScoreService;
+
+    public FeedPostController(FeedPostService feedPostService, TrustScoreService trustScoreService) {
         this.feedPostService = feedPostService;
+        this.trustScoreService = trustScoreService;
     }
 
     @PostMapping
@@ -41,6 +45,16 @@ public class FeedPostController {
         Long authorId = Long.parseLong(authentication.getName());
 
         FeedPostResponse response = feedPostService.create(request, authorId);
+
+        // Trust Score: cộng điểm DAILY_POST (chỉ 1 lần/ngày)
+        try {
+            trustScoreService.addScore(authorId, "DAILY_POST", response.getId(), "POST",
+                    "Đăng bài viết hàng ngày");
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(FeedPostController.class)
+                    .error("Error updating daily post trust score for user {}: {}", authorId, e.getMessage());
+        }
+
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

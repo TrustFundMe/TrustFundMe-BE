@@ -35,6 +35,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final com.trustfund.client.NotificationServiceClient notificationServiceClient;
     private final ExpenditureRepository expenditureRepository;
     private final com.trustfund.service.InternalTransactionService internalTransactionService;
+    private final com.trustfund.service.TrustScoreService trustScoreService;
 
     @Override
     public List<CampaignResponse> getAll() {
@@ -276,6 +277,20 @@ public class CampaignServiceImpl implements CampaignService {
                 org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
                         .error("Error sending approval/rejection notification for campaign {}: {}", saved.getId(),
                                 e.getMessage());
+            }
+        }
+
+        // Trust Score: cộng/trừ điểm khi duyệt hoặc từ chối campaign
+        if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            try {
+                String ruleKey = "APPROVED".equalsIgnoreCase(status) ? "CAMPAIGN_APPROVED" : "CAMPAIGN_REJECTED";
+                String description = "APPROVED".equalsIgnoreCase(status)
+                        ? "Chiến dịch '" + saved.getTitle() + "' được duyệt thành công"
+                        : "Chiến dịch '" + saved.getTitle() + "' bị từ chối: " + rejectionReason;
+                trustScoreService.addScore(saved.getFundOwnerId(), ruleKey, saved.getId(), "CAMPAIGN", description);
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                        .error("Error updating trust score for campaign {}: {}", saved.getId(), e.getMessage());
             }
         }
 
