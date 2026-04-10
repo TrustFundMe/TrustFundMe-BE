@@ -437,6 +437,7 @@ CREATE TABLE media (
     campaign_id BIGINT NULL,
     conversation_id BIGINT NULL,
     expenditure_id BIGINT NULL,
+    expenditure_item_id BIGINT NULL,
     media_type VARCHAR(50) NOT NULL,
     url VARCHAR(1000) NOT NULL,
     description VARCHAR(2000) NULL,
@@ -447,6 +448,8 @@ CREATE TABLE media (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_media_post_id (post_id),
     INDEX idx_media_campaign_id (campaign_id),
+    INDEX idx_media_expenditure_id (expenditure_id),
+    INDEX idx_media_expenditure_item_id (expenditure_item_id),
     INDEX idx_media_status (status)
 );
 
@@ -458,6 +461,7 @@ USE trustfundme_campaign_db;
 DROP TABLE IF EXISTS feed_post_comment_like;
 DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
+DROP TABLE IF EXISTS feed_post_revisions;
 DROP TABLE IF EXISTS feed_post;
 
 CREATE TABLE IF NOT EXISTS feed_post (
@@ -485,6 +489,38 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
 );
+
+-- feed_post_revisions: stores a snapshot of post before each edit
+CREATE TABLE IF NOT EXISTS feed_post_revisions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL COMMENT 'FK -> feed_post.id',
+    revision_no INT NOT NULL COMMENT 'Version number, increments per post',
+
+    -- snapshot of post state BEFORE the edit
+    title NVARCHAR(255) NULL,
+    content NVARCHAR(2000) NOT NULL,
+    status NVARCHAR(50) NOT NULL,
+
+    -- snapshot of media attached at the time of edit
+    -- JSON array: [{"mediaId":1,"url":"...","mediaType":"IMAGE","sortOrder":1}]
+    media_snapshot_json JSON NULL,
+
+    -- who edited
+    edited_by BIGINT NOT NULL COMMENT 'user_id who triggered the edit',
+    edited_by_name VARCHAR(255) NULL COMMENT 'cached display name',
+    edit_note VARCHAR(500) NULL COMMENT 'optional reason note',
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_fpr_post
+        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE,
+    CONSTRAINT uq_fpr_post_revision_no
+        UNIQUE (post_id, revision_no),
+
+    INDEX idx_fpr_post_id (post_id),
+    INDEX idx_fpr_edited_by (edited_by),
+    INDEX idx_fpr_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)

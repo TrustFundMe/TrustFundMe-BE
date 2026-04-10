@@ -29,4 +29,7 @@ public interface MediaService {
     MediaFileResponse updateMediaStatus(Long id, String status);
 
     void deleteMedia(Long id) throws IOException, InterruptedException;
+
+    /** Set postId = null for the given media record (unlink from post without deleting the file). */
+    void unlinkFromPost(Long id);
 }

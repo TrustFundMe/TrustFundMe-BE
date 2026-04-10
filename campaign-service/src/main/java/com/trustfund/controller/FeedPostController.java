@@ -6,6 +6,7 @@ import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostStatusRequest;
 import com.trustfund.model.request.UpdateFeedPostVisibilityRequest;
 import com.trustfund.model.response.FeedPostResponse;
+import com.trustfund.model.response.FeedPostRevisionResponse;
 import com.trustfund.service.TrustScoreService;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,10 +33,13 @@ public class FeedPostController {
 
     private final FeedPostService feedPostService;
     private final TrustScoreService trustScoreService;
+    private final com.trustfund.client.UserInfoClient userInfoClient;
 
-    public FeedPostController(FeedPostService feedPostService, TrustScoreService trustScoreService) {
+    public FeedPostController(FeedPostService feedPostService, TrustScoreService trustScoreService,
+                              com.trustfund.client.UserInfoClient userInfoClient) {
         this.feedPostService = feedPostService;
         this.trustScoreService = trustScoreService;
+        this.userInfoClient = userInfoClient;
     }
 
     @PostMapping
@@ -295,5 +299,84 @@ public class FeedPostController {
     public ResponseEntity<java.util.Map<String, Object>> syncCommentCounts() {
         int fixed = feedPostService.syncAllCommentCounts();
         return ResponseEntity.ok(java.util.Map.of("fixed", fixed, "message", "Comment counts synced successfully"));
+    }
+
+    // =========================================================================
+    // Revision History endpoints
+    // =========================================================================
+
+    @GetMapping("/{id}/revisions")
+    @Operation(
+        summary = "Get post revision history",
+        description = "Returns paginated history of a post. " +
+            "For PUBLISHED posts: accessible by anyone (no auth required). " +
+            "For non-PUBLISHED posts: only the post author or STAFF/ADMIN can view."
+    )
+    public ResponseEntity<Page<FeedPostRevisionResponse>> getRevisions(
+            @PathVariable("id") Long id,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size) {
+
+        if (size < 1) {
+            throw new com.trustfund.exception.exceptions.BadRequestException("size must be at least 1");
+        }
+        int cappedSize = Math.min(size, 50);
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = null;
+        String currentRole = null;
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            try {
+                currentUserId = Long.parseLong(authentication.getName());
+            } catch (NumberFormatException ignored) {}
+            currentRole = authentication.getAuthorities().stream()
+                    .findFirst()
+                    .map(a -> a.getAuthority())
+                    .orElse(null);
+        }
+
+        Pageable pageable = PageRequest.of(page, cappedSize);
+        return ResponseEntity.ok(feedPostService.getRevisions(id, currentUserId, currentRole, pageable));
+    }
+
+    @GetMapping("/{id}/revisions/{revisionId}")
+    @Operation(
+        summary = "Get post revision detail",
+        description = "Returns a single revision snapshot. Same visibility rules as list."
+    )
+    public ResponseEntity<FeedPostRevisionResponse> getRevisionById(
+            @PathVariable("id") Long id,
+            @PathVariable("revisionId") Long revisionId) {
+
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        Long currentUserId = null;
+        String currentRole = null;
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            try {
+                currentUserId = Long.parseLong(authentication.getName());
+            } catch (NumberFormatException ignored) {}
+            currentRole = authentication.getAuthorities().stream()
+                    .findFirst()
+                    .map(a -> a.getAuthority())
+                    .orElse(null);
+        }
+
+        return ResponseEntity.ok(feedPostService.getRevisionById(id, revisionId, currentUserId, currentRole));
+    }
+
+    // =========================================================================
+    // Internal cache-eviction endpoint (called by identity-service on profile update)
+    // =========================================================================
+
+    @PostMapping("/internal/evict-user-cache/{userId}")
+    @Operation(
+        summary = "Evict user info cache (Internal)",
+        description = "Clears the cached author name/avatar for a user so subsequent post fetches use fresh data. Called by identity-service after a user updates their profile."
+    )
+    public ResponseEntity<Void> evictUserCache(@PathVariable("userId") Long userId) {
+        userInfoClient.evict(userId);
+        return ResponseEntity.noContent().build();
     }
 }
