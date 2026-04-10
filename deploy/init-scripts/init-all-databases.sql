@@ -56,7 +56,7 @@ CREATE TABLE campaign_categories (
     description VARCHAR(500) NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) AUTO_ID_CACHE = 1;
 
 -- campaigns
 CREATE TABLE campaigns (
@@ -81,7 +81,7 @@ CREATE TABLE campaigns (
     INDEX idx_campaigns_fund_owner_id (fund_owner_id),
     INDEX idx_campaigns_status (status),
     INDEX idx_campaigns_created_at (created_at)
-);
+) AUTO_ID_CACHE = 1;
 
 -- fundraising_goals
 CREATE TABLE fundraising_goals (
@@ -95,7 +95,7 @@ CREATE TABLE fundraising_goals (
     FOREIGN KEY (campaign_id) REFERENCES campaigns(id) ON DELETE CASCADE,
     INDEX idx_fundraising_goals_campaign_id (campaign_id),
     INDEX idx_fundraising_goals_is_active (is_active)
-);
+) AUTO_ID_CACHE = 1;
 
 -- campaign_follows
 CREATE TABLE campaign_follows (
@@ -128,7 +128,7 @@ CREATE TABLE `expenditures` (
     FOREIGN KEY (`campaign_id`) REFERENCES `campaigns`(`id`) ON DELETE CASCADE,
     INDEX `idx_expenditures_campaign_id` (`campaign_id`),
     INDEX `idx_expenditures_status` (`status`)
-);
+) AUTO_ID_CACHE = 1;
 
 -- expenditure_transactions
 CREATE TABLE `expenditure_transactions` (
@@ -149,7 +149,7 @@ CREATE TABLE `expenditure_transactions` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`expenditure_id`) REFERENCES `expenditures`(`id`) ON DELETE CASCADE,
     INDEX `idx_exp_trans_exp_id` (`expenditure_id`)
-);
+) AUTO_ID_CACHE = 1;
 
 -- expenditure_items
 CREATE TABLE `expenditure_items` (
@@ -166,7 +166,7 @@ CREATE TABLE `expenditure_items` (
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`expenditure_id`) REFERENCES `expenditures`(`id`) ON DELETE CASCADE,
     INDEX `idx_expenditure_items_expenditure_id` (`expenditure_id`)
-);
+) AUTO_ID_CACHE = 1;
 
 -- internal_transactions (Sơ đồ mới)
 CREATE TABLE `internal_transactions` (
@@ -202,7 +202,7 @@ CREATE TABLE `approval_tasks` (
     INDEX `idx_approval_tasks_target_id` (`target_id`),
     INDEX `idx_approval_tasks_staff_id` (`staff_id`),
     INDEX `idx_approval_tasks_status` (`status`)
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
@@ -224,7 +224,7 @@ CREATE TABLE module_groups (
     display_order INT DEFAULT 0,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
-);
+) AUTO_ID_CACHE = 1;
 
 -- modules
 CREATE TABLE modules (
@@ -239,7 +239,7 @@ CREATE TABLE modules (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (module_group_id) REFERENCES module_groups(id) ON DELETE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3b. Module & Module Group sample data
@@ -315,7 +315,7 @@ CREATE TABLE users (
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     INDEX idx_email (email)
-);
+) AUTO_ID_CACHE = 1;
 
 -- bank_account
 CREATE TABLE bank_account (
@@ -333,7 +333,7 @@ CREATE TABLE bank_account (
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 
 -- otp_tokens
 CREATE TABLE otp_tokens (
@@ -346,7 +346,7 @@ CREATE TABLE otp_tokens (
     INDEX idx_email (email),
     INDEX idx_otp (otp),
     INDEX idx_expires_at (expires_at)
-);
+) AUTO_ID_CACHE = 1;
 
 -- user_kyc
 CREATE TABLE user_kyc (
@@ -366,7 +366,7 @@ CREATE TABLE user_kyc (
     updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     CONSTRAINT fk_user_kyc_user FOREIGN KEY (user_id) REFERENCES users (id)
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3.1 Schema: media-service (DB: trustfundme_media_db)
@@ -392,7 +392,7 @@ CREATE TABLE media (
     INDEX idx_media_post_id (post_id),
     INDEX idx_media_campaign_id (campaign_id),
     INDEX idx_media_status (status)
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3.2 Schema: feed-service (DB: trustfundme_campaign_db)
@@ -428,7 +428,7 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_target (target_id, target_type),
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
@@ -448,7 +448,7 @@ CREATE TABLE IF NOT EXISTS flags (
     INDEX idx_flags_campaign_id (campaign_id),
     INDEX idx_flags_user_id (user_id),
     INDEX idx_flags_status (status)
-);
+) AUTO_ID_CACHE = 1;
 
 -- user_post_seen: tracks which posts a user has seen
 CREATE TABLE IF NOT EXISTS user_post_seen (
@@ -460,7 +460,7 @@ CREATE TABLE IF NOT EXISTS user_post_seen (
     INDEX idx_user_post_seen_user_id (user_id),
     INDEX idx_user_post_seen_post_id (post_id),
     CONSTRAINT fk_user_post_seen_post FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3.4 Schema: chat-service (DB: trustfundme_chat_db)
@@ -482,7 +482,7 @@ CREATE TABLE conversations (
     INDEX idx_conversations_fund_owner_id (fund_owner_id),
     INDEX idx_conversations_campaign_id (campaign_id),
     INDEX idx_conversations_last_message_at (last_message_at)
-);
+) AUTO_ID_CACHE = 1;
 
 CREATE TABLE messages (
     id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -498,7 +498,7 @@ CREATE TABLE messages (
     INDEX idx_messages_is_read (is_read),
     CONSTRAINT fk_messages_conversation
         FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 -- Create table for Appointment Schedules
 CREATE TABLE IF NOT EXISTS appointment_schedules (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
@@ -513,7 +513,7 @@ CREATE TABLE IF NOT EXISTS appointment_schedules (
     updated_at DATETIME,
     INDEX idx_donor_id (donor_id),
     INDEX idx_staff_id (staff_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_ID_CACHE = 1;
 
 -- =======================================
 -- 3.5 Schema: notification-service (DB: trustfundme_notification_db)
@@ -537,7 +537,7 @@ CREATE TABLE notification (
     updated_at DATETIME,
     INDEX idx_notification_user_id (user_id),
     INDEX idx_notification_created_at (created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_ID_CACHE = 1;
 
 -- Sample Chat Data
 USE trustfundme_chat_db;
@@ -707,7 +707,7 @@ CREATE TABLE IF NOT EXISTS `payments` (
     `status` VARCHAR(50) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-);
+) AUTO_ID_CACHE = 1;
 
 -- donations
 CREATE TABLE IF NOT EXISTS `donations` (
@@ -724,7 +724,7 @@ CREATE TABLE IF NOT EXISTS `donations` (
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     FOREIGN KEY (`payment_id`) REFERENCES `payments`(`id`) ON DELETE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 
 -- donation_items
 CREATE TABLE IF NOT EXISTS `donation_items` (
@@ -735,7 +735,7 @@ CREATE TABLE IF NOT EXISTS `donation_items` (
     `amount` DECIMAL(19, 4) NULL,
     `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (`donation_id`) REFERENCES `donations`(`id`) ON DELETE CASCADE
-);
+) AUTO_ID_CACHE = 1;
 
 -- Add sample data for the new Expenditure Transaction structure
 USE trustfundme_campaign_db;

@@ -12,4 +12,4 @@ CREATE TABLE IF NOT EXISTS appointment_schedules (
     updated_at DATETIME,
     INDEX idx_donor_id (donor_id),
     INDEX idx_staff_id (staff_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci AUTO_ID_CACHE = 1;

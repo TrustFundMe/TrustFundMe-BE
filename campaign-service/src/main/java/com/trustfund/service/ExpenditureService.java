@@ -33,6 +33,21 @@ public interface ExpenditureService {
 
     void updateExpenditureItemQuantity(Long id, Integer amount);
 
+    /**
+     * Cố gắng giữ chỗ sản phẩm cuối cùng.
+     * @param id item ID
+     * @param qty số lượng muốn chọn
+     * @return true = thành công (giữ được), false = thất bại (đã có người giữ)
+     */
+    boolean tryReserveLastItem(Long id, Integer qty);
+
+    /**
+     * Nhả chỗ giữ sản phẩm.
+     * @param id item ID
+     * @return true = đã nhả thành công, false = không có gì để nhả
+     */
+    boolean releaseReservation(Long id);
+
     ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
     void deleteExpenditureItem(Long itemId);

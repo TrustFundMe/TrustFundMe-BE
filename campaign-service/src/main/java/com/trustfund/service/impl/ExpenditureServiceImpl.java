@@ -188,6 +188,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .quantity(item.getQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
+                .reservations(item.getReservations() != null ? item.getReservations() : 0)
                 .price(item.getPrice())
                 .expectedPrice(item.getExpectedPrice())
                 .note(item.getNote())
@@ -631,6 +632,24 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         int currentLeft = item.getQuantityLeft() != null ? item.getQuantityLeft() : item.getQuantity();
         item.setQuantityLeft(Math.max(0, currentLeft - amountToDeduct));
         expenditureItemRepository.save(item);
+    }
+
+    @Override
+    @Transactional
+    public boolean tryReserveLastItem(Long id, Integer qty) {
+        log.info("➔ Attempting to reserve last item: id={}, qty={}", id, qty);
+        int updated = expenditureItemRepository.tryReserveLastItem(id, qty);
+        log.info("➔ Reserve result: {} row(s) affected", updated);
+        return updated == 1;
+    }
+
+    @Override
+    @Transactional
+    public boolean releaseReservation(Long id) {
+        log.info("➔ Releasing reservation for item: id={}", id);
+        int updated = expenditureItemRepository.releaseReservation(id);
+        log.info("➔ Release result: {} row(s) affected", updated);
+        return updated == 1;
     }
 
     @Override

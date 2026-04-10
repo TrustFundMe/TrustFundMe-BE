@@ -15,4 +15,4 @@ CREATE TABLE IF NOT EXISTS bank_account (
         FOREIGN KEY (user_id) REFERENCES users(id)
         ON DELETE CASCADE
         ON UPDATE CASCADE
-);
+) AUTO_ID_CACHE = 1;
