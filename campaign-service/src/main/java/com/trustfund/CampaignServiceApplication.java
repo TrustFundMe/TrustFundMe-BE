@@ -7,6 +7,7 @@ import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
 @SpringBootApplication
 @EnableDiscoveryClient
+@org.springframework.scheduling.annotation.EnableScheduling
 public class CampaignServiceApplication {
 
     public static void main(String[] args) {

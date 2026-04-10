@@ -173,9 +173,9 @@ public class DonationService {
                                 donationRepository.save(donation);
 
                                 if ("PAID".equals(status)) {
-                                    processQuantityUpdate(donation);
-                                    // Use syncBalanceForDonation to ensure locking if other threads are sync-ing
-                                    this.syncBalanceForDonation(donation.getId());
+                                        processQuantityUpdate(donation);
+                                        // Use syncBalanceForDonation to ensure locking if other threads are sync-ing
+                                        this.syncBalanceForDonation(donation.getId());
                                 }
 
                                 if (!"PAID".equals(status)
@@ -258,11 +258,11 @@ public class DonationService {
                         if (itemData == null) {
                                 log.warn("Campaign service returned null for item {}", expenditureItemId);
                                 return CheckItemLimitResponse.builder()
-                                        .canDonateMore(false)
-                                        .quantityLeft(0)
-                                        .message("Không thể xác minh số lượng vật phẩm. Vui lòng thử lại.")
-                                        .checkSuccessful(false)
-                                        .build();
+                                                .canDonateMore(false)
+                                                .quantityLeft(0)
+                                                .message("Không thể xác minh số lượng vật phẩm. Vui lòng thử lại.")
+                                                .checkSuccessful(false)
+                                                .build();
                         }
 
                         // Safe parse quantityLeft (could be Integer, Long, BigDecimal from Java)
@@ -279,23 +279,23 @@ public class DonationService {
                         boolean canDonateMore = requested <= quantityLeft;
 
                         return CheckItemLimitResponse.builder()
-                                .canDonateMore(canDonateMore)
-                                .quantityLeft(quantityLeft)
-                                .message(canDonateMore ? "Có thể nhận thêm"
-                                        : "Số lượng quyên góp vượt quá giới hạn cho phép. Hiện tại chỉ còn lại: "
-                                                        + quantityLeft)
-                                .checkSuccessful(true)
-                                .build();
+                                        .canDonateMore(canDonateMore)
+                                        .quantityLeft(quantityLeft)
+                                        .message(canDonateMore ? "Có thể nhận thêm"
+                                                        : "Số lượng quyên góp vượt quá giới hạn cho phép. Hiện tại chỉ còn lại: "
+                                                                        + quantityLeft)
+                                        .checkSuccessful(true)
+                                        .build();
                 } catch (Exception e) {
                         log.error("Error checking expenditure item limit for id {}: {} - {}",
-                                expenditureItemId, e.getClass().getName(), e.getMessage(), e);
+                                        expenditureItemId, e.getClass().getName(), e.getMessage(), e);
                         // Return 200 with checkSuccessful=false instead of throwing 400
                         return CheckItemLimitResponse.builder()
-                                .canDonateMore(false)
-                                .quantityLeft(0)
-                                .message("Không thể xác minh số lượng vật phẩm: " + e.getMessage())
-                                .checkSuccessful(false)
-                                .build();
+                                        .canDonateMore(false)
+                                        .quantityLeft(0)
+                                        .message("Không thể xác minh số lượng vật phẩm: " + e.getMessage())
+                                        .checkSuccessful(false)
+                                        .build();
                 }
         }
 
@@ -333,7 +333,8 @@ public class DonationService {
 
         /**
          * Sync quantityLeft cho expenditure items của 1 donation cụ thể.
-         * Dùng khi webhook không hoạt động (local dev) để FE gọi sau khi payment thành công.
+         * Dùng khi webhook không hoạt động (local dev) để FE gọi sau khi payment thành
+         * công.
          */
         public void syncQuantityForDonation(Long donationId) {
                 log.info("🔄 syncing quantity for donation: {}", donationId);
@@ -711,14 +712,14 @@ public class DonationService {
                 }
 
                 List<DonationItem> items = donationItemRepository
-                        .findByExpenditureItemIdInAndDonationStatusJpql(expenditureItemIds, "PAID");
+                                .findByExpenditureItemIdInAndDonationStatusJpql(expenditureItemIds, "PAID");
 
                 // Group by expenditureItemId and sum quantities
                 Map<Long, Integer> donatedQtyByItem = items.stream()
-                        .collect(Collectors.groupingBy(
-                                DonationItem::getExpenditureItemId,
-                                Collectors.summingInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
-                        ));
+                                .collect(Collectors.groupingBy(
+                                                DonationItem::getExpenditureItemId,
+                                                Collectors.summingInt(di -> di.getQuantity() != null ? di.getQuantity()
+                                                                : 0)));
 
                 // Build result: expenditureItemId -> { plannedQty, donatedQty }
                 List<Map<String, Object>> result = new java.util.ArrayList<>();
@@ -730,6 +731,7 @@ public class DonationService {
                 }
                 return result;
         }
+
         /**
          * Đồng bộ balance cho chiến dịch từ 1 donation cụ thể (Idempotent).
          * Dùng khi webhook không hoạt động (local dev) để FE gọi chủ động.
@@ -738,13 +740,13 @@ public class DonationService {
         public void syncBalanceForDonation(Long donationId) {
                 log.info("➔ [DEBUG] syncBalanceForDonation called for id: {}", donationId);
                 donationRepository.findByIdWithLock(donationId).ifPresentOrElse(
-                        donation -> {
-                                log.info("➔ [DEBUG] Found donation {} with status {} and syncStatus {}", 
-                                        donation.getId(), donation.getStatus(), donation.getIsBalanceSynchronized());
-                                this.updateCampaignBalance(donation);
-                        },
-                        () -> log.warn("➔ [DEBUG] Donation {} NOT FOUND in database", donationId)
-                );
+                                donation -> {
+                                        log.info("➔ [DEBUG] Found donation {} with status {} and syncStatus {}",
+                                                        donation.getId(), donation.getStatus(),
+                                                        donation.getIsBalanceSynchronized());
+                                        this.updateCampaignBalance(donation);
+                                },
+                                () -> log.warn("➔ [DEBUG] Donation {} NOT FOUND in database", donationId));
         }
 
         @Transactional
@@ -754,11 +756,11 @@ public class DonationService {
                         return;
                 }
 
-                log.info("➔ [DEBUG] updateCampaignBalance starting for donation {}. Status: {}, IsSynced: {}", 
+                log.info("➔ [DEBUG] updateCampaignBalance starting for donation {}. Status: {}, IsSynced: {}",
                                 donation.getId(), donation.getStatus(), donation.getIsBalanceSynchronized());
 
                 if (!"PAID".equals(donation.getStatus())) {
-                        log.warn("➔ [DEBUG] Skip balance update: donation {} is not PAID (current status: {})", 
+                        log.warn("➔ [DEBUG] Skip balance update: donation {} is not PAID (current status: {})",
                                         donation.getId(), donation.getStatus());
                         return;
                 }
@@ -782,7 +784,7 @@ public class DonationService {
                         donationRepository.save(donation);
                         log.info("✅ [DEBUG] SUCCESS: Balance synchronized for donation {}", donation.getId());
                 } catch (Exception e) {
-                        log.error("❌ [DEBUG] FAILED to update campaign balance for donation {}: {} - {}", 
+                        log.error("❌ [DEBUG] FAILED to update campaign balance for donation {}: {} - {}",
                                         donation.getId(), e.getClass().getName(), e.getMessage());
                         throw e; // Relaunch to let transation roll back if necessary or let controller handle
                 }
@@ -794,5 +796,10 @@ public class DonationService {
 
         public Page<Donation> getDonationsByStatusPaginated(String status, Pageable pageable) {
                 return donationRepository.findByStatusOrderByCreatedAtDesc(status, pageable);
+        }
+
+        public boolean existsDonationItem(Long expenditureItemId) {
+                return donationItemRepository.countByExpenditureItemIdAndDonationStatusIn(
+                                expenditureItemId, java.util.Arrays.asList("PENDING", "PAID")) > 0;
         }
 }

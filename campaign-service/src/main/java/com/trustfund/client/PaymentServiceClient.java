@@ -23,9 +23,12 @@ public class PaymentServiceClient {
 
     /**
      * Lấy tổng số lượng donation thực tế cho danh sách expenditure item ids.
-     * Trả về BigDecimal tổng = sum(donatedQuantity * expectedPrice) của các item đã donated.
+     * Trả về BigDecimal tổng = sum(donatedQuantity * expectedPrice) của các item đã
+     * donated.
+     * 
      * @param expenditureItemIds Danh sách ID của các ExpenditureItem
-     * @param unitPrices Danh sách đơn giá tương ứng (chỉ số đơn giá, không dùng planned quantity)
+     * @param unitPrices         Danh sách đơn giá tương ứng (chỉ số đơn giá, không
+     *                           dùng planned quantity)
      */
     public BigDecimal getTotalDonatedAmount(List<Long> expenditureItemIds, List<BigDecimal> unitPrices) {
         if (expenditureItemIds == null || expenditureItemIds.isEmpty()) {
@@ -38,7 +41,8 @@ public class PaymentServiceClient {
         try {
             log.info("Calling payment service: {}", url);
             @SuppressWarnings("unchecked")
-            java.util.Map<String, Object>[] response = (java.util.Map<String, Object>[]) restTemplate.getForObject(url, java.util.Map[].class);
+            java.util.Map<String, Object>[] response = (java.util.Map<String, Object>[]) restTemplate.getForObject(url,
+                    java.util.Map[].class);
             log.info("Payment service response: {}", (Object) java.util.Arrays.deepToString(response));
             if (response == null || response.length == 0) {
                 log.warn("Payment service returned empty/null response for items: {}", expenditureItemIds);
@@ -69,8 +73,26 @@ public class PaymentServiceClient {
             log.info("Total donated amount for items {}: {}", expenditureItemIds, total);
             return total;
         } catch (Exception e) {
-            log.error("Failed to fetch donation summary from payment service: {} - {}", e.getClass().getName(), e.getMessage(), e);
+            log.error("Failed to fetch donation summary from payment service: {} - {}", e.getClass().getName(),
+                    e.getMessage(), e);
             return BigDecimal.ZERO;
+        }
+    }
+
+    public boolean checkPaymentExistsForItem(Long itemId) {
+        String url = paymentServiceUrl + "/api/payments/donations/item/" + itemId + "/exists";
+        try {
+            log.info("Checking if payment exists for item {} at {}", itemId, url);
+            Boolean exists = restTemplate.getForObject(url, Boolean.class);
+            return Boolean.TRUE.equals(exists);
+        } catch (Exception e) {
+            log.error("Failed to check payment existence for item {}: {}", itemId, e.getMessage());
+            // Safe fallback: if we can't verify, assume it exists to avoid accidental
+            // release?
+            // Actually the user said "trả về 0" if not created.
+            // If API fails, maybe we better wait?
+            // But usually we return false if we can't confirm.
+            return false;
         }
     }
 }

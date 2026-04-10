@@ -200,4 +200,9 @@ public class PaymentController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/donations/item/{expenditureItemId}/exists")
+    public ResponseEntity<Boolean> existsDonationItem(@PathVariable("expenditureItemId") Long expenditureItemId) {
+        return ResponseEntity.ok(donationService.existsDonationItem(expenditureItemId));
+    }
 }
