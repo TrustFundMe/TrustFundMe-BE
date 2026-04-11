@@ -51,6 +51,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         FeedPost feedPost = FeedPost.builder()
                 .targetId(request.getTargetId())
                 .targetType(request.getTargetType())
+                .targetName(request.getTargetName())
                 .authorId(authorId)
                 .visibility(request.getVisibility())
                 .title(request.getTitle())
@@ -485,17 +486,24 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        // Resolve targetName based on targetType
-        String targetName = null;
+        // Resolve targetName based on targetType if not explicitly set (e.g. not 'evidence')
+        String targetName = entity.getTargetName();
         if (entity.getTargetId() != null && entity.getTargetType() != null) {
             if (entity.getTargetType().equals("EXPENDITURE")) {
-                targetName = expenditureRepository.findById(entity.getTargetId())
-                        .map(Expenditure::getPlan)
-                        .orElse(null);
+                String planName = expenditureRepository.findById(entity.getTargetId())
+                                      .map(Expenditure::getPlan)
+                                      .orElse(null);
+                if ("evidence".equalsIgnoreCase(targetName)) {
+                    targetName = "evidence|" + (planName != null ? planName : "");
+                } else if (targetName == null || targetName.isBlank()) {
+                    targetName = planName;
+                }
             } else if (entity.getTargetType().equals("CAMPAIGN")) {
-                targetName = campaignRepository.findById(entity.getTargetId())
-                        .map(Campaign::getTitle)
-                        .orElse(null);
+                if (targetName == null || targetName.isBlank()) {
+                    targetName = campaignRepository.findById(entity.getTargetId())
+                            .map(Campaign::getTitle)
+                            .orElse(null);
+                }
             }
         }
 
