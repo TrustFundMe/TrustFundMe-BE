@@ -1,24 +1,31 @@
 package com.trustfund.service.implementServices;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trustfund.client.UserInfoClient;
 import com.trustfund.client.MediaServiceClient;
 import com.trustfund.model.Campaign;
 import com.trustfund.model.Expenditure;
 import com.trustfund.model.FeedPost;
+import com.trustfund.model.FeedPostRevision;
 import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
+import com.trustfund.model.response.FeedPostRevisionResponse;
 import com.trustfund.repository.FlagRepository;
 import com.trustfund.repository.FeedPostRepository;
 import com.trustfund.repository.FeedPostLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
+import com.trustfund.repository.FeedPostRevisionRepository;
 import com.trustfund.repository.UserPostSeenRepository;
 import com.trustfund.service.interfaceServices.FeedPostService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -36,12 +43,15 @@ public class FeedPostServiceImpl implements FeedPostService {
     private final UserInfoClient userInfoClient;
     private final com.trustfund.repository.ExpenditureRepository expenditureRepository;
     private final com.trustfund.repository.CampaignRepository campaignRepository;
+    private final FeedPostRevisionRepository feedPostRevisionRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     public FeedPostResponse create(CreateFeedPostRequest request, Long authorId) {
         FeedPost feedPost = FeedPost.builder()
                 .targetId(request.getTargetId())
                 .targetType(request.getTargetType())
+                .targetName(request.getTargetName())
                 .authorId(authorId)
                 .visibility(request.getVisibility())
                 .title(request.getTitle())
@@ -58,6 +68,16 @@ public class FeedPostServiceImpl implements FeedPostService {
     public FeedPostResponse getById(Long id, Long currentUserId, String ipAddress) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        // Locked posts are hidden from public users (staff/admin can still view)
+        if (Boolean.TRUE.equals(post.getIsLocked())) {
+            boolean isStaffOrAdmin = false;
+            // Note: isStaffOrAdmin requires currentUserId to check roles from identity-service
+            // For simplicity, locked posts are only accessible to the post author or via admin endpoints
+            if (currentUserId == null || !currentUserId.equals(post.getAuthorId())) {
+                throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết này đã bị khóa");
+            }
+        }
 
         String visibility = post.getVisibility();
         if (visibility == null || visibility.isBlank()) {
@@ -196,6 +216,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public FeedPostResponse updateContent(Long id, Long currentUserId, UpdateFeedPostContentRequest request) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
@@ -215,6 +236,9 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.BadRequestException("Nothing to update");
         }
 
+        // Save snapshot of current state before mutating
+        snapshotRevision(post, currentUserId, null);
+
         if (request.getTitle() != null) {
             post.setTitle(request.getTitle());
         }
@@ -227,6 +251,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
+    @org.springframework.transaction.annotation.Transactional
     public FeedPostResponse update(Long id, Long currentUserId, UpdateFeedPostRequest request) {
         FeedPost post = feedPostRepository.findById(id)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
@@ -239,6 +264,17 @@ public class FeedPostServiceImpl implements FeedPostService {
             throw new com.trustfund.exception.exceptions.ForbiddenException("Not allowed to update this feed post");
         }
 
+        // Detect target link change (not stored in revision, so must be checked here)
+        Long newTargetId = request.getTargetId();
+        String newTargetType = request.getTargetType();
+        boolean targetChanged = !java.util.Objects.equals(newTargetId, post.getTargetId())
+                || !java.util.Objects.equals(newTargetType, post.getTargetType());
+
+        // Save snapshot of current state before mutating
+        // snapshotRevision internally skips if identical to the last revision,
+        // but a non-null editNote forces it through
+        snapshotRevision(post, currentUserId, targetChanged ? "Thay đổi liên kết" : null);
+
         if (request.getTitle() != null) {
             post.setTitle(request.getTitle());
         }
@@ -248,13 +284,13 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (request.getStatus() != null && !request.getStatus().isBlank()) {
             post.setStatus(request.getStatus());
         }
-        if (request.getTargetId() != null) {
-            post.setTargetId(request.getTargetId());
+        if (newTargetId != null) {
+            post.setTargetId(newTargetId);
         } else {
             post.setTargetId(null);
         }
-        if (request.getTargetType() != null) {
-            post.setTargetType(request.getTargetType());
+        if (newTargetType != null) {
+            post.setTargetType(newTargetType);
         } else {
             post.setTargetType(null);
         }
@@ -450,17 +486,24 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        // Resolve targetName based on targetType
-        String targetName = null;
+        // Resolve targetName based on targetType if not explicitly set (e.g. not 'evidence')
+        String targetName = entity.getTargetName();
         if (entity.getTargetId() != null && entity.getTargetType() != null) {
             if (entity.getTargetType().equals("EXPENDITURE")) {
-                targetName = expenditureRepository.findById(entity.getTargetId())
-                        .map(Expenditure::getPlan)
-                        .orElse(null);
+                String planName = expenditureRepository.findById(entity.getTargetId())
+                                      .map(Expenditure::getPlan)
+                                      .orElse(null);
+                if ("evidence".equalsIgnoreCase(targetName)) {
+                    targetName = "evidence|" + (planName != null ? planName : "");
+                } else if (targetName == null || targetName.isBlank()) {
+                    targetName = planName;
+                }
             } else if (entity.getTargetType().equals("CAMPAIGN")) {
-                targetName = campaignRepository.findById(entity.getTargetId())
-                        .map(Campaign::getTitle)
-                        .orElse(null);
+                if (targetName == null || targetName.isBlank()) {
+                    targetName = campaignRepository.findById(entity.getTargetId())
+                            .map(Campaign::getTitle)
+                            .orElse(null);
+                }
             }
         }
 
@@ -500,6 +543,7 @@ public class FeedPostServiceImpl implements FeedPostService {
                 .isLocked(entity.getIsLocked())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
+                .hasRevisions(entity.getId() != null && feedPostRevisionRepository.existsByPostId(entity.getId()))
                 .attachments(attachments)
                 .build();
     }
@@ -508,10 +552,164 @@ public class FeedPostServiceImpl implements FeedPostService {
     public List<FeedPostResponse> getByTarget(Long targetId, String targetType) {
         try {
             return feedPostRepository.findByTargetIdAndTargetTypeOrderByCreatedAtDesc(targetId, targetType)
-                    .stream().map(p -> toResponse(p, null, 0)).collect(java.util.stream.Collectors.toList());
+                    .stream()
+                    .filter(p -> !Boolean.TRUE.equals(p.getIsLocked()))
+                    .map(p -> toResponse(p, null, 0))
+                    .collect(java.util.stream.Collectors.toList());
         } catch (Exception e) {
-            // fallback: return empty list on error
             return java.util.Collections.emptyList();
         }
+    }
+
+    // =========================================================================
+    // Revision History
+    // =========================================================================
+
+    @Override
+    public org.springframework.data.domain.Page<FeedPostRevisionResponse> getRevisions(
+            Long postId, Long currentUserId, String currentRole, org.springframework.data.domain.Pageable pageable) {
+        FeedPost post = feedPostRepository.findById(postId)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        if (!"PUBLISHED".equals(post.getStatus())) {
+            boolean isOwner = currentUserId != null && currentUserId.equals(post.getAuthorId());
+            boolean isPrivileged = isStaffOrAdmin(currentRole);
+            if (!isOwner && !isPrivileged) {
+                throw new com.trustfund.exception.exceptions.ForbiddenException("Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
+            }
+        }
+
+        return feedPostRevisionRepository.findByPostIdOrderByRevisionNoDesc(postId, pageable)
+                .map(this::toRevisionResponse);
+    }
+
+    @Override
+    public FeedPostRevisionResponse getRevisionById(Long postId, Long revisionId, Long currentUserId, String currentRole) {
+        FeedPost post = feedPostRepository.findById(postId)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
+
+        if (!"PUBLISHED".equals(post.getStatus())) {
+            boolean isOwner = currentUserId != null && currentUserId.equals(post.getAuthorId());
+            boolean isPrivileged = isStaffOrAdmin(currentRole);
+            if (!isOwner && !isPrivileged) {
+                throw new com.trustfund.exception.exceptions.ForbiddenException("Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
+            }
+        }
+
+        FeedPostRevision revision = feedPostRevisionRepository.findByPostIdAndId(postId, revisionId)
+                .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Revision not found"));
+
+        return toRevisionResponse(revision);
+    }
+
+    /** Returns true if the role string represents STAFF or ADMIN (handles ROLE_ prefix). */
+    private boolean isStaffOrAdmin(String role) {
+        if (role == null) return false;
+        String r = role.startsWith("ROLE_") ? role.substring(5) : role;
+        return "STAFF".equals(r) || "ADMIN".equals(r);
+    }
+
+    /**
+     * Creates a revision snapshot of the current post state BEFORE it is mutated.
+     * Called inside update transactions.
+     */
+    private void snapshotRevision(FeedPost post, Long editedBy, String editNote) {
+        if (post.getId() == null) return;
+        try {
+            // Fetch media currently attached to the post
+            List<Map<String, Object>> mediaList = mediaServiceClient.getMediaByPostId(post.getId());
+            String mediaJson = serializeMediaSnapshot(mediaList);
+
+            // Guard: truncate content if longer than column limit
+            String contentSnapshot = post.getContent();
+            if (contentSnapshot != null && contentSnapshot.length() > 3000) {
+                org.slf4j.LoggerFactory.getLogger(FeedPostServiceImpl.class)
+                        .warn("Content truncated for revision snapshot of post {}: original length {}", post.getId(), contentSnapshot.length());
+                contentSnapshot = contentSnapshot.substring(0, 3000);
+            }
+
+            // Guard: title truncation
+            String titleSnapshot = post.getTitle();
+            if (titleSnapshot != null && titleSnapshot.length() > 255) {
+                titleSnapshot = titleSnapshot.substring(0, 255);
+            }
+
+            // Skip if this snapshot is identical to the most recent revision (no real change)
+            // Exception: if editNote is provided, always save (e.g. target link changed)
+            if (editNote == null || editNote.isBlank()) {
+                FeedPostRevision lastRev = feedPostRevisionRepository.findTopByPostIdOrderByRevisionNoDesc(post.getId());
+                if (lastRev != null) {
+                    boolean sameTitle = java.util.Objects.equals(titleSnapshot, lastRev.getTitle());
+                    boolean sameContent = java.util.Objects.equals(
+                            contentSnapshot != null ? contentSnapshot : "", lastRev.getContent());
+                    boolean sameMedia = java.util.Objects.equals(mediaJson, lastRev.getMediaSnapshotJson());
+                    if (sameTitle && sameContent && sameMedia) {
+                        return;
+                    }
+                }
+            }
+
+            int nextRevNo = feedPostRevisionRepository.findMaxRevisionNoByPostId(post.getId()) + 1;
+
+            // Resolve editor name
+            String editorName = null;
+            try {
+                UserInfoClient.UserInfo info = userInfoClient.getUserInfo(editedBy);
+                if (info != null) editorName = info.fullName();
+            } catch (Exception ignored) {}
+
+            FeedPostRevision rev = FeedPostRevision.builder()
+                    .postId(post.getId())
+                    .revisionNo(nextRevNo)
+                    .title(titleSnapshot)
+                    .content(contentSnapshot != null ? contentSnapshot : "")
+                    .status(post.getStatus())
+                    .mediaSnapshotJson(mediaJson)
+                    .editedBy(editedBy)
+                    .editedByName(editorName)
+                    .editNote(editNote)
+                    .build();
+
+            feedPostRevisionRepository.save(rev);
+        } catch (Exception e) {
+            // Never block the main edit if snapshot fails
+            org.slf4j.LoggerFactory.getLogger(FeedPostServiceImpl.class)
+                    .error("Failed to snapshot revision for post {}: {}", post.getId(), e.getMessage());
+        }
+    }
+
+    private String serializeMediaSnapshot(List<Map<String, Object>> mediaList) {
+        if (mediaList == null || mediaList.isEmpty()) return "[]";
+        try {
+            return objectMapper.writeValueAsString(mediaList);
+        } catch (JsonProcessingException e) {
+            return "[]";
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> deserializeMediaSnapshot(String json) {
+        if (json == null || json.isBlank() || json.equals("[]")) return Collections.emptyList();
+        try {
+            return objectMapper.readValue(json, List.class);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+    }
+
+    private FeedPostRevisionResponse toRevisionResponse(FeedPostRevision rev) {
+        return FeedPostRevisionResponse.builder()
+                .id(rev.getId())
+                .postId(rev.getPostId())
+                .revisionNo(rev.getRevisionNo())
+                .title(rev.getTitle())
+                .content(rev.getContent())
+                .status(rev.getStatus())
+                .mediaSnapshot(deserializeMediaSnapshot(rev.getMediaSnapshotJson()))
+                .editedBy(rev.getEditedBy())
+                .editedByName(rev.getEditedByName())
+                .editNote(rev.getEditNote())
+                .createdAt(rev.getCreatedAt())
+                .build();
     }
 }

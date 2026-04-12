@@ -205,6 +205,61 @@ CREATE TABLE `approval_tasks` (
 ) AUTO_ID_CACHE = 1;
 
 -- =======================================
+-- 2b. Trust Score Config (campaign-service)
+-- =======================================
+DROP TABLE IF EXISTS trust_score_config;
+
+CREATE TABLE trust_score_config (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    rule_key VARCHAR(100) NOT NULL UNIQUE,
+    rule_name VARCHAR(255) NOT NULL,
+    points INT NOT NULL DEFAULT 0,
+    description TEXT NULL,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- Seed default rules
+INSERT INTO trust_score_config (rule_key, rule_name, points, description, is_active) VALUES
+('CAMPAIGN_APPROVED', 'Campaign được duyệt', 50, 'Cộng điểm khi chiến dịch được staff duyệt thành công', TRUE),
+('CAMPAIGN_REJECTED', 'Campaign bị từ chối', -20, 'Trừ điểm khi chiến dịch bị staff từ chối', TRUE),
+('ON_TIME_SUBMIT', 'Nộp đúng hạn', 20, 'Cộng điểm khi chi tiêu được duyệt đúng hoặc trước hạn nộp', TRUE),
+('LATE_SUBMIT', 'Nộp muộn', -10, 'Trừ điểm khi chi tiêu nộp muộn so với hạn chót', TRUE),
+('DAILY_POST', 'Đăng bài hàng ngày', 5, 'Cộng điểm khi đăng ít nhất 1 bài viết/ngày (tối đa 1 lần/ngày)', TRUE)
+ON DUPLICATE KEY UPDATE points = VALUES(points);
+
+-- =======================================
+-- 2c. Trust Score Log (campaign-service)
+-- =======================================
+DROP TABLE IF EXISTS trust_score_log;
+
+CREATE TABLE trust_score_log (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    rule_key VARCHAR(100) NOT NULL,
+    points_change INT NOT NULL,
+    reference_id BIGINT NULL,
+    reference_type VARCHAR(50) NULL,
+    description TEXT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_tsl_user_id (`user_id`),
+    INDEX idx_tsl_rule_key (`rule_key`),
+    INDEX idx_tsl_created_at (`created_at`)
+);
+
+-- =======================================
+-- 2d. User Trust Score (campaign-service)
+-- =======================================
+DROP TABLE IF EXISTS user_trust_score;
+
+CREATE TABLE user_trust_score (
+    user_id BIGINT PRIMARY KEY,
+    total_score INT NOT NULL DEFAULT 0,
+    updated_at DATETIME NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- =======================================
 -- 3. Schema: identity-service (DB: trustfundme_identity_db)
 -- =======================================
 USE trustfundme_identity_db;
@@ -284,11 +339,12 @@ INSERT INTO modules (id, module_group_id, title, url, icon, display_order, is_ac
     (14, 5, 'Quyên góp', '/donations', 'heart', 0, TRUE, NOW(), NOW()),
     (15, 5, 'Lịch sử thanh toán', '/payments', 'dollar-sign', 1, TRUE, NOW(), NOW()),
 
-    -- Group 6: Giao giao dịch
+    -- Group 6: Giao tiếp
     (16, 6, 'Chat', '/chat', 'message-circle', 0, TRUE, NOW(), NOW()),
     (17, 6, 'Diễn đàn', '/forum', 'message-square', 1, TRUE, NOW(), NOW()),
     (18, 6, 'Bài đăng', '/feed', 'rss', 2, TRUE, NOW(), NOW()),
     (19, 6, 'Thông báo', '/notifications', 'bell', 3, TRUE, NOW(), NOW()),
+    (24, 6, 'Điểm Uy Tín', '/trust-score', 'star', 4, TRUE, NOW(), NOW()),
 
     -- Group 7: Hệ thống
     (20, 7, 'Nhóm module', '/module-groups', 'layers', 0, TRUE, NOW(), NOW()),
@@ -381,6 +437,7 @@ CREATE TABLE media (
     campaign_id BIGINT NULL,
     conversation_id BIGINT NULL,
     expenditure_id BIGINT NULL,
+    expenditure_item_id BIGINT NULL,
     media_type VARCHAR(50) NOT NULL,
     url VARCHAR(1000) NOT NULL,
     description VARCHAR(2000) NULL,
@@ -391,6 +448,8 @@ CREATE TABLE media (
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     INDEX idx_media_post_id (post_id),
     INDEX idx_media_campaign_id (campaign_id),
+    INDEX idx_media_expenditure_id (expenditure_id),
+    INDEX idx_media_expenditure_item_id (expenditure_item_id),
     INDEX idx_media_status (status)
 ) AUTO_ID_CACHE = 1;
 
@@ -402,6 +461,7 @@ USE trustfundme_campaign_db;
 DROP TABLE IF EXISTS feed_post_comment_like;
 DROP TABLE IF EXISTS feed_post_like;
 DROP TABLE IF EXISTS feed_post_comment;
+DROP TABLE IF EXISTS feed_post_revisions;
 DROP TABLE IF EXISTS feed_post;
 
 CREATE TABLE IF NOT EXISTS feed_post (
@@ -429,6 +489,38 @@ CREATE TABLE IF NOT EXISTS feed_post (
     INDEX idx_feed_post_parent_post_id (parent_post_id),
     INDEX idx_feed_post_created_at (created_at)
 ) AUTO_ID_CACHE = 1;
+
+-- feed_post_revisions: stores a snapshot of post before each edit
+CREATE TABLE IF NOT EXISTS feed_post_revisions (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    post_id BIGINT NOT NULL COMMENT 'FK -> feed_post.id',
+    revision_no INT NOT NULL COMMENT 'Version number, increments per post',
+
+    -- snapshot of post state BEFORE the edit
+    title NVARCHAR(255) NULL,
+    content NVARCHAR(2000) NOT NULL,
+    status NVARCHAR(50) NOT NULL,
+
+    -- snapshot of media attached at the time of edit
+    -- JSON array: [{"mediaId":1,"url":"...","mediaType":"IMAGE","sortOrder":1}]
+    media_snapshot_json JSON NULL,
+
+    -- who edited
+    edited_by BIGINT NOT NULL COMMENT 'user_id who triggered the edit',
+    edited_by_name VARCHAR(255) NULL COMMENT 'cached display name',
+    edit_note VARCHAR(500) NULL COMMENT 'optional reason note',
+
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT fk_fpr_post
+        FOREIGN KEY (post_id) REFERENCES feed_post(id) ON DELETE CASCADE,
+    CONSTRAINT uq_fpr_post_revision_no
+        UNIQUE (post_id, revision_no),
+
+    INDEX idx_fpr_post_id (post_id),
+    INDEX idx_fpr_edited_by (edited_by),
+    INDEX idx_fpr_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =======================================
 -- 3.3 Schema: flag-service (Now merged into DB: trustfundme_campaign_db)
@@ -550,7 +642,7 @@ ON DUPLICATE KEY UPDATE last_message_at = VALUES(last_message_at);
 INSERT INTO messages (id, conversation_id, sender_id, content, is_read, created_at)
 VALUES
     (1, 1, 3, 'Chào staff, tôi muốn hỏi về việc rút tiền đợt 1 cho chiến dịch cứu trợ miền Trung.', TRUE, DATE_SUB(NOW(), INTERVAL 1 HOUR)),
-    (2, 1, 2, 'Chào bạn, chúng tôi đã nhận được yêu cầu. Đang tiến hành kiểm tra chứng từ.', TRUE, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
+    (2, 1, 2, 'Chào bạn, chúng tôi Tổng quyên góp được yêu cầu. Đang tiến hành kiểm tra chứng từ.', TRUE, DATE_SUB(NOW(), INTERVAL 50 MINUTE)),
     (3, 1, 3, 'Cảm ơn bạn, tôi đã đính kèm thêm hóa đơn VAT rồi nhé.', FALSE, DATE_SUB(NOW(), INTERVAL 30 MINUTE)),
     (4, 2, 5, 'Chào admin, làm sao để tôi có thể trở thành tình nguyện viên?', TRUE, DATE_SUB(NOW(), INTERVAL 2 DAY)),
     (5, 2, 2, 'Bạn có thể nhấn vào nút "Become Volunteer" ở trang chủ nhé!', TRUE, DATE_SUB(NOW(), INTERVAL 1 DAY))

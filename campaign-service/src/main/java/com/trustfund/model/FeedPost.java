@@ -26,6 +26,9 @@ public class FeedPost {
     @Column(name = "target_type", length = 50)
     private String targetType;
 
+    @Column(name = "target_name", length = 255)
+    private String targetName;
+
     @Column(name = "author_id", nullable = false)
     private Long authorId;
 

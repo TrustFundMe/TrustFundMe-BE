@@ -4,6 +4,7 @@ import com.trustfund.model.request.CreateFeedPostRequest;
 import com.trustfund.model.request.UpdateFeedPostContentRequest;
 import com.trustfund.model.request.UpdateFeedPostRequest;
 import com.trustfund.model.response.FeedPostResponse;
+import com.trustfund.model.response.FeedPostRevisionResponse;
 
 import java.util.List;
 
@@ -50,4 +51,9 @@ public interface FeedPostService {
     int syncAllCommentCounts();
 
     List<FeedPostResponse> getByTarget(Long targetId, String targetType);
+
+    // Revision History APIs
+    org.springframework.data.domain.Page<FeedPostRevisionResponse> getRevisions(Long postId, Long currentUserId, String currentRole, org.springframework.data.domain.Pageable pageable);
+
+    FeedPostRevisionResponse getRevisionById(Long postId, Long revisionId, Long currentUserId, String currentRole);
 }

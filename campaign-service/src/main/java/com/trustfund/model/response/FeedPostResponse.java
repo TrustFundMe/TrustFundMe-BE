@@ -53,6 +53,16 @@ public class FeedPostResponse {
     private LocalDateTime updatedAt;
 
     /**
+     * True when this post has at least one entry in feed_post_revisions —
+     * i.e. it was edited AFTER the revision-tracking feature was enabled.
+     * Use this (not updatedAt vs createdAt) to decide whether to show the
+     * "Đã chỉnh sửa" label, because @PrePersist sets updatedAt a few
+     * milliseconds after createdAt on every new post.
+     */
+    @JsonProperty("hasRevisions")
+    private boolean hasRevisions;
+
+    /**
      * List of media attachments (images/files) associated with this post.
      * Fetched from media-service by postId.
      */

@@ -173,6 +173,15 @@ public class MediaServiceImpl implements MediaService {
 
     @Override
     @Transactional
+    public void unlinkFromPost(Long id) {
+        mediaRepository.findById(id).ifPresent(media -> {
+            media.setPostId(null);
+            mediaRepository.save(media);
+        });
+    }
+
+    @Override
+    @Transactional
     public void deleteMedia(Long id) throws IOException, InterruptedException {
         Media media = mediaRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Media not found with id: " + id));

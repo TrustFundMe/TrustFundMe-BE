@@ -41,6 +41,7 @@ public class InternalUserController {
                         .fullName(u.getFullName())
                         .avatarUrl(u.getAvatarUrl())
                         .email(u.getEmail())
+                        .trustScore(u.getTrustScore())
                         .build()))
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -131,5 +132,44 @@ public class InternalUserController {
                 .map(User::getId)
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(staffIds);
+    }
+
+    @PutMapping("/{id}/update-trust-score")
+    @Operation(summary = "Cập nhật điểm uy tín của user (dùng bởi campaign-service)")
+    public ResponseEntity<Void> updateTrustScore(@PathVariable("id") Long id, @org.springframework.web.bind.annotation.RequestParam("delta") int delta) {
+        System.out.println("IDENTITY_SERVICE: Updating trust score for user " + id + " with delta " + delta);
+        return userRepository.findById(id)
+                .map(u -> {
+                    int current = u.getTrustScore() != null ? u.getTrustScore() : 0;
+                    u.setTrustScore(current + delta);
+                    userRepository.save(u);
+                    System.out.println("IDENTITY_SERVICE: User " + id + " new score: " + u.getTrustScore());
+                    return ResponseEntity.ok().<Void>build();
+                })
+                .orElseGet(() -> {
+                    System.err.println("IDENTITY_SERVICE: User " + id + " not found for score update");
+                    return ResponseEntity.notFound().build();
+                });
+    }
+
+    @GetMapping("/leaderboard")
+    @Operation(summary = "Lấy bảng xếp hạng điểm uy tín (dùng bởi campaign-service)")
+    public ResponseEntity<List<UserInfoResponse>> getLeaderboard(@org.springframework.web.bind.annotation.RequestParam(value = "page", defaultValue = "0") int page,
+                                                                 @org.springframework.web.bind.annotation.RequestParam(value = "size", defaultValue = "10") int size) {
+        org.springframework.data.domain.Page<User> userPage = userRepository.findAll(
+                org.springframework.data.domain.PageRequest.of(page, size,
+                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "trustScore")));
+
+        List<UserInfoResponse> list = userPage.getContent().stream()
+                .map(u -> UserInfoResponse.builder()
+                        .id(u.getId())
+                        .fullName(u.getFullName())
+                        .avatarUrl(u.getAvatarUrl())
+                        .email(u.getEmail())
+                        .trustScore(u.getTrustScore())
+                        .build())
+                .collect(java.util.stream.Collectors.toList());
+
+        return ResponseEntity.ok(list);
     }
 }

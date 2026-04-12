@@ -14,4 +14,5 @@ public class UserInfoResponse {
     private String fullName;
     private String avatarUrl;
     private String email;
+    private Integer trustScore;
 }

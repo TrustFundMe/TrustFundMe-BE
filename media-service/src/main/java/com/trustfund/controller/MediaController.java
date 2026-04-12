@@ -173,6 +173,13 @@ public class MediaController {
         return ResponseEntity.ok(mediaService.updateMediaStatus(id, status));
     }
 
+    @DeleteMapping("/{id}/post")
+    @Operation(summary = "Unlink media from post", description = "Set postId to null — removes association with a post without deleting the file")
+    public ResponseEntity<Void> unlinkFromPost(@PathVariable("id") Long id) {
+        mediaService.unlinkFromPost(id);
+        return ResponseEntity.noContent().build();
+    }
+
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete media by ID", description = "Delete media from storage and database")
     public ResponseEntity<Void> delete(@PathVariable("id") Long id) throws IOException, InterruptedException {

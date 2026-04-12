@@ -36,6 +36,9 @@ public class UserServiceImpl implements UserService {
     @Value("${media.service.url:http://localhost:8083}")
     private String mediaServiceUrl;
 
+    @Value("${campaign.service.url:http://localhost:8082}")
+    private String campaignServiceUrl;
+
     @Override
     @Transactional(readOnly = true)
     public List<UserInfo> getAllUsers() {
@@ -120,6 +123,19 @@ public class UserServiceImpl implements UserService {
 
         user = userRepository.save(user);
         log.info("Updated user with id: {}", id);
+
+        // Notify campaign-service to evict cached author info so posts reflect
+        // the new avatar/name immediately (fire-and-forget, non-blocking)
+        try {
+            restTemplate.postForEntity(
+                campaignServiceUrl + "/api/feed-posts/internal/evict-user-cache/" + id,
+                null,
+                Void.class
+            );
+        } catch (Exception e) {
+            log.warn("Could not evict user cache in campaign-service for userId={}: {}", id, e.getMessage());
+        }
+
         return UserInfo.fromUser(user);
     }
 

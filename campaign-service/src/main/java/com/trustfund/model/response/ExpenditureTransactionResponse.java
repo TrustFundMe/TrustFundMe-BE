@@ -15,6 +15,7 @@ import java.time.LocalDateTime;
 public class ExpenditureTransactionResponse {
     private Long id;
     private Long expenditureId;
+    private Long campaignId;
     private Long fromUserId;
     private Long toUserId;
     private BigDecimal amount;

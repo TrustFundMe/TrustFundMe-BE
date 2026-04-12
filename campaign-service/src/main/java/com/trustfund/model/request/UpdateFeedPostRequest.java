@@ -28,6 +28,8 @@ public class UpdateFeedPostRequest {
 
     private String targetType;
 
+    private String targetName;
+
     private List<AttachmentInput> attachments;
 
     // Feed category linkage (feed_post.category_id -> feed_category.id)

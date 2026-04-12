@@ -9,5 +9,6 @@ import java.util.List;
 @Repository
 public interface ExpenditureRepository extends JpaRepository<Expenditure, Long> {
     List<Expenditure> findByCampaignId(Long campaignId);
+    List<Expenditure> findByCampaignIdOrderByCreatedAtDesc(Long campaignId);
     List<Expenditure> findByStatusOrderByCreatedAtDesc(String status);
 }

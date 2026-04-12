@@ -9,10 +9,11 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserInfoResponse {
-    private Long id;
-    private String fullName;
-    private String avatarUrl;
-    private String email;
-    private Integer trustScore;
+public class LeaderboardResponse {
+
+    private Long userId;
+    private String userFullName;
+    private String userAvatarUrl;
+    private Integer totalScore;
+    private Integer rank;
 }

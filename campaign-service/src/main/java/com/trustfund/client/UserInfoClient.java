@@ -5,6 +5,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.time.Instant;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -12,10 +13,14 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class UserInfoClient {
 
+    private static final long CACHE_TTL_MS = 5 * 60 * 1000L; // 5 minutes
+
+    private record CachedEntry(UserInfo info, long expiresAt) {}
+
     private final RestTemplate restTemplate;
     private final String identityServiceUrl;
 
-    private final Map<Long, UserInfo> cache = new ConcurrentHashMap<>();
+    private final Map<Long, CachedEntry> cache = new ConcurrentHashMap<>();
 
     public UserInfoClient(RestTemplate restTemplate,
                           @Value("${identity.service.url:http://localhost:8081}") String identityServiceUrl) {
@@ -25,7 +30,18 @@ public class UserInfoClient {
 
     public UserInfo getUserInfo(Long userId) {
         if (userId == null) return UserInfo.empty();
-        return cache.computeIfAbsent(userId, this::fetchUserInfo);
+        CachedEntry entry = cache.get(userId);
+        if (entry != null && Instant.now().toEpochMilli() < entry.expiresAt()) {
+            return entry.info();
+        }
+        UserInfo fresh = fetchUserInfo(userId);
+        cache.put(userId, new CachedEntry(fresh, Instant.now().toEpochMilli() + CACHE_TTL_MS));
+        return fresh;
+    }
+
+    /** Force-evict a user from the cache so the next call fetches fresh data. */
+    public void evict(Long userId) {
+        if (userId != null) cache.remove(userId);
     }
 
     private UserInfo fetchUserInfo(Long userId) {

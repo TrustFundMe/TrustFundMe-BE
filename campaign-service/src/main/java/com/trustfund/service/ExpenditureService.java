@@ -17,6 +17,8 @@ public interface ExpenditureService {
 
     List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId);
 
+    List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId);
+
     ExpenditureResponse getExpenditureById(Long id);
 
     ExpenditureResponse updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request);
@@ -61,6 +63,8 @@ public interface ExpenditureService {
     java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId);
 
     java.io.ByteArrayInputStream exportItemsToExcelTemplate();
+
+    List<ExpenditureTransactionResponse> getAllTransactions();
 
     List<ExpenditureResponse> getExpendituresByStatus(String status);
 }

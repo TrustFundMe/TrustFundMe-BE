@@ -74,9 +74,10 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
-        // /api/media - POST (upload), GET (read) and DELETE are public
+        // /api/media - POST (upload), GET (read), DELETE and PATCH (update metadata) are public
         if (path.startsWith("/api/media")) {
-            return method == HttpMethod.POST || method == HttpMethod.GET || method == HttpMethod.DELETE;
+            return method == HttpMethod.POST || method == HttpMethod.GET
+                    || method == HttpMethod.DELETE || method == HttpMethod.PATCH;
         }
 
         // Feed Service - GET methods are public

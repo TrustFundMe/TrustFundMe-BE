@@ -129,4 +129,33 @@ public class IdentityServiceClient {
             return java.util.Collections.emptyList();
         }
     }
+
+    /**
+     * Cập nhật điểm uy tín của user qua identity-service.
+     */
+    public void updateTrustScore(Long userId, int delta) {
+        if (userId == null) return;
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/update-trust-score?delta=" + delta;
+        try {
+            restTemplate.put(url, null);
+            log.info("➔ Successfully synced trust score delta {} for user {} to Identity Service", delta, userId);
+        } catch (Exception e) {
+            log.error("❌ Failed to sync trust score for user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    /**
+     * Lấy BXH điểm uy tín từ identity-service.
+     */
+    public java.util.List<UserInfoResponse> getLeaderboard(int page, int size) {
+        String url = identityServiceUrl + "/api/internal/users/leaderboard?page=" + page + "&size=" + size;
+        try {
+            log.debug("Fetching leaderboard from {}", url);
+            UserInfoResponse[] users = restTemplate.getForObject(url, UserInfoResponse[].class);
+            return users != null ? java.util.Arrays.asList(users) : java.util.Collections.emptyList();
+        } catch (Exception e) {
+            log.error("Failed to fetch leaderboard: {}", e.getMessage());
+            return java.util.Collections.emptyList();
+        }
+    }
 }
