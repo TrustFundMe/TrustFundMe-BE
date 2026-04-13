@@ -29,8 +29,12 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
        @Query("SELECT c FROM Conversation c WHERE c.fundOwnerId = :fundOwnerId AND c.staffId IS NULL")
        Optional<Conversation> findUnassignedConversation(@Param("fundOwnerId") Long fundOwnerId);
 
-       @Query("SELECT c FROM Conversation c WHERE c.fundOwnerId = :fundOwnerId AND c.campaignId = :campaignId ORDER BY c.createdAt DESC")
-       java.util.List<Conversation> findByFundOwnerIdAndCampaignId(@Param("fundOwnerId") Long fundOwnerId,
+       @Query("SELECT c FROM Conversation c WHERE c.campaignId = :campaignId")
+       java.util.List<Conversation> findByCampaignId(@Param("campaignId") Long campaignId);
+
+       @Query("SELECT c FROM Conversation c WHERE c.staffId = :staffId AND c.fundOwnerId = :fundOwnerId AND c.campaignId = :campaignId")
+       Optional<Conversation> findByStaffIdAndFundOwnerIdAndCampaignId(@Param("staffId") Long staffId,
+                     @Param("fundOwnerId") Long fundOwnerId,
                      @Param("campaignId") Long campaignId);
 
        @Query("SELECT c FROM Conversation c WHERE c.id = :id AND (c.staffId = :userId OR c.fundOwnerId = :userId)")

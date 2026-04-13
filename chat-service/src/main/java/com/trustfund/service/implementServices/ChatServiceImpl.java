@@ -48,6 +48,18 @@ public class ChatServiceImpl implements ChatService {
             // User can create conversation without specifying staffId
         }
 
+        if (request.getCampaignId() != null) {
+            java.util.List<Conversation> list = conversationRepository.findByCampaignId(request.getCampaignId());
+            if (list != null && !list.isEmpty()) {
+                Conversation existing = list.get(0);
+                if ("ROLE_STAFF".equals(role) && existing.getStaffId() == null) {
+                    existing.setStaffId(userId);
+                    existing = conversationRepository.save(existing);
+                }
+                return toConversationResponse(existing);
+            }
+        }
+
         Conversation conversation = Conversation.builder()
                 .staffId(staffId)
                 .fundOwnerId(fundOwnerId)
