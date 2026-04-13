@@ -339,6 +339,8 @@ public class CampaignServiceImpl implements CampaignService {
                 .description(campaign.getDescription())
                 .categoryId(campaign.getCategory() != null ? campaign.getCategory().getId() : null)
                 .categoryName(campaign.getCategory() != null ? campaign.getCategory().getName() : null)
+                .categoryIconUrl(campaign.getCategory() != null && campaign.getCategory().getIcon() != null
+                        ? mediaServiceClient.getMediaUrl(campaign.getCategory().getIcon()) : null)
                 .startDate(campaign.getStartDate())
                 .endDate(campaign.getEndDate())
                 .status(campaign.getStatus())

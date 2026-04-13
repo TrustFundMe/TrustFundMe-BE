@@ -58,9 +58,11 @@ public class MediaController {
             @RequestParam(name = "expenditureId", required = false) Long expenditureId,
             @RequestParam(name = "expenditureItemId", required = false) Long expenditureItemId,
             @RequestParam(name = "mediaType", required = false) MediaType mediaType,
-            @RequestParam(name = "description", required = false) String description) throws IOException, InterruptedException {
+            @RequestParam(name = "description", required = false) String description)
+            throws IOException, InterruptedException {
 
-        System.out.println(">>> MediaController: Uploading file: " + (file != null ? file.getOriginalFilename() : "NULL")
+        System.out.println(">>> MediaController: Uploading file: "
+                + (file != null ? file.getOriginalFilename() : "NULL")
                 + ", size: " + (file != null ? file.getSize() : 0)
                 + ", type: " + mediaType + ", campaignId: " + campaignId + ", expenditureItemId: " + expenditureItemId);
 
@@ -90,13 +92,79 @@ public class MediaController {
         }
     }
 
+    @PostMapping(value = "/upload/png", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Upload PNG file specifically", description = "Upload a PNG file and save metadata. Rejects non-PNG files.")
+    public ResponseEntity<MediaFileResponse> uploadPng(
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "postId", required = false) Long postId,
+            @RequestParam(name = "campaignId", required = false) Long campaignId,
+            @RequestParam(name = "description", required = false) String description)
+            throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+        }
+
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+
+        if (contentType == null || !contentType.equalsIgnoreCase("image/png")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image/png content type is allowed");
+        }
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".png")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File must have .png extension");
+        }
+
+        MediaUploadRequest request = MediaUploadRequest.builder()
+                .file(file)
+                .postId(postId)
+                .campaignId(campaignId)
+                .mediaType(MediaType.PHOTO)
+                .description(description != null ? description : "Category Icon (PNG)")
+                .build();
+
+        return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.uploadMedia(request));
+    }
+
+    @PatchMapping(value = "/upload/png/{id}", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Update PNG file specifically", description = "Update an existing PNG file with a new one. Rejects non-PNG files.")
+    public ResponseEntity<MediaFileResponse> patchPng(
+            @PathVariable("id") Long id,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(name = "description", required = false) String description)
+            throws IOException, InterruptedException {
+
+        if (file == null || file.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
+        }
+
+        String contentType = file.getContentType();
+        String originalFilename = file.getOriginalFilename();
+
+        if (contentType == null || !contentType.equalsIgnoreCase("image/png")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Only image/png content type is allowed");
+        }
+        if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".png")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File must have .png extension");
+        }
+
+        com.trustfund.model.request.MediaUploadRequest request = com.trustfund.model.request.MediaUploadRequest
+                .builder()
+                .file(file)
+                .description(description != null ? description : "Updated Category Icon (PNG)")
+                .build();
+
+        return ResponseEntity.ok(mediaService.updateMediaFile(id, request));
+    }
+
     @PostMapping(value = "/upload/conversation", consumes = org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "Upload file for conversation (Chat)", description = "Upload a file and save metadata for a specific conversation")
     public ResponseEntity<MediaFileResponse> uploadForConversation(
             @RequestParam("file") MultipartFile file,
             @RequestParam("conversationId") Long conversationId,
             @RequestParam(name = "mediaType", required = false) MediaType mediaType,
-            @RequestParam(name = "description", required = false) String description) throws IOException, InterruptedException {
+            @RequestParam(name = "description", required = false) String description)
+            throws IOException, InterruptedException {
         if (file == null || file.isEmpty()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "File is required");
         }
@@ -131,19 +199,22 @@ public class MediaController {
 
     @GetMapping("/conversations/{conversationId}")
     @Operation(summary = "Get media by Conversation ID", description = "Get all media files associated with a conversation")
-    public ResponseEntity<List<MediaFileResponse>> getByConversationId(@PathVariable("conversationId") Long conversationId) {
+    public ResponseEntity<List<MediaFileResponse>> getByConversationId(
+            @PathVariable("conversationId") Long conversationId) {
         return ResponseEntity.ok(mediaService.getMediaByConversationId(conversationId));
     }
 
     @GetMapping("/expenditures/{expenditureId}")
     @Operation(summary = "Get media by Expenditure ID", description = "Get all media files associated with an expenditure (evidence)")
-    public ResponseEntity<List<MediaFileResponse>> getByExpenditureId(@PathVariable("expenditureId") Long expenditureId) {
+    public ResponseEntity<List<MediaFileResponse>> getByExpenditureId(
+            @PathVariable("expenditureId") Long expenditureId) {
         return ResponseEntity.ok(mediaService.getMediaByExpenditureId(expenditureId));
     }
 
     @GetMapping("/expenditure-items/{expenditureItemId}")
     @Operation(summary = "Get media by ExpenditureItem ID", description = "Get all media files associated with an expenditure item")
-    public ResponseEntity<List<MediaFileResponse>> getByExpenditureItemId(@PathVariable("expenditureItemId") Long expenditureItemId) {
+    public ResponseEntity<List<MediaFileResponse>> getByExpenditureItemId(
+            @PathVariable("expenditureItemId") Long expenditureItemId) {
         return ResponseEntity.ok(mediaService.getMediaByExpenditureItemId(expenditureItemId));
     }
 
@@ -162,7 +233,8 @@ public class MediaController {
 
     @PostMapping("/register")
     @Operation(summary = "Register existing media URL", description = "Create a database record for a file already uploaded to storage")
-    public ResponseEntity<MediaFileResponse> register(@RequestBody com.trustfund.model.request.RegisterMediaRequest request) {
+    public ResponseEntity<MediaFileResponse> register(
+            @RequestBody com.trustfund.model.request.RegisterMediaRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(mediaService.registerMedia(request));
     }
 

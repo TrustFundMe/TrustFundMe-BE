@@ -193,6 +193,35 @@ public class MediaServiceImpl implements MediaService {
         mediaRepository.delete(media);
     }
 
+    @Override
+    @Transactional
+    public MediaFileResponse updateMediaFile(Long id, MediaUploadRequest request)
+            throws IOException, InterruptedException {
+        Media media = mediaRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Media not found with id: " + id));
+
+        // 1. Delete old file from Supabase
+        if (media.getUrl() != null) {
+            supabaseStorageService.deleteFileByPublicUrl(media.getUrl());
+        }
+
+        // 2. Upload new file to Supabase
+        SupabaseStorageService.StoredFile storedFile = supabaseStorageService.uploadFile(request.getFile());
+
+        // 3. Update metadata
+        media.setUrl(storedFile.publicUrl());
+        media.setFileName(request.getFile().getOriginalFilename());
+        media.setContentType(request.getFile().getContentType());
+        media.setSizeBytes(request.getFile().getSize());
+
+        if (request.getDescription() != null) {
+            media.setDescription(request.getDescription());
+        }
+
+        Media savedMedia = mediaRepository.save(media);
+        return mapToResponse(savedMedia);
+    }
+
     private MediaType detectMediaType(String contentType) {
         if (contentType == null || contentType.isBlank()) {
             return MediaType.FILE; // Default for unknown types

@@ -26,6 +26,9 @@ public class CampaignCategory {
     @Column(length = 500)
     private String description;
 
+    @Column(name = "icon")
+    private Long icon;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
