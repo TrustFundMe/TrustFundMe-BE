@@ -50,7 +50,7 @@ public class ChatController {
                 .map(grantedAuthority -> grantedAuthority.getAuthority())
                 .orElse(null);
 
-        return ResponseEntity.ok(chatService.getConversations(userId));
+        return ResponseEntity.ok(chatService.getConversations(userId, currentRole));
 
     }
 

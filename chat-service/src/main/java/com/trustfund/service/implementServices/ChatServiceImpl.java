@@ -103,7 +103,13 @@ public class ChatServiceImpl implements ChatService {
     }
 
     @Override
-    public java.util.List<ConversationResponse> getConversations(Long userId) {
+    public java.util.List<ConversationResponse> getConversations(Long userId, String role) {
+        if ("ROLE_STAFF".equals(role)) {
+            return conversationRepository.findAllOrderByLastMessageAtDesc()
+                    .stream()
+                    .map(this::toConversationResponse)
+                    .collect(java.util.stream.Collectors.toList());
+        }
         return conversationRepository.findByUserId(userId)
                 .stream()
                 .map(this::toConversationResponse)

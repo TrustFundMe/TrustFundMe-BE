@@ -39,4 +39,8 @@ public interface ConversationRepository extends JpaRepository<Conversation, Long
 
        @Query("SELECT c FROM Conversation c WHERE c.id = :id AND (c.staffId = :userId OR c.fundOwnerId = :userId)")
        Optional<Conversation> findByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
+
+       @Query("SELECT c FROM Conversation c WHERE c.fundOwnerId = :fundOwnerId AND c.campaignId = :campaignId")
+       java.util.List<Conversation> findByFundOwnerIdAndCampaignId(@Param("fundOwnerId") Long fundOwnerId,
+                     @Param("campaignId") Long campaignId);
 }
