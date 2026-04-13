@@ -139,6 +139,9 @@ public class DonationService {
                 payment.setQrCode(checkoutResponseData.getQrCode());
                 paymentRepository.save(payment);
 
+                // Immediate quantity deduction
+                processQuantityUpdate(donation);
+
                 return PaymentResponse.builder()
                                 .paymentUrl(checkoutResponseData.getCheckoutUrl())
                                 .qrCode(checkoutResponseData.getQrCode())
@@ -152,42 +155,28 @@ public class DonationService {
         public void handleWebhook(Map<String, Object> webhookBody) throws Exception {
                 Map<String, Object> data = (Map<String, Object>) webhookBody.get("data");
                 if (data == null) {
-                        log.warn("Webhook received without data: {}", webhookBody);
                         return;
                 }
                 String paymentLinkId = String.valueOf(data.get("paymentLinkId"));
                 String status = String.valueOf(data.get("status"));
 
-                paymentRepository.findByPaymentLinkId(paymentLinkId).ifPresentOrElse(payment -> {
-                        String oldPaymentStatus = payment.getStatus();
-                        log.info("Found payment for linkId {}: oldStatus={}, newStatus={}", paymentLinkId,
-                                        oldPaymentStatus, status);
+                paymentRepository.findByPaymentLinkId(paymentLinkId).ifPresent(payment -> {
                         payment.setStatus(status);
                         paymentRepository.save(payment);
 
-                        donationRepository.findByPayment(payment).ifPresentOrElse(donation -> {
-                                String oldDonationStatus = donation.getStatus();
-                                log.info("Found donation {} for payment {}: oldStatus={}, newStatus={}",
-                                                donation.getId(), payment.getId(), oldDonationStatus, status);
+                        donationRepository.findByPayment(payment).ifPresent(donation -> {
+                                String oldStatus = donation.getStatus();
                                 donation.setStatus(status);
                                 donationRepository.save(donation);
 
                                 if ("PAID".equals(status)) {
-                                        processQuantityUpdate(donation);
-                                        // Use syncBalanceForDonation to ensure locking if other threads are sync-ing
-                                        this.syncBalanceForDonation(donation.getId());
+                                        updateCampaignBalance(donation);
+                                } else if (("FAILED".equals(status) || "CANCELLED".equals(status))
+                                                && "PENDING".equals(oldStatus)) {
+                                        processQuantityRollback(donation);
                                 }
-
-                                if (!"PAID".equals(status)
-                                                || Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
-                                        log.info("No quantity update needed: status transition {} -> {}",
-                                                        oldDonationStatus, status);
-                                }
-                        }, () -> log.warn("No donation found for payment id: {}", payment.getId()));
-                }, () -> log.error("No payment found for paymentLinkId: {}", paymentLinkId));
-                log.info("✅ Verified and Updated Payment [{}] and Donation status to: {}", paymentLinkId,
-                                status);
-
+                        });
+                });
         }
 
         @Transactional
@@ -222,6 +211,8 @@ public class DonationService {
                                                 processQuantityUpdate(donation);
                                                 // Fetch again with lock for balance sync
                                                 this.syncBalanceForDonation(donation.getId());
+                                        } else if ("FAILED".equals(realStatus) || "CANCELLED".equals(realStatus)) {
+                                                processQuantityRollback(donation);
                                         }
                                 }
                         } catch (Exception e) {
@@ -243,6 +234,17 @@ public class DonationService {
                                                 : null)
                                 .build())
                                 .orElseThrow(() -> new RuntimeException("Donation not found with id: " + id));
+        }
+
+        public void failDonation(Donation donation) {
+                if (donation != null && "PENDING".equals(donation.getStatus())) {
+                        donation.setStatus("FAILED");
+                        if (donation.getPayment() != null) {
+                                donation.getPayment().setStatus("FAILED");
+                        }
+                        donationRepository.save(donation);
+                        processQuantityRollback(donation);
+                }
         }
 
         public CheckItemLimitResponse checkExpenditureItemLimit(Long expenditureItemId, Integer requestedQuantity) {
@@ -282,8 +284,9 @@ public class DonationService {
                                         .canDonateMore(canDonateMore)
                                         .quantityLeft(quantityLeft)
                                         .message(canDonateMore ? "Có thể nhận thêm"
-                                                        : "Số lượng quyên góp vượt quá giới hạn cho phép. Hiện tại chỉ còn lại: "
-                                                                        + quantityLeft)
+                                                        : "Số lượng vật phẩm này vừa có thay đổi (có thể do người khác vừa quyên góp). Hiện tại chỉ còn lại: "
+                                                                        + quantityLeft
+                                                                        + ", vui lòng điều chỉnh lại số lượng.")
                                         .checkSuccessful(true)
                                         .build();
                 } catch (Exception e) {
@@ -299,8 +302,9 @@ public class DonationService {
                 }
         }
 
-        private void processQuantityUpdate(Donation donation) {
-                log.info("🚀 TRIGGERING quantity update for donation: {}", donation.getId());
+        @Transactional
+        public void processQuantityUpdate(Donation donation) {
+                log.info("🚀 TRIGGERING quantity deduction for donation: {}", donation.getId());
                 List<DonationItem> items = donationItemRepository.findByDonationId(donation.getId());
                 log.info("Found {} items for donation {}", items.size(), donation.getId());
 
@@ -327,6 +331,34 @@ public class DonationService {
                         } catch (Exception e) {
                                 log.error("❌ FAILED to deduct quantity for ExpenditureItem {}: {} - {}",
                                                 item.getExpenditureItemId(), e.getClass().getName(), e.getMessage(), e);
+                        }
+                }
+        }
+
+        public void processQuantityRollback(Donation donation) {
+                List<DonationItem> items = donationItemRepository.findByDonationId(donation.getId());
+                if (items.isEmpty()) {
+                        return;
+                }
+
+                log.info("➔ Starting quantity rollback for donation {}", donation.getId());
+                for (DonationItem item : items) {
+                        if (item.getExpenditureItemId() != null) {
+                                try {
+                                        // Send negative amount to updateQuantity to ADD back
+                                        String updateUrl = campaignServiceUrl
+                                                        + "/api/expenditures/items/"
+                                                        + item.getExpenditureItemId()
+                                                        + "/update-quantity?amount="
+                                                        + (-item.getQuantity());
+
+                                        log.info("➔ Calling campaign-service rollback: PUT {}", updateUrl);
+                                        restTemplate.put(updateUrl, null);
+                                } catch (Exception e) {
+                                        log.error("Failed to rollback quantity for item {}: {}",
+                                                        item.getExpenditureItemId(),
+                                                        e.getMessage());
+                                }
                         }
                 }
         }

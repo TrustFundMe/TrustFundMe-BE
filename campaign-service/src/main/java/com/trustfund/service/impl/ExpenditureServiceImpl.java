@@ -189,6 +189,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId) {
         return expenditureItemRepository.findByExpenditureCampaignId(campaignId).stream()
                 .map(this::mapToItemResponse)
@@ -196,6 +197,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId) {
         List<Expenditure> expenditures = expenditureRepository.findByCampaignIdOrderByCreatedAtDesc(campaignId);
         // Tìm expenditure APPROVED mới nhất
@@ -218,7 +220,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .quantity(item.getQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
-                .reservations(item.getReservations() != null ? item.getReservations() : 0)
                 .price(item.getPrice())
                 .expectedPrice(item.getExpectedPrice())
                 .note(item.getNote())
@@ -376,7 +377,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
             // Trust Score: cộng điểm nộp đúng hạn hoặc trừ điểm nộp muộn
             // Chỉ cộng nếu evidence chưa được submit (tránh trùng với updateEvidenceStatus)
-            // → Điểm uy tín nộp minh chứng được xử lý trong updateEvidenceStatus (khi SUBMITTED)
+            // → Điểm uy tín nộp minh chứng được xử lý trong updateEvidenceStatus (khi
+            // SUBMITTED)
         }
 
         // Logic Giải ngân (DISBURSED)
@@ -694,24 +696,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public boolean tryReserveLastItem(Long id, Integer qty) {
-        log.info("➔ Attempting to reserve last item: id={}, qty={}", id, qty);
-        int updated = expenditureItemRepository.tryReserveLastItem(id, qty);
-        log.info("➔ Reserve result: {} row(s) affected", updated);
-        return updated == 1;
-    }
-
-    @Override
-    @Transactional
-    public boolean releaseReservation(Long id) {
-        log.info("➔ Releasing reservation for item: id={}", id);
-        int updated = expenditureItemRepository.releaseReservation(id);
-        log.info("➔ Release result: {} row(s) affected", updated);
-        return updated == 1;
-    }
-
-    @Override
-    @Transactional
     public void deleteExpenditureItem(Long itemId) {
         ExpenditureItem item = expenditureItemRepository.findById(itemId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found: " + itemId));
@@ -776,7 +760,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         : "Chi tiêu cho chiến dịch '" + camp.getTitle() + "' nộp minh chứng muộn";
                 trustScoreService.addScore(camp.getFundOwnerId(), ruleKey, id, "EXPENDITURE", description);
             } catch (Exception e) {
-                log.error("Error updating trust score for evidence submission of expenditure {}: {}", id, e.getMessage());
+                log.error("Error updating trust score for evidence submission of expenditure {}: {}", id,
+                        e.getMessage());
             }
         } else if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
             approvalTaskService.completeTask("EVIDENCE", id);

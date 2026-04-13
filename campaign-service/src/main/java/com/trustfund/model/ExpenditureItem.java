@@ -42,10 +42,6 @@ public class ExpenditureItem {
     @Column(name = "quantity_left")
     private Integer quantityLeft;
 
-    @Column(name = "reservations", nullable = false)
-    @Builder.Default
-    private Integer reservations = 0;
-
     @Column(name = "price", precision = 19, scale = 4)
     private BigDecimal price;
 
