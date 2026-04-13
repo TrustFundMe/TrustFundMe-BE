@@ -19,6 +19,7 @@ import java.util.List;
 @RequestMapping("/api/media")
 @RequiredArgsConstructor
 @Tag(name = "Media", description = "Upload/download and metadata management for media files")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.PATCH, RequestMethod.OPTIONS})
 public class MediaController {
 
     private final MediaService mediaService;

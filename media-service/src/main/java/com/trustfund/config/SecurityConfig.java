@@ -23,8 +23,11 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(auth -> auth
+                                                // Priority 1: Public paths and Pre-flight
+                                                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                                                 .requestMatchers(
                                                                 "/swagger-ui.html",
                                                                 "/swagger-ui/**",
@@ -32,15 +35,31 @@ public class SecurityConfig {
                                                                 "/v3/api-docs",
                                                                 "/v3/api-docs/**",
                                                                 "/swagger-resources/**",
-                                                                "/webjars/**")
-                                                .permitAll()
-                                                .requestMatchers("/actuator/**").permitAll()
-                                                // Public media endpoints (for testing: all methods do NOT require auth)
+                                                                "/webjars/**",
+                                                                "/actuator/**"
+                                                ).permitAll()
+                                                // Priority 2: Public media endpoints
                                                 .requestMatchers("/api/media/**").permitAll()
+                                                // Priority 3: Static resources
+                                                .requestMatchers("/error", "/favicon.ico", "/*.html", "/**/*.html", "/**/*.css", "/**/*.js").permitAll()
                                                 // Everything else requires auth
                                                 .anyRequest().authenticated())
                                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
                 return http.build();
+        }
+
+        @Bean
+        public org.springframework.web.cors.CorsConfigurationSource corsConfigurationSource() {
+                org.springframework.web.cors.CorsConfiguration configuration = new org.springframework.web.cors.CorsConfiguration();
+                configuration.setAllowedOriginPatterns(java.util.List.of("*"));
+                configuration.setAllowedMethods(java.util.List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                configuration.setAllowedHeaders(java.util.List.of("Authorization", "Content-Type", "X-Requested-With", "Accept", "Origin", "Access-Control-Request-Method", "Access-Control-Request-Headers"));
+                configuration.setExposedHeaders(java.util.List.of("Access-Control-Allow-Origin", "Access-Control-Allow-Credentials"));
+                configuration.setAllowCredentials(true);
+                configuration.setMaxAge(3600L);
+                org.springframework.web.cors.UrlBasedCorsConfigurationSource source = new org.springframework.web.cors.UrlBasedCorsConfigurationSource();
+                source.registerCorsConfiguration("/**", configuration);
+                return source;
         }
 }
