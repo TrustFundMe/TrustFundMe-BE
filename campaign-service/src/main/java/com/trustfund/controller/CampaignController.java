@@ -2,7 +2,7 @@ package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
-import com.trustfund.model.response.CampaignResponse; // Added import
+import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.service.CampaignService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -126,5 +126,11 @@ public class CampaignController {
             org.springframework.security.core.Authentication authentication) {
         Long staffId = Long.parseLong(authentication.getName());
         return ResponseEntity.ok(campaignService.closeCampaign(id, staffId));
+    }
+
+    @GetMapping("/fund-owner/{fundOwnerId}/count")
+    @Operation(summary = "Lấy tổng số chiến dịch của chủ sở hữu", description = "Trả về một số nguyên đơn giản")
+    public ResponseEntity<Long> getCampaignCount(@PathVariable("fundOwnerId") Long fundOwnerId) {
+        return ResponseEntity.ok(campaignService.getCampaignCountByFundOwner(fundOwnerId));
     }
 }

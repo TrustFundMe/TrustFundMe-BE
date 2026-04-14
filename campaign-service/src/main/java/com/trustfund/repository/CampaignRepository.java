@@ -21,6 +21,8 @@ public interface CampaignRepository extends JpaRepository<Campaign, Long> {
 
         List<Campaign> findByTypeNot(String type, org.springframework.data.domain.Sort sort);
 
+        long countByFundOwnerId(Long fundOwnerId);
+
         @org.springframework.data.jpa.repository.Modifying
         @org.springframework.data.jpa.repository.Query("UPDATE Campaign c SET c.balance = c.balance + :amount WHERE c.id = :id")
         void updateBalance(@org.springframework.data.repository.query.Param("id") Long id,

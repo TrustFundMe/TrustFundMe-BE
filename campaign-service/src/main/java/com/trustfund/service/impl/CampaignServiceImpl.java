@@ -225,7 +225,8 @@ public class CampaignServiceImpl implements CampaignService {
         Campaign saved = campaignRepository.save(campaign);
         approvalTaskService.completeTask("CAMPAIGN", saved.getId());
 
-        // Đợt chi tiêu 1 không còn tự động duyệt theo campaign — staff phải duyệt riêng qua PUT /api/expenditures/{id}/status
+        // Đợt chi tiêu 1 không còn tự động duyệt theo campaign — staff phải duyệt riêng
+        // qua PUT /api/expenditures/{id}/status
 
         // Send notification if approved or rejected
         if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
@@ -281,21 +282,30 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     private CampaignResponse toCampaignResponse(Campaign campaign) {
-        UserVerificationStatusResponse verificationStatus = identityServiceClient
-                .getVerificationStatus(campaign.getFundOwnerId());
+        UserVerificationStatusResponse verificationStatus = null;
+        if (campaign.getFundOwnerId() != null) {
+            try {
+                verificationStatus = identityServiceClient.getVerificationStatus(campaign.getFundOwnerId());
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                        .warn("Could not fetch verification status for campaign owner {}", campaign.getFundOwnerId());
+            }
+        }
 
         String ownerName = null;
         String ownerAvatarUrl = null;
-        try {
-            com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient
-                    .getUserInfo(campaign.getFundOwnerId());
-            if (userInfo != null) {
-                ownerName = userInfo.getFullName();
-                ownerAvatarUrl = userInfo.getAvatarUrl();
+        if (campaign.getFundOwnerId() != null) {
+            try {
+                com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient
+                        .getUserInfo(campaign.getFundOwnerId());
+                if (userInfo != null) {
+                    ownerName = userInfo.getFullName();
+                    ownerAvatarUrl = userInfo.getAvatarUrl();
+                }
+            } catch (Exception e) {
+                org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                        .warn("Could not fetch user info for campaign owner {}", campaign.getFundOwnerId());
             }
-        } catch (Exception e) {
-            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
-                    .warn("Could not fetch user info for campaign owner {}", campaign.getFundOwnerId());
         }
 
         // Resolve cover image URL
@@ -322,7 +332,8 @@ public class CampaignServiceImpl implements CampaignService {
                 .categoryId(campaign.getCategory() != null ? campaign.getCategory().getId() : null)
                 .categoryName(campaign.getCategory() != null ? campaign.getCategory().getName() : null)
                 .categoryIconUrl(campaign.getCategory() != null && campaign.getCategory().getIcon() != null
-                        ? mediaServiceClient.getMediaUrl(campaign.getCategory().getIcon()) : null)
+                        ? mediaServiceClient.getMediaUrl(campaign.getCategory().getIcon())
+                        : null)
                 .startDate(campaign.getStartDate())
                 .endDate(campaign.getEndDate())
                 .status(campaign.getStatus())
@@ -386,5 +397,10 @@ public class CampaignServiceImpl implements CampaignService {
         org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
                 .info("➔ [BALANCE_UPDATE] Campaign {}: {} -> {} (delta: {})", id, oldBalance, campaign.getBalance(),
                         amount);
+    }
+
+    @Override
+    public long getCampaignCountByFundOwner(Long fundOwnerId) {
+        return campaignRepository.countByFundOwnerId(fundOwnerId);
     }
 }

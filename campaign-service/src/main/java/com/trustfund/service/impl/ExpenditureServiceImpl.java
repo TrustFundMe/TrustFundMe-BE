@@ -906,4 +906,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public BigDecimal getTotalDisbursedByFundOwner(Long fundOwnerId) {
+        BigDecimal sum = transactionRepository.sumCompletedPayoutsByFundOwnerId(fundOwnerId);
+        return sum != null ? sum : BigDecimal.ZERO;
+    }
 }
