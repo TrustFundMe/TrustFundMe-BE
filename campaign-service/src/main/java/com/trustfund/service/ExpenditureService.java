@@ -11,60 +11,48 @@ import java.math.BigDecimal;
 import java.util.List;
 
 public interface ExpenditureService {
-    ExpenditureResponse createExpenditure(CreateExpenditureRequest request);
+        ExpenditureResponse createExpenditure(CreateExpenditureRequest request);
 
-    List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId);
+        List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId);
 
-    List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId);
+        List<ExpenditureItemResponse> getExpenditureItemsByCampaign(Long campaignId);
 
-    List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId);
+        List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId);
 
-    ExpenditureResponse getExpenditureById(Long id);
+        ExpenditureResponse getExpenditureById(Long id);
 
-    ExpenditureResponse updateExpenditureStatus(Long id, com.trustfund.model.request.ReviewExpenditureRequest request);
+        ExpenditureResponse updateExpenditureStatus(Long id,
+                        com.trustfund.model.request.ReviewExpenditureRequest request);
 
-    ExpenditureResponse updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request);
+        ExpenditureResponse updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request);
 
-    ExpenditureResponse updateDisbursementProof(Long id, com.trustfund.model.request.UpdateDisbursementProofRequest request);
+        ExpenditureResponse updateDisbursementProof(Long id,
+                        com.trustfund.model.request.UpdateDisbursementProofRequest request);
 
-    ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt);
+        ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt);
 
-    List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
+        List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
 
-    ExpenditureItemResponse getExpenditureItemById(Long id);
+        ExpenditureItemResponse getExpenditureItemById(Long id);
 
-    void updateExpenditureItemQuantity(Long id, Integer amount);
+        void updateExpenditureItemQuantity(Long id, Integer amount);
 
-    /**
-     * Cố gắng giữ chỗ sản phẩm cuối cùng.
-     * @param id item ID
-     * @param qty số lượng muốn chọn
-     * @return true = thành công (giữ được), false = thất bại (đã có người giữ)
-     */
-    boolean tryReserveLastItem(Long id, Integer qty);
+        ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
 
-    /**
-     * Nhả chỗ giữ sản phẩm.
-     * @param id item ID
-     * @return true = đã nhả thành công, false = không có gì để nhả
-     */
-    boolean releaseReservation(Long id);
+        void deleteExpenditureItem(Long itemId);
 
-    ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
+        ExpenditureResponse updateEvidenceStatus(Long id, String status);
 
-    void deleteExpenditureItem(Long itemId);
+        ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId,
+                        String proofUrl,
+                        String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
+                        String toBankCode, String toAccountNumber, String toAccountHolderName);
 
-    ExpenditureResponse updateEvidenceStatus(Long id, String status);
+        java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId);
 
-    ExpenditureTransactionResponse createRefund(Long expenditureId, BigDecimal amount, Long fromUserId, String proofUrl,
-            String fromBankCode, String fromAccountNumber, String fromAccountHolderName,
-            String toBankCode, String toAccountNumber, String toAccountHolderName);
+        java.io.ByteArrayInputStream exportItemsToExcelTemplate();
 
-    java.io.ByteArrayInputStream exportItemsToExcel(Long campaignId);
+        List<ExpenditureTransactionResponse> getAllTransactions();
 
-    java.io.ByteArrayInputStream exportItemsToExcelTemplate();
-
-    List<ExpenditureTransactionResponse> getAllTransactions();
-
-    List<ExpenditureResponse> getExpendituresByStatus(String status);
+        List<ExpenditureResponse> getExpendituresByStatus(String status);
 }

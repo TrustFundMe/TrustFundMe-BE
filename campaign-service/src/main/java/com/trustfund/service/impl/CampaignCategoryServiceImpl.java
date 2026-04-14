@@ -1,5 +1,6 @@
 package com.trustfund.service.impl;
 
+import com.trustfund.client.MediaServiceClient;
 import com.trustfund.exception.ResourceNotFoundException;
 import com.trustfund.model.CampaignCategory;
 import com.trustfund.model.request.CampaignCategoryRequest;
@@ -18,6 +19,7 @@ import java.util.stream.Collectors;
 public class CampaignCategoryServiceImpl implements CampaignCategoryService {
 
     private final CampaignCategoryRepository categoryRepository;
+    private final MediaServiceClient mediaServiceClient;
 
     @Override
     public List<CampaignCategoryResponse> getAll() {
@@ -43,6 +45,7 @@ public class CampaignCategoryServiceImpl implements CampaignCategoryService {
         CampaignCategory category = CampaignCategory.builder()
                 .name(request.getName())
                 .description(request.getDescription())
+                .icon(request.getIcon())
                 .build();
 
         return mapToResponse(categoryRepository.save(category));
@@ -60,6 +63,7 @@ public class CampaignCategoryServiceImpl implements CampaignCategoryService {
 
         category.setName(request.getName());
         category.setDescription(request.getDescription());
+        category.setIcon(request.getIcon());
 
         return mapToResponse(categoryRepository.save(category));
     }
@@ -74,10 +78,16 @@ public class CampaignCategoryServiceImpl implements CampaignCategoryService {
     }
 
     private CampaignCategoryResponse mapToResponse(CampaignCategory category) {
+        String iconUrl = null;
+        if (category.getIcon() != null) {
+            iconUrl = mediaServiceClient.getMediaUrl(category.getIcon());
+        }
         return CampaignCategoryResponse.builder()
                 .id(category.getId())
                 .name(category.getName())
                 .description(category.getDescription())
+                .icon(category.getIcon())
+                .iconUrl(iconUrl)
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
                 .build();

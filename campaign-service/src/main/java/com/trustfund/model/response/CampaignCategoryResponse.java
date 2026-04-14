@@ -15,6 +15,8 @@ public class CampaignCategoryResponse {
     private Long id;
     private String name;
     private String description;
+    private Long icon;
+    private String iconUrl;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

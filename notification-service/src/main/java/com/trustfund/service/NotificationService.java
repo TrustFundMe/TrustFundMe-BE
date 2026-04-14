@@ -10,6 +10,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.trustfund.model.request.NotificationRequest;
+import com.trustfund.client.IdentityServiceClient;
+import com.trustfund.service.EmailService;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -19,6 +21,8 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
     private final ObjectMapper objectMapper;
+    private final IdentityServiceClient identityServiceClient;
+    private final EmailService emailService;
 
     public Notification createNotification(Notification notification) {
         if (notification.getIsRead() == null) {
@@ -69,6 +73,25 @@ public class NotificationService {
                 .isRead(false)
                 .build();
 
-        return notificationRepository.save(notification);
+        Notification saved = notificationRepository.save(notification);
+
+        // Logic gửi Email nếu là cảnh báo pháp lý
+        if ("LEGAL_WARNING".equals(request.getType())) {
+            try {
+                com.trustfund.dto.UserInfoResponse user = identityServiceClient.getUserInfo(request.getUserId());
+                if (user != null && user.getEmail() != null) {
+                    emailService.sendLegalWarningEmail(
+                            user.getEmail(),
+                            user.getFullName(),
+                            request.getTitle().replace("CẢNH BÁO PHÁP LÝ: CHIẾN DỊCH ", "").replace("\"", ""),
+                            request.getContent()
+                    );
+                }
+            } catch (Exception e) {
+                log.error("Failed to send legal warning email: {}", e.getMessage());
+            }
+        }
+
+        return saved;
     }
 }

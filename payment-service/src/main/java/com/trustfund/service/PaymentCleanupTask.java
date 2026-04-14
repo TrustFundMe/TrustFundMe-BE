@@ -20,6 +20,7 @@ public class PaymentCleanupTask {
 
     private final PaymentRepository paymentRepository;
     private final DonationRepository donationRepository;
+    private final DonationService donationService;
 
     /**
      * Every 1 minute, check for PENDING payments/donations older than 10 minutes
@@ -33,7 +34,7 @@ public class PaymentCleanupTask {
         // Threshold: 10 minutes (to avoid failing active user sessions)
         LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
 
-        // 1. Cleanup Payments
+        // 1. Cleanup Payments (only update status)
         List<Payment> stalePayments = paymentRepository.findAllByStatusAndCreatedAtBefore("PENDING", threshold);
         if (!stalePayments.isEmpty()) {
             log.info("🛠 [Cron] Marking {} stale Payments as FAILED", stalePayments.size());
@@ -41,12 +42,12 @@ public class PaymentCleanupTask {
             paymentRepository.saveAll(stalePayments);
         }
 
-        // 2. Cleanup Donations
+        // 2. Cleanup Donations (update status and rollback quantity)
         List<Donation> staleDonations = donationRepository.findAllByStatusAndCreatedAtBefore("PENDING", threshold);
         if (!staleDonations.isEmpty()) {
-            log.info("🛠 [Cron] Marking {} stale Donations as FAILED", staleDonations.size());
-            staleDonations.forEach(d -> d.setStatus("FAILED"));
-            donationRepository.saveAll(staleDonations);
+            log.info("🛠 [Cron] Marking {} stale Donations as FAILED and rolling back quantities",
+                    staleDonations.size());
+            staleDonations.forEach(donationService::failDonation);
         }
 
         if (stalePayments.isEmpty() && staleDonations.isEmpty()) {

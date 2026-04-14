@@ -133,35 +133,6 @@ public class ExpenditureController {
         return ResponseEntity.noContent().build();
     }
 
-    @PostMapping("/items/{itemId}/reserve")
-    @Operation(summary = "Giữ chỗ sản phẩm cuối cùng", description = "Khi user chọn item, nếu số lượng chọn bằng số lượng còn lại thì đánh dấu reservations=1.")
-    public ResponseEntity<?> reserveLastItem(
-            @PathVariable("itemId") Long itemId,
-            @RequestParam("qty") Integer qty) {
-        boolean success = expenditureService.tryReserveLastItem(itemId, qty);
-        if (success) {
-            return ResponseEntity.ok(java.util.Map.of(
-                    "success", true,
-                    "message", "Đã giữ chỗ sản phẩm cuối cùng"
-            ));
-        } else {
-            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of(
-                    "success", false,
-                    "message", "Sản phẩm cuối cùng đã có người đang chọn"
-            ));
-        }
-    }
-
-    @DeleteMapping("/items/{itemId}/reserve")
-    @Operation(summary = "Nhả chỗ giữ sản phẩm", description = "Khi user bỏ chọn item, trả reservations về 0.")
-    public ResponseEntity<?> releaseReserve(@PathVariable("itemId") Long itemId) {
-        boolean released = expenditureService.releaseReservation(itemId);
-        return ResponseEntity.ok(java.util.Map.of(
-                "success", true,
-                "message", released ? "Đã nhả chỗ giữ sản phẩm" : "Không có chỗ nào để nhả"
-        ));
-    }
-
     @PatchMapping("/{id}/evidence-status")
     @Operation(summary = "Cập nhật trạng thái minh chứng", description = "Cập nhật trạng thái của bằng chứng chi tiêu (Ví dụ: SUBMITTED).")
     public ResponseEntity<ExpenditureResponse> updateEvidenceStatus(@PathVariable("id") Long id,

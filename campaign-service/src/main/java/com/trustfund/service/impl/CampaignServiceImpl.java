@@ -52,6 +52,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CampaignResponse getById(Long id) {
         Campaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
@@ -320,6 +321,8 @@ public class CampaignServiceImpl implements CampaignService {
                 .description(campaign.getDescription())
                 .categoryId(campaign.getCategory() != null ? campaign.getCategory().getId() : null)
                 .categoryName(campaign.getCategory() != null ? campaign.getCategory().getName() : null)
+                .categoryIconUrl(campaign.getCategory() != null && campaign.getCategory().getIcon() != null
+                        ? mediaServiceClient.getMediaUrl(campaign.getCategory().getIcon()) : null)
                 .startDate(campaign.getStartDate())
                 .endDate(campaign.getEndDate())
                 .status(campaign.getStatus())
@@ -374,12 +377,14 @@ public class CampaignServiceImpl implements CampaignService {
     public void updateBalance(Long id, java.math.BigDecimal amount) {
         Campaign campaign = campaignRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Campaign not found: " + id));
-        
-        java.math.BigDecimal oldBalance = campaign.getBalance() != null ? campaign.getBalance() : java.math.BigDecimal.ZERO;
+
+        java.math.BigDecimal oldBalance = campaign.getBalance() != null ? campaign.getBalance()
+                : java.math.BigDecimal.ZERO;
         campaign.setBalance(oldBalance.add(amount));
         campaignRepository.save(campaign);
-        
+
         org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
-                .info("➔ [BALANCE_UPDATE] Campaign {}: {} -> {} (delta: {})", id, oldBalance, campaign.getBalance(), amount);
+                .info("➔ [BALANCE_UPDATE] Campaign {}: {} -> {} (delta: {})", id, oldBalance, campaign.getBalance(),
+                        amount);
     }
 }

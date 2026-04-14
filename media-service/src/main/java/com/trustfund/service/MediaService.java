@@ -8,6 +8,9 @@ import java.util.List;
 public interface MediaService {
     MediaFileResponse uploadMedia(MediaUploadRequest request) throws IOException, InterruptedException;
 
+    MediaFileResponse updateMediaFile(Long id, com.trustfund.model.request.MediaUploadRequest request)
+            throws IOException, InterruptedException;
+
     MediaFileResponse getMediaById(Long id);
 
     List<MediaFileResponse> getMediaByPostId(Long postId);
@@ -30,6 +33,9 @@ public interface MediaService {
 
     void deleteMedia(Long id) throws IOException, InterruptedException;
 
-    /** Set postId = null for the given media record (unlink from post without deleting the file). */
+    /**
+     * Set postId = null for the given media record (unlink from post without
+     * deleting the file).
+     */
     void unlinkFromPost(Long id);
 }

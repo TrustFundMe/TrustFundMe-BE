@@ -23,6 +23,7 @@ public class CampaignResponse {
     private String description;
     private Long categoryId;
     private String categoryName;
+    private String categoryIconUrl;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private String type;

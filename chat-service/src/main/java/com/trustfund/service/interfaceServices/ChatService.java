@@ -12,7 +12,7 @@ public interface ChatService {
 
     ConversationResponse getConversationByCampaignId(Long campaignId, Long userId);
 
-    java.util.List<ConversationResponse> getConversations(Long userId);
+    java.util.List<ConversationResponse> getConversations(Long userId, String role);
 
     java.util.List<ConversationResponse> getAllConversations();
 
