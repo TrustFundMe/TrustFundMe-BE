@@ -2,6 +2,7 @@ package com.trustfund.client;
 
 import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
+import com.trustfund.model.response.UserKYCResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -156,6 +157,57 @@ public class IdentityServiceClient {
         } catch (Exception e) {
             log.error("Failed to fetch leaderboard: {}", e.getMessage());
             return java.util.Collections.emptyList();
+        }
+    }
+
+    public UserInfoResponse getUserById(Long userId) {
+        if (userId == null) return null;
+        String url = identityServiceUrl + "/api/internal/users/" + userId;
+        try {
+            log.debug("Calling identity-service for user {}: {}", userId, url);
+            UserInfoResponse response = restTemplate.getForObject(url, UserInfoResponse.class);
+            if (response == null) {
+                log.warn("Identity service returned null for user {}", userId);
+            }
+            return response;
+        } catch (Exception e) {
+            log.error("Failed to get user {} from {}: {}", userId, url, e.getMessage());
+            return null;
+        }
+    }
+
+    public UserKYCResponse getUserKYC(Long userId) {
+        if (userId == null) return null;
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/kyc";
+        try {
+            return restTemplate.getForObject(url, UserKYCResponse.class);
+        } catch (Exception e) {
+            log.error("Failed to get KYC for user {}: {}", userId, e.getMessage());
+            return null;
+        }
+    }
+
+    public void banUser(Long userId, String reason) {
+        if (userId == null) return;
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/ban";
+        try {
+            java.util.Map<String, String> body = new java.util.HashMap<>();
+            body.put("reason", reason != null ? reason : "Vi phạm quy định");
+            restTemplate.put(url, body);
+            log.info("User {} banned successfully", userId);
+        } catch (Exception e) {
+            log.error("Failed to ban user {}: {}", userId, e.getMessage());
+        }
+    }
+
+    public void unbanUser(Long userId) {
+        if (userId == null) return;
+        String url = identityServiceUrl + "/api/internal/users/" + userId + "/unban";
+        try {
+            restTemplate.put(url, null);
+            log.info("User {} unbanned successfully", userId);
+        } catch (Exception e) {
+            log.error("Failed to unban user {}: {}", userId, e.getMessage());
         }
     }
 }

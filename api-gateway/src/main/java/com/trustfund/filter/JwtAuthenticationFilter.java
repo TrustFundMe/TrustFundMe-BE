@@ -120,6 +120,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
+        // Internal endpoints - used by other services for cross-service communication
+        if (path.startsWith("/api/internal/")) {
+            return true;
+        }
+
+        // Email endpoints - commitment email sending (called by campaign-service)
+        if (path.startsWith("/api/emails/")) {
+            return true;
+        }
+
         return false;
     }
 
