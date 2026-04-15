@@ -205,4 +205,9 @@ public class PaymentController {
     public ResponseEntity<Boolean> existsDonationItem(@PathVariable("expenditureItemId") Long expenditureItemId) {
         return ResponseEntity.ok(donationService.existsDonationItem(expenditureItemId));
     }
+
+    @GetMapping("/user/{userId}/donation-count")
+    public ResponseEntity<Long> getUserDonationCount(@PathVariable("userId") Long userId) {
+        return ResponseEntity.ok(donationService.getUserDonationCount(userId));
+    }
 }

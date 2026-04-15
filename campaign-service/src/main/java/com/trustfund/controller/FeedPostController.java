@@ -36,7 +36,7 @@ public class FeedPostController {
     private final com.trustfund.client.UserInfoClient userInfoClient;
 
     public FeedPostController(FeedPostService feedPostService, TrustScoreService trustScoreService,
-                              com.trustfund.client.UserInfoClient userInfoClient) {
+            com.trustfund.client.UserInfoClient userInfoClient) {
         this.feedPostService = feedPostService;
         this.trustScoreService = trustScoreService;
         this.userInfoClient = userInfoClient;
@@ -67,8 +67,7 @@ public class FeedPostController {
     public ResponseEntity<Page<FeedPostResponse>> getActiveFeedPosts(
             @RequestParam(name = "page", defaultValue = "0") int page,
             @RequestParam(name = "size", defaultValue = "10") int size,
-            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort
-    ) {
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = null;
         if (authentication != null && authentication.isAuthenticated()
@@ -120,9 +119,28 @@ public class FeedPostController {
         return ResponseEntity.ok(feedPostService.getMyFeedPosts(currentUserId, status, pageable));
     }
 
+    @GetMapping("/author/{authorId}")
+    @Operation(summary = "Get public feed posts by author", description = "Get public feed posts created by a specific author (Public)")
+    public ResponseEntity<Page<FeedPostResponse>> getPublicPostsByAuthorId(
+            @PathVariable("authorId") Long authorId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
+
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        return ResponseEntity.ok(feedPostService.getPublicPostsByAuthorId(authorId, pageable));
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Get feed post detail", description = "Get detail of a feed post by id")
-    public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id, jakarta.servlet.http.HttpServletRequest request) {
+    public ResponseEntity<FeedPostResponse> getById(@PathVariable("id") Long id,
+            jakarta.servlet.http.HttpServletRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = null;
         if (authentication != null) {
@@ -149,7 +167,7 @@ public class FeedPostController {
     @PatchMapping("/{id}/status")
     @Operation(summary = "Update feed post status", description = "Update feed post status between DRAFT and ACTIVE")
     public ResponseEntity<FeedPostResponse> updateStatus(@PathVariable("id") Long id,
-                                                        @Valid @RequestBody UpdateFeedPostStatusRequest request) {
+            @Valid @RequestBody UpdateFeedPostStatusRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 
@@ -160,7 +178,7 @@ public class FeedPostController {
     @PatchMapping("/{id}/visibility")
     @Operation(summary = "Update feed post visibility", description = "Update feed post visibility between PUBLIC, PRIVATE and FOLLOWERS")
     public ResponseEntity<FeedPostResponse> updateVisibility(@PathVariable("id") Long id,
-                                                            @Valid @RequestBody UpdateFeedPostVisibilityRequest request) {
+            @Valid @RequestBody UpdateFeedPostVisibilityRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 
@@ -169,14 +187,15 @@ public class FeedPostController {
                 .map(grantedAuthority -> grantedAuthority.getAuthority())
                 .orElse(null);
 
-        FeedPostResponse response = feedPostService.updateVisibility(id, currentUserId, currentRole, request.getVisibility());
+        FeedPostResponse response = feedPostService.updateVisibility(id, currentUserId, currentRole,
+                request.getVisibility());
         return ResponseEntity.ok(response);
     }
 
     @PutMapping("/{id}")
     @Operation(summary = "Update feed post (full)", description = "Update title, content, status, targetId, targetType, attachments (author only)")
     public ResponseEntity<FeedPostResponse> update(@PathVariable("id") Long id,
-                                                   @Valid @RequestBody UpdateFeedPostRequest request) {
+            @Valid @RequestBody UpdateFeedPostRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 
@@ -187,7 +206,7 @@ public class FeedPostController {
     @PatchMapping("/{id}")
     @Operation(summary = "Update feed post content", description = "Update title/content of a feed post (author only)")
     public ResponseEntity<FeedPostResponse> updateContent(@PathVariable("id") Long id,
-                                                         @Valid @RequestBody UpdateFeedPostContentRequest request) {
+            @Valid @RequestBody UpdateFeedPostContentRequest request) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         Long currentUserId = Long.parseLong(authentication.getName());
 
@@ -260,7 +279,7 @@ public class FeedPostController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Update feed post status (Admin)", description = "Force update status of any feed post")
     public ResponseEntity<FeedPostResponse> updateStatusByAdmin(@PathVariable("id") Long id,
-                                                                @Valid @RequestBody UpdateFeedPostStatusRequest request) {
+            @Valid @RequestBody UpdateFeedPostStatusRequest request) {
         return ResponseEntity.ok(feedPostService.updateStatusByAdmin(id, request.getStatus()));
     }
 
@@ -289,7 +308,7 @@ public class FeedPostController {
     @PreAuthorize("hasAnyRole('ADMIN', 'STAFF')")
     @Operation(summary = "Update feed post content (Admin)", description = "Update title/content without author check")
     public ResponseEntity<FeedPostResponse> updateContentByAdmin(@PathVariable("id") Long id,
-                                                                 @Valid @RequestBody UpdateFeedPostContentRequest request) {
+            @Valid @RequestBody UpdateFeedPostContentRequest request) {
         return ResponseEntity.ok(feedPostService.updateContentByAdmin(id, request));
     }
 
@@ -306,12 +325,9 @@ public class FeedPostController {
     // =========================================================================
 
     @GetMapping("/{id}/revisions")
-    @Operation(
-        summary = "Get post revision history",
-        description = "Returns paginated history of a post. " +
+    @Operation(summary = "Get post revision history", description = "Returns paginated history of a post. " +
             "For PUBLISHED posts: accessible by anyone (no auth required). " +
-            "For non-PUBLISHED posts: only the post author or STAFF/ADMIN can view."
-    )
+            "For non-PUBLISHED posts: only the post author or STAFF/ADMIN can view.")
     public ResponseEntity<Page<FeedPostRevisionResponse>> getRevisions(
             @PathVariable("id") Long id,
             @RequestParam(name = "page", defaultValue = "0") int page,
@@ -329,7 +345,8 @@ public class FeedPostController {
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
             try {
                 currentUserId = Long.parseLong(authentication.getName());
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
             currentRole = authentication.getAuthorities().stream()
                     .findFirst()
                     .map(a -> a.getAuthority())
@@ -341,10 +358,7 @@ public class FeedPostController {
     }
 
     @GetMapping("/{id}/revisions/{revisionId}")
-    @Operation(
-        summary = "Get post revision detail",
-        description = "Returns a single revision snapshot. Same visibility rules as list."
-    )
+    @Operation(summary = "Get post revision detail", description = "Returns a single revision snapshot. Same visibility rules as list.")
     public ResponseEntity<FeedPostRevisionResponse> getRevisionById(
             @PathVariable("id") Long id,
             @PathVariable("revisionId") Long revisionId) {
@@ -356,7 +370,8 @@ public class FeedPostController {
                 && !"anonymousUser".equals(authentication.getPrincipal())) {
             try {
                 currentUserId = Long.parseLong(authentication.getName());
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
             currentRole = authentication.getAuthorities().stream()
                     .findFirst()
                     .map(a -> a.getAuthority())
@@ -367,14 +382,12 @@ public class FeedPostController {
     }
 
     // =========================================================================
-    // Internal cache-eviction endpoint (called by identity-service on profile update)
+    // Internal cache-eviction endpoint (called by identity-service on profile
+    // update)
     // =========================================================================
 
     @PostMapping("/internal/evict-user-cache/{userId}")
-    @Operation(
-        summary = "Evict user info cache (Internal)",
-        description = "Clears the cached author name/avatar for a user so subsequent post fetches use fresh data. Called by identity-service after a user updates their profile."
-    )
+    @Operation(summary = "Evict user info cache (Internal)", description = "Clears the cached author name/avatar for a user so subsequent post fetches use fresh data. Called by identity-service after a user updates their profile.")
     public ResponseEntity<Void> evictUserCache(@PathVariable("userId") Long userId) {
         userInfoClient.evict(userId);
         return ResponseEntity.noContent().build();

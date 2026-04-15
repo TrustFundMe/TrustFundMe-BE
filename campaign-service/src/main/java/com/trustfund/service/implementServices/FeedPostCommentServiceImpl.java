@@ -13,6 +13,10 @@ import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.repository.FeedPostCommentLikeRepository;
 import com.trustfund.repository.FeedPostCommentRepository;
 import com.trustfund.repository.FeedPostRepository;
+import com.trustfund.model.Campaign;
+import com.trustfund.model.Expenditure;
+import com.trustfund.repository.CampaignRepository;
+import com.trustfund.repository.ExpenditureRepository;
 import com.trustfund.service.interfaceServices.FeedPostCommentService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -20,6 +24,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -31,6 +36,8 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
     private final FeedPostRepository feedPostRepository;
     private final FeedPostCommentLikeRepository feedPostCommentLikeRepository;
     private final IdentityServiceClient identityServiceClient;
+    private final CampaignRepository campaignRepository;
+    private final ExpenditureRepository expenditureRepository;
 
     private void assertPostNotLocked(Long postId) {
         FeedPost post = feedPostRepository.findById(postId)
@@ -167,6 +174,12 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
         return response;
     }
 
+    @Override
+    public Page<FeedPostCommentResponse> getByUserId(Long userId, Pageable pageable) {
+        return feedPostCommentRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(comment -> toResponse(comment, null));
+    }
+
     private FeedPostCommentResponse toResponse(FeedPostComment comment, Long currentUserId) {
         String authorName = "Thành viên #" + comment.getUserId();
         String authorAvatar = null;
@@ -185,6 +198,72 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
         boolean isLiked = currentUserId != null &&
                 feedPostCommentLikeRepository.existsByCommentIdAndUserId(comment.getId(), currentUserId);
 
+        String postTitle = null;
+        String postType = null;
+        String postTargetName = null;
+        LocalDateTime postCreatedAt = null;
+        String postAuthorName = null;
+        String postAuthorAvatar = null;
+
+        if (comment.getPostId() != null) {
+            FeedPost post = feedPostRepository.findById(comment.getPostId()).orElse(null);
+            if (post != null) {
+                postTitle = post.getTitle();
+                postType = post.getTargetType();
+                postCreatedAt = post.getCreatedAt();
+
+                // Post Author
+                try {
+                    UserInfoResponse postAuthorInfo = identityServiceClient.getUserInfo(post.getAuthorId());
+                    if (postAuthorInfo != null) {
+                        postAuthorName = postAuthorInfo.getFullName();
+                        postAuthorAvatar = postAuthorInfo.getAvatarUrl();
+                    }
+                } catch (Exception ignored) {
+                }
+
+                // Resolve postTargetName
+                String targetName = post.getTargetName();
+                if (post.getTargetId() != null && post.getTargetType() != null) {
+                    if (post.getTargetType().equals("EXPENDITURE")) {
+                        String planName = expenditureRepository.findById(post.getTargetId())
+                                .map(Expenditure::getPlan)
+                                .orElse(null);
+                        if ("evidence".equalsIgnoreCase(targetName)) {
+                            targetName = "evidence|" + (planName != null ? planName : "");
+                        } else if (targetName == null || targetName.isBlank()) {
+                            targetName = planName;
+                        }
+                    } else if (post.getTargetType().equals("CAMPAIGN")) {
+                        if (targetName == null || targetName.isBlank()) {
+                            targetName = campaignRepository.findById(post.getTargetId())
+                                    .map(Campaign::getTitle)
+                                    .orElse(null);
+                        }
+                    }
+                }
+                postTargetName = targetName;
+            }
+        }
+
+        String parentContent = null;
+        String parentAuthorName = null;
+        String parentAuthorAvatar = null;
+        if (comment.getParentCommentId() != null) {
+            FeedPostComment parent = feedPostCommentRepository.findById(comment.getParentCommentId()).orElse(null);
+            if (parent != null) {
+                parentContent = parent.getContent();
+                try {
+                    UserInfoResponse parentAuthorInfo = identityServiceClient.getUserInfo(parent.getUserId());
+                    if (parentAuthorInfo != null) {
+                        parentAuthorName = parentAuthorInfo.getFullName();
+                        parentAuthorAvatar = parentAuthorInfo.getAvatarUrl();
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+        }
+
         return FeedPostCommentResponse.builder()
                 .id(comment.getId())
                 .postId(comment.getPostId())
@@ -197,6 +276,15 @@ public class FeedPostCommentServiceImpl implements FeedPostCommentService {
                 .updatedAt(comment.getUpdatedAt())
                 .authorName(authorName)
                 .authorAvatar(authorAvatar)
+                .postTitle(postTitle)
+                .postType(postType)
+                .postTargetName(postTargetName)
+                .postCreatedAt(postCreatedAt)
+                .postAuthorName(postAuthorName)
+                .postAuthorAvatar(postAuthorAvatar)
+                .parentContent(parentContent)
+                .parentAuthorName(parentAuthorName)
+                .parentAuthorAvatar(parentAuthorAvatar)
                 .build();
     }
 }

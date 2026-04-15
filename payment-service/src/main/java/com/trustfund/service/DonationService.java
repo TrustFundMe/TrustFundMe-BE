@@ -385,6 +385,11 @@ public class DonationService {
                 if (raised == null)
                         raised = BigDecimal.ZERO;
 
+                // 1.5 Count unique donors
+                Long donorCount = donationRepository.countUniqueDonorsByCampaignId(campaignId);
+                if (donorCount == null)
+                        donorCount = 0L;
+
                 // 2. Get goal amount from campaign-service
                 BigDecimal goal = BigDecimal.ZERO;
                 try {
@@ -438,7 +443,14 @@ public class DonationService {
                                 .raisedAmount(raised)
                                 .goalAmount(goal)
                                 .progressPercentage(pct)
+                                .donorCount(donorCount)
                                 .build();
+        }
+
+        @Transactional(readOnly = true)
+        public Long getUserDonationCount(Long userId) {
+                Long count = donationRepository.countByDonorId(userId);
+                return count != null ? count : 0L;
         }
 
         @Transactional(readOnly = true)

@@ -40,4 +40,10 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
     List<Donation> findByStatusOrderByCreatedAtDesc(String status);
 
     Page<Donation> findByStatusOrderByCreatedAtDesc(String status, Pageable pageable);
+
+    @Query("SELECT COUNT(DISTINCT d.donorId) FROM Donation d WHERE d.campaignId = :campaignId AND d.status = 'PAID'")
+    Long countUniqueDonorsByCampaignId(@Param("campaignId") Long campaignId);
+
+    @Query("SELECT COUNT(d) FROM Donation d WHERE d.donorId = :donorId AND d.status = 'PAID'")
+    Long countByDonorId(@Param("donorId") Long donorId);
 }

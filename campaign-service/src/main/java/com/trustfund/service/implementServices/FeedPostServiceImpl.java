@@ -27,11 +27,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
-
 @Service
 @RequiredArgsConstructor
 public class FeedPostServiceImpl implements FeedPostService {
-    private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of("DRAFT", "PUBLISHED", "REJECTED", "HIDDEN");
+    private static final java.util.Set<String> VALID_STATUSES = java.util.Set.of("DRAFT", "PUBLISHED", "REJECTED",
+            "HIDDEN");
 
     private final FeedPostRepository feedPostRepository;
     private final MediaServiceClient mediaServiceClient;
@@ -72,8 +72,10 @@ public class FeedPostServiceImpl implements FeedPostService {
         // Locked posts are hidden from public users (staff/admin can still view)
         if (Boolean.TRUE.equals(post.getIsLocked())) {
             boolean isStaffOrAdmin = false;
-            // Note: isStaffOrAdmin requires currentUserId to check roles from identity-service
-            // For simplicity, locked posts are only accessible to the post author or via admin endpoints
+            // Note: isStaffOrAdmin requires currentUserId to check roles from
+            // identity-service
+            // For simplicity, locked posts are only accessible to the post author or via
+            // admin endpoints
             if (currentUserId == null || !currentUserId.equals(post.getAuthorId())) {
                 throw new com.trustfund.exception.exceptions.ForbiddenException("Bài viết này đã bị khóa");
             }
@@ -151,6 +153,13 @@ public class FeedPostServiceImpl implements FeedPostService {
 
         return feedPostRepository.findMyPosts(currentUserId, normalizedStatus, pageable)
                 .map(post -> toResponse(post, currentUserId, null));
+    }
+
+    @Override
+    public org.springframework.data.domain.Page<FeedPostResponse> getPublicPostsByAuthorId(Long authorId,
+            org.springframework.data.domain.Pageable pageable) {
+        return feedPostRepository.findPublicPostsByAuthorId(authorId, pageable)
+                .map(post -> toResponse(post, null, null));
     }
 
     @Override
@@ -324,7 +333,7 @@ public class FeedPostServiceImpl implements FeedPostService {
     public FeedPostResponse toggleLike(Long postId, Long currentUserId) {
         FeedPost post = feedPostRepository.findById(postId)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
-        
+
         if (currentUserId == null) {
             throw new com.trustfund.exception.exceptions.UnauthorizedException("Authentication required");
         }
@@ -355,7 +364,8 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
-    public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable) {
+    public org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(
+            org.springframework.data.domain.Pageable pageable) {
         org.springframework.data.domain.Page<FeedPost> posts = feedPostRepository.findAll(pageable);
         java.util.List<Long> postIds = posts.getContent().stream()
                 .map(FeedPost::getId)
@@ -365,7 +375,8 @@ public class FeedPostServiceImpl implements FeedPostService {
         if (!postIds.isEmpty()) {
             java.util.List<Object[]> rows = flagRepository.countPendingFlagsByPostIds(postIds, "PENDING");
             for (Object[] row : rows) {
-                if (row == null || row.length < 2) continue;
+                if (row == null || row.length < 2)
+                    continue;
                 Long postId = (Long) row[0];
                 Long count = (Long) row[1];
                 flagCountByPostId.put(postId, count != null ? count.intValue() : 0);
@@ -398,7 +409,7 @@ public class FeedPostServiceImpl implements FeedPostService {
         for (FeedPost post : all) {
             int actual = feedPostCommentRepository.countByPostId(post.getId());
             if (!Integer.valueOf(actual).equals(post.getCommentCount()) ||
-                !Integer.valueOf(actual).equals(post.getReplyCount())) {
+                    !Integer.valueOf(actual).equals(post.getReplyCount())) {
                 post.setCommentCount(actual);
                 post.setReplyCount(actual);
                 feedPostRepository.save(post);
@@ -486,13 +497,14 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private FeedPostResponse toResponse(FeedPost entity, Long currentUserId, Integer flagCount) {
-        // Resolve targetName based on targetType if not explicitly set (e.g. not 'evidence')
+        // Resolve targetName based on targetType if not explicitly set (e.g. not
+        // 'evidence')
         String targetName = entity.getTargetName();
         if (entity.getTargetId() != null && entity.getTargetType() != null) {
             if (entity.getTargetType().equals("EXPENDITURE")) {
                 String planName = expenditureRepository.findById(entity.getTargetId())
-                                      .map(Expenditure::getPlan)
-                                      .orElse(null);
+                        .map(Expenditure::getPlan)
+                        .orElse(null);
                 if ("evidence".equalsIgnoreCase(targetName)) {
                     targetName = "evidence|" + (planName != null ? planName : "");
                 } else if (targetName == null || targetName.isBlank()) {
@@ -512,9 +524,14 @@ public class FeedPostServiceImpl implements FeedPostService {
             isLiked = feedPostLikeRepository.existsByPostIdAndUserId(entity.getId(), currentUserId);
         }
 
-        UserInfoClient.UserInfo authorInfo = entity.getAuthorId() != null
-                ? userInfoClient.getUserInfo(entity.getAuthorId())
-                : null;
+        UserInfoClient.UserInfo authorInfo = null;
+        if (entity.getAuthorId() != null) {
+            try {
+                authorInfo = userInfoClient.getUserInfo(entity.getAuthorId());
+            } catch (Exception e) {
+                // authorInfo remains null, handled by builders below
+            }
+        }
 
         // Fetch media attachments for this post from media-service
         java.util.List<java.util.Map<String, Object>> attachments = mediaServiceClient.getMediaByPostId(entity.getId());
@@ -575,7 +592,8 @@ public class FeedPostServiceImpl implements FeedPostService {
             boolean isOwner = currentUserId != null && currentUserId.equals(post.getAuthorId());
             boolean isPrivileged = isStaffOrAdmin(currentRole);
             if (!isOwner && !isPrivileged) {
-                throw new com.trustfund.exception.exceptions.ForbiddenException("Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
+                throw new com.trustfund.exception.exceptions.ForbiddenException(
+                        "Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
             }
         }
 
@@ -584,7 +602,8 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     @Override
-    public FeedPostRevisionResponse getRevisionById(Long postId, Long revisionId, Long currentUserId, String currentRole) {
+    public FeedPostRevisionResponse getRevisionById(Long postId, Long revisionId, Long currentUserId,
+            String currentRole) {
         FeedPost post = feedPostRepository.findById(postId)
                 .orElseThrow(() -> new com.trustfund.exception.exceptions.NotFoundException("Feed post not found"));
 
@@ -592,7 +611,8 @@ public class FeedPostServiceImpl implements FeedPostService {
             boolean isOwner = currentUserId != null && currentUserId.equals(post.getAuthorId());
             boolean isPrivileged = isStaffOrAdmin(currentRole);
             if (!isOwner && !isPrivileged) {
-                throw new com.trustfund.exception.exceptions.ForbiddenException("Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
+                throw new com.trustfund.exception.exceptions.ForbiddenException(
+                        "Lịch sử chỉnh sửa chỉ hiển thị với bài đã đăng");
             }
         }
 
@@ -602,9 +622,13 @@ public class FeedPostServiceImpl implements FeedPostService {
         return toRevisionResponse(revision);
     }
 
-    /** Returns true if the role string represents STAFF or ADMIN (handles ROLE_ prefix). */
+    /**
+     * Returns true if the role string represents STAFF or ADMIN (handles ROLE_
+     * prefix).
+     */
     private boolean isStaffOrAdmin(String role) {
-        if (role == null) return false;
+        if (role == null)
+            return false;
         String r = role.startsWith("ROLE_") ? role.substring(5) : role;
         return "STAFF".equals(r) || "ADMIN".equals(r);
     }
@@ -614,7 +638,8 @@ public class FeedPostServiceImpl implements FeedPostService {
      * Called inside update transactions.
      */
     private void snapshotRevision(FeedPost post, Long editedBy, String editNote) {
-        if (post.getId() == null) return;
+        if (post.getId() == null)
+            return;
         try {
             // Fetch media currently attached to the post
             List<Map<String, Object>> mediaList = mediaServiceClient.getMediaByPostId(post.getId());
@@ -624,7 +649,8 @@ public class FeedPostServiceImpl implements FeedPostService {
             String contentSnapshot = post.getContent();
             if (contentSnapshot != null && contentSnapshot.length() > 3000) {
                 org.slf4j.LoggerFactory.getLogger(FeedPostServiceImpl.class)
-                        .warn("Content truncated for revision snapshot of post {}: original length {}", post.getId(), contentSnapshot.length());
+                        .warn("Content truncated for revision snapshot of post {}: original length {}", post.getId(),
+                                contentSnapshot.length());
                 contentSnapshot = contentSnapshot.substring(0, 3000);
             }
 
@@ -634,10 +660,12 @@ public class FeedPostServiceImpl implements FeedPostService {
                 titleSnapshot = titleSnapshot.substring(0, 255);
             }
 
-            // Skip if this snapshot is identical to the most recent revision (no real change)
+            // Skip if this snapshot is identical to the most recent revision (no real
+            // change)
             // Exception: if editNote is provided, always save (e.g. target link changed)
             if (editNote == null || editNote.isBlank()) {
-                FeedPostRevision lastRev = feedPostRevisionRepository.findTopByPostIdOrderByRevisionNoDesc(post.getId());
+                FeedPostRevision lastRev = feedPostRevisionRepository
+                        .findTopByPostIdOrderByRevisionNoDesc(post.getId());
                 if (lastRev != null) {
                     boolean sameTitle = java.util.Objects.equals(titleSnapshot, lastRev.getTitle());
                     boolean sameContent = java.util.Objects.equals(
@@ -655,8 +683,10 @@ public class FeedPostServiceImpl implements FeedPostService {
             String editorName = null;
             try {
                 UserInfoClient.UserInfo info = userInfoClient.getUserInfo(editedBy);
-                if (info != null) editorName = info.fullName();
-            } catch (Exception ignored) {}
+                if (info != null)
+                    editorName = info.fullName();
+            } catch (Exception ignored) {
+            }
 
             FeedPostRevision rev = FeedPostRevision.builder()
                     .postId(post.getId())
@@ -679,7 +709,8 @@ public class FeedPostServiceImpl implements FeedPostService {
     }
 
     private String serializeMediaSnapshot(List<Map<String, Object>> mediaList) {
-        if (mediaList == null || mediaList.isEmpty()) return "[]";
+        if (mediaList == null || mediaList.isEmpty())
+            return "[]";
         try {
             return objectMapper.writeValueAsString(mediaList);
         } catch (JsonProcessingException e) {
@@ -689,7 +720,8 @@ public class FeedPostServiceImpl implements FeedPostService {
 
     @SuppressWarnings("unchecked")
     private List<Map<String, Object>> deserializeMediaSnapshot(String json) {
-        if (json == null || json.isBlank() || json.equals("[]")) return Collections.emptyList();
+        if (json == null || json.isBlank() || json.equals("[]"))
+            return Collections.emptyList();
         try {
             return objectMapper.readValue(json, List.class);
         } catch (Exception e) {

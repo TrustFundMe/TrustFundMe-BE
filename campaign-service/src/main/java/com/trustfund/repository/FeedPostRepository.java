@@ -43,10 +43,20 @@ public interface FeedPostRepository extends JpaRepository<FeedPost, Long> {
       ORDER BY p.createdAt ASC
       """)
   java.util.List<FeedPost> findRepliesByParentPostId(@Param("parentPostId") Long parentPostId);
+
   @org.springframework.data.jpa.repository.Modifying
   @org.springframework.transaction.annotation.Transactional
   @Query("UPDATE FeedPost p SET p.viewCount = p.viewCount + 1 WHERE p.id = :id")
   void incrementViewCount(@Param("id") Long id);
+
+  @Query("""
+      SELECT p FROM FeedPost p
+      WHERE p.authorId = :authorId
+        AND p.status = 'PUBLISHED'
+        AND p.visibility = 'PUBLIC'
+      ORDER BY p.createdAt DESC
+      """)
+  Page<FeedPost> findPublicPostsByAuthorId(@Param("authorId") Long authorId, Pageable pageable);
 
   List<FeedPost> findByTargetIdAndTargetTypeOrderByCreatedAtDesc(Long targetId, String targetType);
 }
