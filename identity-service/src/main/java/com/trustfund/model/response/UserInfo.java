@@ -21,6 +21,8 @@ public class UserInfo {
     private User.Role role;
     @JsonProperty("verified")
     private Boolean verified;
+    @JsonProperty("kycVerified")
+    private Boolean kycVerified;
     @JsonProperty("isActive")
     private Boolean isActive;
     @JsonProperty("banReason")
@@ -38,6 +40,7 @@ public class UserInfo {
                 .avatarUrl(user.getAvatarUrl())
                 .role(user.getRole())
                 .verified(user.getVerified())
+                .kycVerified(user.getKycVerified())
                 .isActive(user.getIsActive())
                 .banReason(user.getBanReason())
                 .trustScore(user.getTrustScore())

@@ -56,6 +56,23 @@ public class UserKYC {
     @Column(name = "rejection_reason")
     private String rejectionReason;
 
+    // ── OCR-extracted fields ──
+    /** Họ tên đầy đủ trên CCCD/hộ chiếu */
+    @Column(name = "full_name_ocr", length = 500)
+    private String fullNameOcr;
+
+    /** Địa chỉ đăng ký thường trú (quê quán) trên CCCD */
+    @Column(name = "address", length = 1000)
+    private String address;
+
+    /** Nơi làm việc hiện tại */
+    @Column(name = "workplace", length = 500)
+    private String workplace;
+
+    /** Mã số thuế cá nhân */
+    @Column(name = "tax_id", length = 50)
+    private String taxId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

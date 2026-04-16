@@ -45,7 +45,8 @@ public class SecurityConfig {
                                                                 "/webjars/**")
                                                 .permitAll()
                                                 .requestMatchers("/actuator/**").permitAll()
-                                                .requestMatchers("/api/notifications/event").permitAll() // Cho phép các
+                                                .requestMatchers("/api/notifications/event").permitAll()
+                                                .requestMatchers("/api/emails/**").permitAll()
                                                                                                          // service khác
                                                                                                          // gửi event
                                                 // Require Auth for other notification endpoints

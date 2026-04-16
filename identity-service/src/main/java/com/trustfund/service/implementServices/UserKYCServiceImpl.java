@@ -42,6 +42,10 @@ public class UserKYCServiceImpl implements UserKYCService {
 
         UserKYC userKYC = new UserKYC();
         userKYC.setUser(user);
+        userKYC.setFullNameOcr(request.getFullName());
+        userKYC.setAddress(request.getAddress());
+        userKYC.setWorkplace(request.getWorkplace());
+        userKYC.setTaxId(request.getTaxId());
         userKYC.setIdType(request.getIdType());
         userKYC.setIdNumber(request.getIdNumber());
         userKYC.setIssueDate(request.getIssueDate());
@@ -50,17 +54,12 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
-        userKYC.setStatus(KYCStatus.APPROVED);
+        userKYC.setStatus(KYCStatus.PENDING);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
 
-        if (User.Role.USER.equals(user.getRole())) {
-            user.setRole(User.Role.FUND_OWNER);
-            userRepository.save(user);
-        }
-
-        // Send notification for auto-approval
-        sendKYCNotification(savedKYC, KYCStatus.APPROVED, null);
+        // Send notification for submission
+        sendKYCNotification(savedKYC, KYCStatus.PENDING, null);
 
         return mapToResponse(savedKYC);
     }
@@ -97,6 +96,10 @@ public class UserKYCServiceImpl implements UserKYCService {
         }
 
         userKYC.setIdType(request.getIdType());
+        userKYC.setFullNameOcr(request.getFullName());
+        userKYC.setAddress(request.getAddress());
+        userKYC.setWorkplace(request.getWorkplace());
+        userKYC.setTaxId(request.getTaxId());
         userKYC.setIdNumber(request.getIdNumber());
         userKYC.setIssueDate(request.getIssueDate());
         userKYC.setExpiryDate(request.getExpiryDate());
@@ -104,20 +107,13 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
-        userKYC.setStatus(KYCStatus.APPROVED); // Auto-approve when STAFF resubmits
+        userKYC.setStatus(KYCStatus.PENDING);
         userKYC.setRejectionReason(null);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
 
-        // Then promote to FUND_OWNER after KYC is updated
-        User user = userKYC.getUser();
-        if (User.Role.USER.equals(user.getRole())) {
-            user.setRole(User.Role.FUND_OWNER);
-            userRepository.save(user);
-        }
-
-        // Send notification for auto-approval
-        sendKYCNotification(savedKYC, KYCStatus.APPROVED, null);
+        // Send notification for resubmission
+        sendKYCNotification(savedKYC, KYCStatus.PENDING, null);
 
         return mapToResponse(savedKYC);
     }
@@ -151,7 +147,7 @@ public class UserKYCServiceImpl implements UserKYCService {
 
         if (status == KYCStatus.APPROVED) {
             User user = userKYC.getUser();
-            user.setVerified(true);
+            user.setKycVerified(true);
 
             // Promote to FUND_OWNER for users with role USER
             if (User.Role.USER.equals(user.getRole())) {
@@ -187,9 +183,15 @@ public class UserKYCServiceImpl implements UserKYCService {
     private void sendKYCNotification(UserKYC kyc, KYCStatus status, String rejectionReason) {
         try {
             boolean isApproved = status == KYCStatus.APPROVED;
-            String title = isApproved ? "Xác thực danh tính (KYC) thành công" : "Xác thực danh tính (KYC) bị từ chối";
+            boolean isPending = status == KYCStatus.PENDING;
+            
+            String title = isApproved ? "Xác thực danh tính (KYC) thành công" 
+                         : isPending ? "Đã nhận hồ sơ xác thực danh tính (KYC)"
+                         : "Xác thực danh tính (KYC) bị từ chối";
+                         
             String content = isApproved
                     ? "Chúc mừng! Hồ sơ KYC của bạn đã được duyệt thành công. Bây giờ bạn có thể tạo chiến dịch gây quỹ."
+                    : isPending ? "Hồ sơ KYC của bạn đã được gửi và đang chờ nhân viên kiểm duyệt. Chúng tôi sẽ thông báo kết quả cho bạn sớm nhất."
                     : "Rất tiếc, hồ sơ KYC của bạn đã bị từ chối. Lý do: " + rejectionReason;
 
             java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
@@ -218,7 +220,10 @@ public class UserKYCServiceImpl implements UserKYCService {
         return KYCResponse.builder()
                 .id(kyc.getId())
                 .userId(kyc.getUser().getId())
-                .fullName(kyc.getUser().getFullName())
+                .fullName(kyc.getFullNameOcr())
+                .address(kyc.getAddress())
+                .workplace(kyc.getWorkplace())
+                .taxId(kyc.getTaxId())
                 .email(kyc.getUser().getEmail())
                 .phoneNumber(kyc.getUser().getPhoneNumber())
                 .idType(kyc.getIdType())

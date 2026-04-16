@@ -47,6 +47,10 @@ public class User {
     @Builder.Default
     private Boolean verified = false;
 
+    @Column(name = "kyc_verified", nullable = false)
+    @Builder.Default
+    private Boolean kycVerified = false;
+
     @Column(name = "ban_reason", length = 1000)
     private String banReason;
 
