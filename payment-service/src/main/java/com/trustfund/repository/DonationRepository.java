@@ -46,4 +46,7 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
 
     @Query("SELECT COUNT(d) FROM Donation d WHERE d.donorId = :donorId AND d.status = 'PAID'")
     Long countByDonorId(@Param("donorId") Long donorId);
+
+    @Query("SELECT COALESCE(SUM(d.donationAmount), 0) FROM Donation d WHERE d.campaignId IN :campaignIds AND d.status = 'PAID'")
+    BigDecimal sumDonationAmountByCampaignIds(@Param("campaignIds") List<Long> campaignIds);
 }

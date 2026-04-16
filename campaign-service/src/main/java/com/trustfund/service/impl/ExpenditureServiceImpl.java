@@ -912,4 +912,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         BigDecimal sum = transactionRepository.sumCompletedPayoutsByFundOwnerId(fundOwnerId);
         return sum != null ? sum : BigDecimal.ZERO;
     }
+
+    @Override
+    public List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId) {
+        List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(fundOwnerId);
+        if (campaignIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return expenditureRepository.findByCampaignIdInOrderByCreatedAtDesc(campaignIds).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
 }

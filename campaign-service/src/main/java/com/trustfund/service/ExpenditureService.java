@@ -58,4 +58,6 @@ public interface ExpenditureService {
         List<ExpenditureResponse> getExpendituresByStatus(String status);
 
         BigDecimal getTotalDisbursedByFundOwner(Long fundOwnerId);
+
+        List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId);
 }

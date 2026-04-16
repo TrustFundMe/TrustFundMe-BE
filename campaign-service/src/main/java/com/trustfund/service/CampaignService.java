@@ -39,4 +39,6 @@ public interface CampaignService {
     void updateBalance(Long id, java.math.BigDecimal amount);
 
     long getCampaignCountByFundOwner(Long fundOwnerId);
+
+    java.util.List<Long> getCampaignIdsByFundOwner(Long fundOwnerId);
 }

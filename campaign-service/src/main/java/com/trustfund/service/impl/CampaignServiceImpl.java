@@ -403,4 +403,9 @@ public class CampaignServiceImpl implements CampaignService {
     public long getCampaignCountByFundOwner(Long fundOwnerId) {
         return campaignRepository.countByFundOwnerId(fundOwnerId);
     }
+
+    @Override
+    public java.util.List<Long> getCampaignIdsByFundOwner(Long fundOwnerId) {
+        return campaignRepository.findIdsByFundOwnerId(fundOwnerId);
+    }
 }

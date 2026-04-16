@@ -9,6 +9,8 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.trustfund.model.response.ExpenditureTransactionResponse;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

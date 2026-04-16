@@ -846,4 +846,12 @@ public class DonationService {
                 return donationItemRepository.countByExpenditureItemIdAndDonationStatusIn(
                                 expenditureItemId, java.util.Arrays.asList("PENDING", "PAID")) > 0;
         }
+
+        @Transactional(readOnly = true)
+        public java.math.BigDecimal getTotalRaisedByCampaignIds(java.util.List<Long> campaignIds) {
+                if (campaignIds == null || campaignIds.isEmpty()) {
+                        return java.math.BigDecimal.ZERO;
+                }
+                return donationRepository.sumDonationAmountByCampaignIds(campaignIds);
+        }
 }
