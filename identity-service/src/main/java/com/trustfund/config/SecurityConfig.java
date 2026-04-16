@@ -60,6 +60,7 @@ public class SecurityConfig {
                         .permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/internal/**").permitAll()
+                        .requestMatchers("/api/emails/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/kyc/**").hasAnyRole("ADMIN", "STAFF")
                         // Bank accounts: only admin-only sub-paths are restricted; user CRUD is handled

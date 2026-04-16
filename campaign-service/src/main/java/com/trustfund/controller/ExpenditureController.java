@@ -215,4 +215,10 @@ public class ExpenditureController {
     public ResponseEntity<List<ExpenditureResponse>> getByStatus(@PathVariable("status") String status) {
         return ResponseEntity.ok(expenditureService.getExpendituresByStatus(status));
     }
+
+    @GetMapping("/owner/{ownerId}")
+    @Operation(summary = "Lấy danh sách chi tiêu của chủ sở hữu", description = "Lấy tất cả các khoản chi tiêu thuộc về các chiến dịch do người dùng này sở hữu.")
+    public ResponseEntity<List<ExpenditureResponse>> getByOwnerId(@PathVariable("ownerId") Long ownerId) {
+        return ResponseEntity.ok(expenditureService.getExpendituresByFundOwner(ownerId));
+    }
 }

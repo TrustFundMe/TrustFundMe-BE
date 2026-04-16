@@ -215,4 +215,20 @@ public class PaymentController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+    @GetMapping("/user/{userId}/donation-count")
+    public ResponseEntity<Long> getUserDonationCount(@PathVariable("userId") Long userId) {
+        return ResponseEntity.ok(donationService.getUserDonationCount(userId));
+    }
+
+    @GetMapping("/campaigns/total-raised")
+    public ResponseEntity<java.math.BigDecimal> getTotalRaisedByCampaignIds(
+            @RequestParam("campaignIds") String campaignIdsStr) {
+        List<Long> ids = java.util.Arrays.stream(campaignIdsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(donationService.getTotalRaisedByCampaignIds(ids));
+    }
 }

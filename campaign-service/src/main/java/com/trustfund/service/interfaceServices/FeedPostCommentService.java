@@ -16,4 +16,6 @@ public interface FeedPostCommentService {
     void delete(Long commentId, Long currentUserId);
 
     FeedPostCommentResponse toggleLike(Long commentId, Long currentUserId);
+
+    Page<FeedPostCommentResponse> getByUserId(Long userId, Pageable pageable);
 }

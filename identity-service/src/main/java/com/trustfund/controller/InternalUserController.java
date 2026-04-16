@@ -4,8 +4,10 @@ import com.trustfund.model.BankAccount;
 import com.trustfund.model.User;
 import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.model.response.UserVerificationStatusResponse;
+import com.trustfund.model.response.UserKYCResponse;
 import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
+import com.trustfund.repository.UserKYCRepository;
 import com.trustfund.service.interfaceServices.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,8 +20,6 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-
-import com.trustfund.repository.UserKYCRepository; // Added import
 
 @RestController
 @RequestMapping("/api/internal/users")
@@ -96,6 +96,29 @@ public class InternalUserController {
     public ResponseEntity<String> getUserFullName(@PathVariable("id") Long id) {
         return userRepository.findById(id)
                 .map(u -> ResponseEntity.ok(u.getFullName()))
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/{id}/kyc")
+    @Operation(summary = "Lấy KYC đầy đủ của user (dùng bởi campaign-service)")
+    public ResponseEntity<UserKYCResponse> getUserKYC(@PathVariable("id") Long id) {
+        return userKYCRepository.findByUserId(id)
+                .map(kyc -> ResponseEntity.ok(UserKYCResponse.builder()
+                        .id(kyc.getId())
+                        .userId(kyc.getUser().getId())
+                        .fullName(kyc.getFullNameOcr())
+                        .address(kyc.getAddress())
+                        .workplace(kyc.getWorkplace())
+                        .taxId(kyc.getTaxId())
+                        .email(kyc.getUser().getEmail())
+                        .phoneNumber(kyc.getUser().getPhoneNumber())
+                        .idType(kyc.getIdType())
+                        .idNumber(kyc.getIdNumber())
+                        .issueDate(kyc.getIssueDate())
+                        .expiryDate(kyc.getExpiryDate())
+                        .issuePlace(kyc.getIssuePlace())
+                        .status(kyc.getStatus().name())
+                        .build()))
                 .orElse(ResponseEntity.notFound().build());
     }
 

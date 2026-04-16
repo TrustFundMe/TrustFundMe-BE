@@ -13,6 +13,22 @@ import java.time.LocalDate;
 @NoArgsConstructor
 @AllArgsConstructor
 public class SubmitKYCRequest {
+    // ── OCR-extracted fields (from CCCD/passport scan) ──
+    /** Họ tên đầy đủ trên CCCD/hộ chiếu */
+    @NotBlank(message = "Họ tên không được để trống")
+    private String fullName;
+
+    /** Địa chỉ đăng ký thường trú trên CCCD/hộ chiếu */
+    @NotBlank(message = "Địa chỉ không được để trống")
+    private String address;
+
+    /** Nơi làm việc hiện tại (optional) */
+    private String workplace;
+
+    /** Mã số thuế cá nhân (nếu có) */
+    private String taxId;
+
+    // ── ID document fields ──
     @NotBlank(message = "Loại định danh không được để trống")
     private String idType;
 

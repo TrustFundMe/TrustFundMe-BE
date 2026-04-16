@@ -2,8 +2,10 @@ package com.trustfund.controller;
 
 import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
-import com.trustfund.model.response.CampaignResponse; // Added import
+import com.trustfund.model.response.CampaignResponse;
+import com.trustfund.model.response.CampaignStatisticsResponse;
 import com.trustfund.service.CampaignService;
+import com.trustfund.service.CampaignStatisticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -24,6 +26,7 @@ import java.util.List;
 public class CampaignController {
 
     private final CampaignService campaignService;
+    private final CampaignStatisticsService campaignStatisticsService;
 
     @GetMapping
     @Operation(summary = "Get all campaigns (paginated)", description = "Retrieve a paginated list of all campaigns (Public - no authentication required)")
@@ -126,5 +129,19 @@ public class CampaignController {
             org.springframework.security.core.Authentication authentication) {
         Long staffId = Long.parseLong(authentication.getName());
         return ResponseEntity.ok(campaignService.closeCampaign(id, staffId));
+    }
+
+    @GetMapping("/fund-owner/{fundOwnerId}/count")
+    @Operation(summary = "Lấy tổng số chiến dịch của chủ sở hữu", description = "Trả về một số nguyên đơn giản")
+    public ResponseEntity<Long> getCampaignCount(@PathVariable("fundOwnerId") Long fundOwnerId) {
+        return ResponseEntity.ok(campaignService.getCampaignCountByFundOwner(fundOwnerId));
+    }
+
+    @GetMapping("/fund-owner/{fundOwnerId}/statistics")
+    @Operation(summary = "Lấy thống kê tổng nhận, tổng chi, số dư và danh sách chi tiêu của chủ sở hữu",
+            description = "Trả về tổng nhận, tổng chi, số dư hiện tại cùng danh sách chi tiêu của các chiến dịch thuộc về fundOwnerId")
+    public ResponseEntity<CampaignStatisticsResponse> getStatistics(
+            @PathVariable("fundOwnerId") Long fundOwnerId) {
+        return ResponseEntity.ok(campaignStatisticsService.getStatisticsByFundOwner(fundOwnerId));
     }
 }

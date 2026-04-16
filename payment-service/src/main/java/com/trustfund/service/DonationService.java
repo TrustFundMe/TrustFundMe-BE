@@ -385,6 +385,11 @@ public class DonationService {
                 if (raised == null)
                         raised = BigDecimal.ZERO;
 
+                // 1.5 Count unique donors
+                Long donorCount = donationRepository.countUniqueDonorsByCampaignId(campaignId);
+                if (donorCount == null)
+                        donorCount = 0L;
+
                 // 2. Get goal amount from campaign-service
                 BigDecimal goal = BigDecimal.ZERO;
                 try {
@@ -438,7 +443,14 @@ public class DonationService {
                                 .raisedAmount(raised)
                                 .goalAmount(goal)
                                 .progressPercentage(pct)
+                                .donorCount(donorCount)
                                 .build();
+        }
+
+        @Transactional(readOnly = true)
+        public Long getUserDonationCount(Long userId) {
+                Long count = donationRepository.countByDonorId(userId);
+                return count != null ? count : 0L;
         }
 
         @Transactional(readOnly = true)
@@ -897,5 +909,13 @@ public class DonationService {
         public boolean existsDonationItem(Long expenditureItemId) {
                 return donationItemRepository.countByExpenditureItemIdAndDonationStatusIn(
                                 expenditureItemId, java.util.Arrays.asList("PENDING", "PAID")) > 0;
+        }
+
+        @Transactional(readOnly = true)
+        public java.math.BigDecimal getTotalRaisedByCampaignIds(java.util.List<Long> campaignIds) {
+                if (campaignIds == null || campaignIds.isEmpty()) {
+                        return java.math.BigDecimal.ZERO;
+                }
+                return donationRepository.sumDonationAmountByCampaignIds(campaignIds);
         }
 }
