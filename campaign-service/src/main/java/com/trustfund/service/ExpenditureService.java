@@ -29,7 +29,7 @@ public interface ExpenditureService {
         ExpenditureResponse updateDisbursementProof(Long id,
                         com.trustfund.model.request.UpdateDisbursementProofRequest request);
 
-        ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt);
+        ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt, java.math.BigDecimal withdrawAmount);
 
         List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
 

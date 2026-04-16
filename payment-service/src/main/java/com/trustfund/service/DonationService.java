@@ -764,6 +764,70 @@ public class DonationService {
                 return result;
         }
 
+        @Transactional(readOnly = true)
+        public List<RecentDonorResponse> getDonorsByItem(Long expenditureItemId) {
+                log.info("👥 Getting donors for expenditure item ID: {}", expenditureItemId);
+                
+                List<DonationItem> donationItems = donationItemRepository
+                                .findByExpenditureItemIdInAndDonationStatusJpql(List.of(expenditureItemId), "PAID");
+                
+                List<Donation> donations = donationItems.stream()
+                                .map(DonationItem::getDonation)
+                                .filter(Objects::nonNull)
+                                .distinct()
+                                .sorted(java.util.Comparator.comparing(Donation::getCreatedAt).reversed())
+                                .collect(Collectors.toList());
+
+                return donations.stream().map(d -> {
+                        boolean anon = d.getDonorId() == null || Boolean.TRUE.equals(d.getIsAnonymous());
+                        String name = "Người ủng hộ ẩn danh";
+                        String avatar = null;
+
+                        if (!anon && d.getDonorId() != null) {
+                                try {
+                                        String userUrl = identityServiceUrl + "/api/internal/users/" + d.getDonorId();
+                                        @SuppressWarnings("unchecked")
+                                        Map<String, Object> userData = restTemplate.getForObject(userUrl, Map.class);
+                                        if (userData != null) {
+                                                if (userData.get("fullName") != null) {
+                                                        name = userData.get("fullName").toString();
+                                                }
+                                                if (userData.get("avatarUrl") != null) {
+                                                        avatar = userData.get("avatarUrl").toString();
+                                                }
+                                        }
+                                } catch (Exception e) {
+                                        if (!anon) {
+                                                name = "Người ủng hộ";
+                                        }
+                                }
+                        }
+
+                        // Calculate the exact amount donated for this item in this donation
+                        BigDecimal itemAmount = donationItems.stream()
+                                .filter(di -> di.getDonation().getId().equals(d.getId()))
+                                .map(di -> di.getAmount() != null ? di.getAmount() : BigDecimal.ZERO)
+                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+                        // Calculate the quantity donated for this item in this donation
+                        int itemQuantity = donationItems.stream()
+                                .filter(di -> di.getDonation().getId().equals(d.getId()))
+                                .mapToInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
+                                .sum();
+
+                        return RecentDonorResponse.builder()
+                                        .donationId(d.getId())
+                                        .donorId(anon ? null : d.getDonorId())
+                                        .donorName(name)
+                                        .donorAvatar(avatar)
+                                        .amount(itemAmount.compareTo(BigDecimal.ZERO) > 0 ? itemAmount : d.getTotalAmount())
+                                        .quantity(itemQuantity > 0 ? itemQuantity : 1)
+                                        .createdAt(d.getCreatedAt())
+                                        .anonymous(anon)
+                                        .build();
+                }).collect(Collectors.toList());
+        }
+
         /**
          * Đồng bộ balance cho chiến dịch từ 1 donation cụ thể (Idempotent).
          * Dùng khi webhook không hoạt động (local dev) để FE gọi chủ động.
