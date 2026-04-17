@@ -101,4 +101,12 @@ public class InternalTransactionController {
     public ResponseEntity<Page<InternalTransaction>> getHistoryPaginated(Pageable pageable) {
         return ResponseEntity.ok(transactionService.getGeneralFundHistoryPaginated(pageable));
     }
+
+    @GetMapping("/campaign/{campaignId}/received")
+    @Operation(summary = "Lấy giao dịch nội bộ APPROVED nhận vào chiến dịch")
+    public ResponseEntity<List<InternalTransaction>> getApprovedReceivedByCampaign(
+            @PathVariable("campaignId") Long campaignId) {
+        List<InternalTransaction> txs = transactionService.getApprovedReceivedByCampaign(campaignId);
+        return ResponseEntity.ok(txs);
+    }
 }

@@ -13,6 +13,7 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -25,10 +26,12 @@ import java.time.LocalDateTime;
 public class SecurityConfig {
 
         private final JwtAuthenticationFilter jwtAuthenticationFilter;
+        private final CorsConfigurationSource corsConfigurationSource;
 
         @Bean
         public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
                 http
+                                .cors(cors -> cors.configurationSource(corsConfigurationSource))
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers(
@@ -52,6 +55,7 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/campaigns/{id}/transactions-history").permitAll()
                                                 .requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance").permitAll()
                                                 .requestMatchers("/api/campaigns/**").authenticated()
                                                 // Fundraising Goals endpoints
@@ -66,7 +70,10 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/{id}").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/expenditures/transactions/campaign/**").permitAll()
                                                 .requestMatchers("/api/expenditures/items/**").permitAll()
+                                                // Internal transactions - public read for campaign owners
+                                                .requestMatchers(HttpMethod.GET, "/api/internal-transactions/campaign/**").permitAll()
                                                 // Feed posts endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/feed-posts/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()

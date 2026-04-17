@@ -918,4 +918,21 @@ public class DonationService {
                 }
                 return donationRepository.sumDonationAmountByCampaignIds(campaignIds);
         }
+
+        @Transactional(readOnly = true)
+        public List<Map<String, Object>> getPaidDonationsByCampaign(Long campaignId) {
+                List<Donation> donations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(campaignId, "PAID");
+                return donations.stream().map(d -> {
+                        Map<String, Object> map = new HashMap<>();
+                        map.put("id", d.getId());
+                        map.put("donorId", d.getDonorId());
+                        map.put("campaignId", d.getCampaignId());
+                        map.put("donationAmount", d.getDonationAmount());
+                        map.put("totalAmount", d.getTotalAmount());
+                        map.put("status", d.getStatus());
+                        map.put("anonymous", Boolean.TRUE.equals(d.getIsAnonymous()));
+                        map.put("createdAt", d.getCreatedAt() != null ? d.getCreatedAt().toString() : null);
+                        return map;
+                }).collect(Collectors.toList());
+        }
 }

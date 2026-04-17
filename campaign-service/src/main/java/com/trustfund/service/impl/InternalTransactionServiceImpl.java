@@ -214,4 +214,10 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
                 tx.setEvidenceImageId(evidenceImageId);
                 return transactionRepository.save(tx);
         }
+
+        @Override
+        public List<InternalTransaction> getApprovedReceivedByCampaign(Long campaignId) {
+                return transactionRepository.findByToCampaignIdAndStatusOrderByCreatedAtDesc(
+                                campaignId, InternalTransactionStatus.APPROVED);
+        }
 }

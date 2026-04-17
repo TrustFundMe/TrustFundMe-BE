@@ -30,4 +30,6 @@ public interface InternalTransactionService {
     Page<InternalTransaction> getGeneralFundHistoryPaginated(Pageable pageable);
 
     InternalTransaction updateEvidence(Long id, Long evidenceImageId);
+
+    List<InternalTransaction> getApprovedReceivedByCampaign(Long campaignId);
 }

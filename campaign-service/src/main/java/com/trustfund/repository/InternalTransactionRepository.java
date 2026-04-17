@@ -23,6 +23,9 @@ public interface InternalTransactionRepository extends JpaRepository<InternalTra
         Page<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId,
                         Pageable pageable);
 
+        List<InternalTransaction> findByToCampaignIdAndStatusOrderByCreatedAtDesc(
+                        Long toCampaignId, InternalTransactionStatus status);
+
         @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId = :campaignId AND t.type = :type AND t.status = :status")
         BigDecimal sumAmountByFromCampaignIdAndTypeAndStatus(
                         @Param("campaignId") Long campaignId,
