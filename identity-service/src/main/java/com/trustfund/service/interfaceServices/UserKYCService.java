@@ -20,4 +20,6 @@ public interface UserKYCService {
             org.springframework.data.domain.Pageable pageable);
 
     KYCResponse updateKYCStatus(Long kycId, KYCStatus status, String rejectionReason);
+
+    java.util.Map<String, Long> getKYCStats();
 }

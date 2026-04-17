@@ -27,6 +27,8 @@ public interface ExpenditureService {
 
         ExpenditureResponse requestWithdrawal(Long id, LocalDateTime evidenceDueAt);
 
+        ExpenditureResponse requestWithdrawal(Long id, LocalDateTime evidenceDueAt, BigDecimal withdrawAmount);
+
         List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
 
         ExpenditureResponse updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request);

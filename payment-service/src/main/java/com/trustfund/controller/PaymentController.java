@@ -206,6 +206,16 @@ public class PaymentController {
         return ResponseEntity.ok(donationService.existsDonationItem(expenditureItemId));
     }
 
+    @GetMapping("/expenditure-item/{itemId}/donors")
+    public ResponseEntity<?> getDonorsByItem(@PathVariable("itemId") Long itemId) {
+        try {
+            return ResponseEntity.ok(donationService.getDonorsByItem(itemId));
+        } catch (Exception e) {
+            log.error("Failed to fetch donors for item {}", itemId, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/user/{userId}/donation-count")
     public ResponseEntity<Long> getUserDonationCount(@PathVariable("userId") Long userId) {
         return ResponseEntity.ok(donationService.getUserDonationCount(userId));

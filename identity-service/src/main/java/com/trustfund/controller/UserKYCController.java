@@ -104,4 +104,11 @@ public class UserKYCController {
             @Valid @RequestBody UpdateKYCStatusRequest request) {
         return ResponseEntity.ok(userKYCService.updateKYCStatus(id, request.getStatus(), request.getRejectionReason()));
     }
+
+    @GetMapping("/stats")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @Operation(summary = "Get KYC statistics", description = "Get counts of KYC requests by status")
+    public ResponseEntity<java.util.Map<String, Long>> getKYCStats() {
+        return ResponseEntity.ok(userKYCService.getKYCStats());
+    }
 }

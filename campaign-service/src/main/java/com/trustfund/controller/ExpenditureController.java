@@ -88,8 +88,9 @@ public class ExpenditureController {
     @Operation(summary = "Yêu cầu rút tiền", description = "Đánh dấu yêu cầu rút tiền cho khoản chi. Nếu là quỹ mục tiêu sẽ đóng luôn đợt chi này.")
     public ResponseEntity<ExpenditureResponse> requestWithdrawal(
             @PathVariable("id") Long id,
-            @RequestParam(name = "evidenceDueAt", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt) {
-        return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt));
+            @RequestParam(name = "evidenceDueAt", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt,
+            @RequestParam(name = "withdrawAmount", required = false) java.math.BigDecimal withdrawAmount) {
+        return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt, withdrawAmount));
     }
 
     @GetMapping("/{id}/items")

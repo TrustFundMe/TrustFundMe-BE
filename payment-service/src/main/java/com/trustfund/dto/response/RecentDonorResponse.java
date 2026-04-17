@@ -17,6 +17,7 @@ public class RecentDonorResponse {
     private String donorName;
     private String donorAvatar;
     private BigDecimal amount;
+    private Integer quantity;
     private LocalDateTime createdAt;
     private boolean anonymous;
 }
