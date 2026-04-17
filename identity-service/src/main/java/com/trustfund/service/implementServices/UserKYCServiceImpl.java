@@ -216,6 +216,16 @@ public class UserKYCServiceImpl implements UserKYCService {
         }
     }
 
+    @Override
+    public java.util.Map<String, Long> getKYCStats() {
+        java.util.Map<String, Long> stats = new java.util.HashMap<>();
+        stats.put("total", userRepository.count());
+        stats.put("approved", userKYCRepository.countByStatus(KYCStatus.APPROVED));
+        stats.put("pending", userKYCRepository.countByStatus(KYCStatus.PENDING));
+        stats.put("rejected", userKYCRepository.countByStatus(KYCStatus.REJECTED));
+        return stats;
+    }
+
     private KYCResponse mapToResponse(UserKYC kyc) {
         return KYCResponse.builder()
                 .id(kyc.getId())
