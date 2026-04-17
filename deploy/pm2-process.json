@@ -1,0 +1,81 @@
+{
+    "apps": [
+        {
+            "name": "discovery-server",
+            "cwd": "/root/discovery-server",
+            "script": "java",
+            "args": "-jar target/discovery-server.jar",
+            "watch": false,
+            "env": {
+                "SERVER_PORT": "8761"
+            }
+        },
+        {
+            "name": "identity-service",
+            "cwd": "/root/identity-service",
+            "script": "java",
+            "args": "-jar target/identity-service.jar",
+            "env_file": "/root/.env",
+            "watch": false,
+            "restart_delay": 5000
+        },
+        {
+            "name": "campaign-service",
+            "cwd": "/root/campaign-service",
+            "script": "java",
+            "args": "-jar target/campaign-service.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "media-service",
+            "cwd": "/root/media-service",
+            "script": "java",
+            "args": "-jar target/media-service.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "chat-service",
+            "cwd": "/root/chat-service",
+            "script": "java",
+            "args": "-jar target/chat-service.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "payment-service",
+            "cwd": "/root/payment-service",
+            "script": "java",
+            "args": "-jar target/payment-service.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "notification-service",
+            "cwd": "/root/notification-service",
+            "script": "java",
+            "args": "-jar target/notification-service.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "api-gateway",
+            "cwd": "/root/api-gateway",
+            "script": "java",
+            "args": "-jar target/api-gateway.jar",
+            "env_file": "/root/.env",
+            "watch": false
+        },
+        {
+            "name": "trustfundme-ai",
+            "cwd": "/root/TrustFundMe-AI",
+            "script": "index.js",
+            "watch": false,
+            "env_file": ".env"
+        }
+    ],
+    "env": {
+        "EUREKA_HOSTNAME": "116.118.9.149"
+    }
+}
