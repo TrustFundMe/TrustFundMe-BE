@@ -525,6 +525,12 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
+    public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt) {
+        return requestWithdrawal(id, evidenceDueAt, null);
+    }
+
+    @Override
+    @Transactional
     public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt, BigDecimal withdrawAmount) {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
