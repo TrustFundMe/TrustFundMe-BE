@@ -15,4 +15,5 @@ public class CampaignProgressResponse {
     private BigDecimal raisedAmount;
     private BigDecimal goalAmount;
     private int progressPercentage;
+    private Long donorCount;
 }

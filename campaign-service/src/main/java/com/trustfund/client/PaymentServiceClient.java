@@ -87,12 +87,24 @@ public class PaymentServiceClient {
             return Boolean.TRUE.equals(exists);
         } catch (Exception e) {
             log.error("Failed to check payment existence for item {}: {}", itemId, e.getMessage());
-            // Safe fallback: if we can't verify, assume it exists to avoid accidental
-            // release?
-            // Actually the user said "trả về 0" if not created.
-            // If API fails, maybe we better wait?
-            // But usually we return false if we can't confirm.
             return false;
+        }
+    }
+
+    public BigDecimal getTotalRaisedByCampaignIds(List<Long> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+        String idsParam = campaignIds.stream()
+                .map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
+        String url = paymentServiceUrl + "/api/payments/campaigns/total-raised?campaignIds=" + idsParam;
+        try {
+            log.info("Calling payment service for total raised: {}", url);
+            return restTemplate.getForObject(url, BigDecimal.class);
+        } catch (Exception e) {
+            log.error("Failed to fetch total raised from payment service: {}", e.getMessage());
+            return BigDecimal.ZERO;
         }
     }
 }

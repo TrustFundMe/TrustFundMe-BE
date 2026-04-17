@@ -205,4 +205,30 @@ public class PaymentController {
     public ResponseEntity<Boolean> existsDonationItem(@PathVariable("expenditureItemId") Long expenditureItemId) {
         return ResponseEntity.ok(donationService.existsDonationItem(expenditureItemId));
     }
+
+    @GetMapping("/expenditure-item/{itemId}/donors")
+    public ResponseEntity<?> getDonorsByItem(@PathVariable("itemId") Long itemId) {
+        try {
+            return ResponseEntity.ok(donationService.getDonorsByItem(itemId));
+        } catch (Exception e) {
+            log.error("Failed to fetch donors for item {}", itemId, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @GetMapping("/user/{userId}/donation-count")
+    public ResponseEntity<Long> getUserDonationCount(@PathVariable("userId") Long userId) {
+        return ResponseEntity.ok(donationService.getUserDonationCount(userId));
+    }
+
+    @GetMapping("/campaigns/total-raised")
+    public ResponseEntity<java.math.BigDecimal> getTotalRaisedByCampaignIds(
+            @RequestParam("campaignIds") String campaignIdsStr) {
+        List<Long> ids = java.util.Arrays.stream(campaignIdsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+        return ResponseEntity.ok(donationService.getTotalRaisedByCampaignIds(ids));
+    }
 }

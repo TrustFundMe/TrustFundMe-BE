@@ -13,9 +13,14 @@ public interface FeedPostService {
 
     FeedPostResponse getById(Long id, Long currentUserId, String ipAddress);
 
-    org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FeedPostResponse> getActiveFeedPosts(Long currentUserId,
+            org.springframework.data.domain.Pageable pageable);
 
-    org.springframework.data.domain.Page<FeedPostResponse> getMyFeedPosts(Long currentUserId, String status, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FeedPostResponse> getMyFeedPosts(Long currentUserId, String status,
+            org.springframework.data.domain.Pageable pageable);
+
+    org.springframework.data.domain.Page<FeedPostResponse> getPublicPostsByAuthorId(Long authorId,
+            org.springframework.data.domain.Pageable pageable);
 
     FeedPostResponse updateStatus(Long id, Long currentUserId, String status);
 
@@ -30,7 +35,8 @@ public interface FeedPostService {
     FeedPostResponse toggleLike(Long postId, Long currentUserId);
 
     // Admin APIs
-    org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FeedPostResponse> getAllFeedPosts(
+            org.springframework.data.domain.Pageable pageable);
 
     void deleteByAdmin(Long id);
 
@@ -53,7 +59,8 @@ public interface FeedPostService {
     List<FeedPostResponse> getByTarget(Long targetId, String targetType);
 
     // Revision History APIs
-    org.springframework.data.domain.Page<FeedPostRevisionResponse> getRevisions(Long postId, Long currentUserId, String currentRole, org.springframework.data.domain.Pageable pageable);
+    org.springframework.data.domain.Page<FeedPostRevisionResponse> getRevisions(Long postId, Long currentUserId,
+            String currentRole, org.springframework.data.domain.Pageable pageable);
 
     FeedPostRevisionResponse getRevisionById(Long postId, Long revisionId, Long currentUserId, String currentRole);
 }

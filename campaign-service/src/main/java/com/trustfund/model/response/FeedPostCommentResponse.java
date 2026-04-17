@@ -23,6 +23,15 @@ public class FeedPostCommentResponse {
     private LocalDateTime updatedAt;
     private String authorName;
     private String authorAvatar;
+    private String postTitle;
+    private String postType;
+    private String postTargetName;
+    private LocalDateTime postCreatedAt;
+    private String postAuthorName;
+    private String postAuthorAvatar;
+    private String parentContent;
+    private String parentAuthorName;
+    private String parentAuthorAvatar;
     @Builder.Default
     private java.util.List<FeedPostCommentResponse> replies = new java.util.ArrayList<>();
 }

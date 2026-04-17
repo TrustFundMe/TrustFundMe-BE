@@ -1,13 +1,14 @@
 package com.trustfund.service;
 
-import com.trustfund.model.response.ExpenditureItemResponse;
+import com.trustfund.model.request.CreateExpenditureRequest;
+import com.trustfund.model.request.CreateExpenditureItemRequest;
+import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
-import com.trustfund.model.request.CreateExpenditureItemRequest;
-import com.trustfund.model.request.CreateExpenditureRequest;
-import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.model.response.ExpenditureItemResponse;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ExpenditureService {
@@ -24,20 +25,22 @@ public interface ExpenditureService {
         ExpenditureResponse updateExpenditureStatus(Long id,
                         com.trustfund.model.request.ReviewExpenditureRequest request);
 
+        ExpenditureResponse requestWithdrawal(Long id, LocalDateTime evidenceDueAt);
+
+        ExpenditureResponse requestWithdrawal(Long id, LocalDateTime evidenceDueAt, BigDecimal withdrawAmount);
+
+        List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
+
         ExpenditureResponse updateExpenditureActuals(Long id, UpdateExpenditureActualsRequest request);
 
         ExpenditureResponse updateDisbursementProof(Long id,
                         com.trustfund.model.request.UpdateDisbursementProofRequest request);
 
-        ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt);
-
-        List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId);
+        ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> itemsRequest);
 
         ExpenditureItemResponse getExpenditureItemById(Long id);
 
-        void updateExpenditureItemQuantity(Long id, Integer amount);
-
-        ExpenditureResponse addItemsToExpenditure(Long expenditureId, List<CreateExpenditureItemRequest> items);
+        void updateExpenditureItemQuantity(Long id, Integer amountToDeduct);
 
         void deleteExpenditureItem(Long itemId);
 
@@ -55,4 +58,8 @@ public interface ExpenditureService {
         List<ExpenditureTransactionResponse> getAllTransactions();
 
         List<ExpenditureResponse> getExpendituresByStatus(String status);
+
+        BigDecimal getTotalDisbursedByFundOwner(Long fundOwnerId);
+
+        List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId);
 }

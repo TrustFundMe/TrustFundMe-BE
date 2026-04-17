@@ -88,8 +88,9 @@ public class ExpenditureController {
     @Operation(summary = "Yêu cầu rút tiền", description = "Đánh dấu yêu cầu rút tiền cho khoản chi. Nếu là quỹ mục tiêu sẽ đóng luôn đợt chi này.")
     public ResponseEntity<ExpenditureResponse> requestWithdrawal(
             @PathVariable("id") Long id,
-            @RequestParam(name = "evidenceDueAt", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt) {
-        return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt));
+            @RequestParam(name = "evidenceDueAt", required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE_TIME) java.time.LocalDateTime evidenceDueAt,
+            @RequestParam(name = "withdrawAmount", required = false) java.math.BigDecimal withdrawAmount) {
+        return ResponseEntity.ok(expenditureService.requestWithdrawal(id, evidenceDueAt, withdrawAmount));
     }
 
     @GetMapping("/{id}/items")
@@ -213,5 +214,11 @@ public class ExpenditureController {
     @Operation(summary = "Lấy danh sách chi tiêu theo trạng thái", description = "Lấy danh sách các khoản chi tiêu dựa trên trạng thái (Ví dụ: DISBURSED).")
     public ResponseEntity<List<ExpenditureResponse>> getByStatus(@PathVariable("status") String status) {
         return ResponseEntity.ok(expenditureService.getExpendituresByStatus(status));
+    }
+
+    @GetMapping("/owner/{ownerId}")
+    @Operation(summary = "Lấy danh sách chi tiêu của chủ sở hữu", description = "Lấy tất cả các khoản chi tiêu thuộc về các chiến dịch do người dùng này sở hữu.")
+    public ResponseEntity<List<ExpenditureResponse>> getByOwnerId(@PathVariable("ownerId") Long ownerId) {
+        return ResponseEntity.ok(expenditureService.getExpendituresByFundOwner(ownerId));
     }
 }

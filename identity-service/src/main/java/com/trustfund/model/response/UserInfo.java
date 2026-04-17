@@ -1,12 +1,12 @@
 package com.trustfund.model.response;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
-
 import com.trustfund.model.User;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
@@ -28,6 +28,9 @@ public class UserInfo {
     @JsonProperty("banReason")
     private String banReason;
 
+    private Integer trustScore;
+    private LocalDateTime createdAt;
+
     public static UserInfo fromUser(User user) {
         return UserInfo.builder()
                 .id(user.getId())
@@ -40,8 +43,8 @@ public class UserInfo {
                 .kycVerified(user.getKycVerified())
                 .isActive(user.getIsActive())
                 .banReason(user.getBanReason())
+                .trustScore(user.getTrustScore())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 }
-
-

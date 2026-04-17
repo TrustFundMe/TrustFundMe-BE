@@ -525,7 +525,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt) {
+    public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt, BigDecimal withdrawAmount) {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
 
@@ -540,23 +540,24 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
-        // Xác định số tiền rút: ITEMIZED dùng balance hiện tại của campaign, MONEY dùng
-        // totalExpectedAmount
+        // Xác định số tiền rút: ITEMIZED dùng withdrawAmount từ FE (nếu có) hoặc balance, MONEY dùng totalExpectedAmount
         CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
         log.info(
-                "requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}",
+                "requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}, withdrawAmountFromUser={}",
                 id, expenditure.getCampaignId(), campaign.getType(), campaign.getBalance(),
-                expenditure.getTotalExpectedAmount());
+                expenditure.getTotalExpectedAmount(), withdrawAmount);
 
-        BigDecimal withdrawAmount = expenditure.getTotalExpectedAmount();
         if ("ITEMIZED".equalsIgnoreCase(campaign.getType())) {
-            // ITEMIZED: luôn dùng campaign.balance (đã bao gồm dư kỳ trước + variance đã
-            // hoàn)
-            withdrawAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
-            log.info("➔ ITEMIZED withdrawal request for expenditure {}: campaign.balance={}", id, withdrawAmount);
+            // ITEMIZED: dùng withdrawAmount từ FE, fallback về campaign.balance
+            if (withdrawAmount == null || withdrawAmount.compareTo(BigDecimal.ZERO) <= 0) {
+                withdrawAmount = (campaign.getBalance() != null) ? campaign.getBalance() : BigDecimal.ZERO;
+            }
+            log.info("➔ ITEMIZED withdrawal request for expenditure {}: withdrawAmount={}", id, withdrawAmount);
+        } else {
+            // AUTHORIZED: dùng totalExpectedAmount
+            withdrawAmount = expenditure.getTotalExpectedAmount();
+            log.info("➔ AUTHORIZED withdrawal request for expenditure {}: totalExpectedAmount={}", id, withdrawAmount);
         }
-
-        log.info("requestWithdrawal DEBUG: withdrawAmount will be saved = {}", withdrawAmount);
 
         // Tạo bản ghi giao dịch PENDING
         ExpenditureTransaction transaction = ExpenditureTransaction.builder()
@@ -903,6 +904,23 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     public List<ExpenditureResponse> getExpendituresByStatus(String status) {
         return expenditureRepository.findByStatusOrderByCreatedAtDesc(status).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public BigDecimal getTotalDisbursedByFundOwner(Long fundOwnerId) {
+        BigDecimal sum = transactionRepository.sumCompletedPayoutsByFundOwnerId(fundOwnerId);
+        return sum != null ? sum : BigDecimal.ZERO;
+    }
+
+    @Override
+    public List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId) {
+        List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(fundOwnerId);
+        if (campaignIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+        return expenditureRepository.findByCampaignIdInOrderByCreatedAtDesc(campaignIds).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
     }

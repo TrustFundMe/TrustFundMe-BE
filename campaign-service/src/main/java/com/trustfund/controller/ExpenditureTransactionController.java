@@ -3,6 +3,7 @@ package com.trustfund.controller;
 import com.trustfund.model.ExpenditureTransaction;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.repository.ExpenditureTransactionRepository;
+import com.trustfund.service.ExpenditureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +23,7 @@ import java.util.stream.Collectors;
 public class ExpenditureTransactionController {
 
     private final ExpenditureTransactionRepository repository;
+    private final ExpenditureService expenditureService;
 
     @GetMapping("/type/{type}/status/{status}")
     @Operation(summary = "Lấy danh sách giao dịch theo loại và trạng thái", description = "Lấy danh sách PAYOUT hoặc REFUND có status nhất định")
@@ -57,6 +60,12 @@ public class ExpenditureTransactionController {
                 .map(this::mapToResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/fund-owner/{fundOwnerId}/payout-sum")
+    @Operation(summary = "Lấy tổng số tiền đã giải ngân của chủ sở hữu", description = "Trả về tổng sum amount các giao dịch PAYOUT COMPLETED")
+    public ResponseEntity<BigDecimal> getPayoutSum(@PathVariable("fundOwnerId") Long fundOwnerId) {
+        return ResponseEntity.ok(expenditureService.getTotalDisbursedByFundOwner(fundOwnerId));
     }
 
     private ExpenditureTransactionResponse mapToResponse(ExpenditureTransaction tx) {

@@ -99,4 +99,22 @@ public class FeedPostCommentController {
         FeedPostCommentResponse response = feedPostCommentService.toggleLike(commentId, currentUserId);
         return ResponseEntity.ok(response);
     }
+
+    @GetMapping("/comments/user/{userId}")
+    @Operation(summary = "Get comments by user", description = "Get all comments created by a specific user")
+    public ResponseEntity<Page<FeedPostCommentResponse>> getByUser(
+            @PathVariable("userId") Long userId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "createdAt,desc") String sort) {
+
+        String[] sortParts = sort.split(",");
+        String sortField = sortParts[0];
+        Sort.Direction direction = (sortParts.length > 1 && sortParts[1].equalsIgnoreCase("asc"))
+                ? Sort.Direction.ASC
+                : Sort.Direction.DESC;
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(direction, sortField));
+        return ResponseEntity.ok(feedPostCommentService.getByUserId(userId, pageable));
+    }
 }
