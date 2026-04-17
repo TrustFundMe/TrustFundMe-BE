@@ -55,7 +55,8 @@ public class CampaignCommitment {
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
-    @Column(name = "signature_url")
+    @Lob
+    @Column(name = "signature_url", columnDefinition = "LONGTEXT")
     private String signatureUrl;
 
     @Column(name = "ip_address")

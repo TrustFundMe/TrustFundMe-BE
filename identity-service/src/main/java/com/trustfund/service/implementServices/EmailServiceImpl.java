@@ -160,6 +160,7 @@ public class EmailServiceImpl implements EmailService {
                 "</div>" +
                 "<div style='padding: 20px;'>" +
                 "<p>Xin chào <strong>" + displayName + "</strong>,</p>" +
+                "<p style='color: #991b1b; font-weight: bold;'>* Lưu ý: Bản cam kết này cần được hoàn tất ký trong vòng 48 tiếng kể từ thời điểm email được gửi đi.</p>" +
                 "<p>Chiến dịch <strong>\"" + campaignTitle + "\"</strong> của bạn đang ở bước soát xét cuối cùng. Để đảm bảo tính minh bạch và bảo vệ quyền lợi của các nhà hảo tâm, chúng tôi yêu cầu bạn thực hiện ký <strong>Bản cam kết trách nhiệm</strong> trước khi chiến dịch được chính thức phê duyệt.</p>" +
 
                 // ── Che thông tin PII bảo mật ──
