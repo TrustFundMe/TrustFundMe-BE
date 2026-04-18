@@ -18,4 +18,5 @@ public class AggregatedTransactionResponse {
     private BigDecimal amount;
     private String date;
     private BigDecimal balanceAfter;
+    private Long relatedCampaignId; // ID campaign đối tác (campaign nhận tiền khi đang gửi)
 }

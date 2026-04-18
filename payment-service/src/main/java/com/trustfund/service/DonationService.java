@@ -921,12 +921,16 @@ public class DonationService {
 
         @Transactional(readOnly = true)
         public List<Map<String, Object>> getPaidDonationsByCampaign(Long campaignId) {
+                log.info("➔ [PAYMENT-SERVICE] Fetching PAID donations for campaignId: {}", campaignId);
                 List<Donation> donations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(campaignId, "PAID");
+                log.info("➔ [PAYMENT-SERVICE] Found {} PAID donations in database", donations.size());
+                
                 return donations.stream().map(d -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", d.getId());
                         map.put("donorId", d.getDonorId());
                         map.put("campaignId", d.getCampaignId());
+                        map.put("rawCampaignId", d.getCampaignId()); // Debug field
                         map.put("donationAmount", d.getDonationAmount());
                         map.put("totalAmount", d.getTotalAmount());
                         map.put("status", d.getStatus());

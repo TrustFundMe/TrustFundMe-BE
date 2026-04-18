@@ -1,9 +1,11 @@
 package com.trustfund.service.impl;
 
+import com.trustfund.client.IdentityServiceClient;
 import com.trustfund.model.Campaign;
 import com.trustfund.model.ExpenditureTransaction;
 import com.trustfund.model.InternalTransaction;
 import com.trustfund.model.response.AggregatedTransactionResponse;
+import com.trustfund.model.response.UserInfoResponse;
 import com.trustfund.repository.CampaignRepository;
 import com.trustfund.repository.ExpenditureTransactionRepository;
 import com.trustfund.repository.InternalTransactionRepository;
@@ -19,7 +21,6 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -33,6 +34,7 @@ public class CampaignTransactionServiceImpl implements CampaignTransactionServic
     private final ExpenditureTransactionRepository expenditureTransactionRepository;
     private final InternalTransactionRepository internalTransactionRepository;
     private final RestTemplate restTemplate;
+    private final IdentityServiceClient identityServiceClient;
 
     @Value("${payment.service.url}")
     private String paymentServiceUrl;
@@ -47,24 +49,47 @@ public class CampaignTransactionServiceImpl implements CampaignTransactionServic
         // 1. Fetch Donations from payment-service (using donationAmount which excludes tips)
         try {
             String url = paymentServiceUrl + "/api/payments/campaign/" + campaignId + "/paid-donations";
+            log.info("➔ [TRANSACTION-HISTORY] Fetching donations from: {}", url);
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                     url, HttpMethod.GET, null, new ParameterizedTypeReference<List<Map<String, Object>>>() {});
             
             if (response.getBody() != null) {
+                log.info("➔ [TRANSACTION-HISTORY] Received {} donations from payment-service", response.getBody().size());
                 response.getBody().forEach(d -> {
-                    boolean isAnon = Boolean.TRUE.equals(d.get("anonymous"));
-                    String donorName = isAnon ? "Người ủng hộ ẩn danh" : "Quyên góp từ #" + d.get("donorId");
-                    allTransactions.add(AggregatedTransactionResponse.builder()
-                            .id("DON-" + d.get("id"))
-                            .type("DONATION")
-                            .description(donorName)
-                            .amount(new BigDecimal(d.get("donationAmount").toString()))
-                            .date((String) d.get("createdAt"))
-                            .build());
+                    try {
+                        boolean isAnon = Boolean.TRUE.equals(d.get("anonymous"));
+                        Object donorId = d.get("donorId");
+                        Object amountObj = d.get("donationAmount");
+                        Object dateObj = d.get("createdAt");
+                        Object idObj = d.get("id");
+
+                        String donorName;
+                        if (isAnon) {
+                            donorName = "Người ủng hộ ẩn danh";
+                        } else {
+                            UserInfoResponse donor = identityServiceClient.getUserById(
+                                    donorId != null ? Long.valueOf(donorId.toString()) : null);
+                            donorName = (donor != null && donor.getFullName() != null)
+                                    ? "Quyên góp từ " + donor.getFullName()
+                                    : "Quyên góp từ #" + donorId;
+                        }
+
+                        allTransactions.add(AggregatedTransactionResponse.builder()
+                                .id("DON-" + (idObj != null ? idObj.toString() : "unknown"))
+                                .type("DONATION")
+                                .description(donorName)
+                                .amount(amountObj != null ? new BigDecimal(amountObj.toString()) : BigDecimal.ZERO)
+                                .date(dateObj != null ? dateObj.toString() : null)
+                                .build());
+                    } catch (Exception e) {
+                        log.error("➔ [TRANSACTION-HISTORY] Error processing individual donation: {}", d, e);
+                    }
                 });
+            } else {
+                log.warn("➔ [TRANSACTION-HISTORY] payment-service returned null body");
             }
         } catch (Exception e) {
-            log.error("Failed to fetch donations for campaign {}", campaignId, e);
+            log.error("➔ [TRANSACTION-HISTORY] Failed to fetch donations for campaign {}: {}", campaignId, e.getMessage());
         }
 
         // 2. Fetch Expenditure Transactions
@@ -80,16 +105,35 @@ public class CampaignTransactionServiceImpl implements CampaignTransactionServic
                     .build());
         });
 
-        // 3. Fetch Internal Transactions
-        List<InternalTransaction> internals = internalTransactionRepository.findByToCampaignIdAndStatusOrderByCreatedAtDesc(
-                campaignId, com.trustfund.model.enums.InternalTransactionStatus.APPROVED);
-        internals.forEach(t -> {
+        // 3. Fetch Internal Transactions with APPROVED status
+        List<InternalTransaction> allForCampaign = internalTransactionRepository.findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(campaignId, campaignId);
+        allForCampaign = allForCampaign.stream()
+                .filter(t -> com.trustfund.model.enums.InternalTransactionStatus.APPROVED.equals(t.getStatus()))
+                .collect(java.util.stream.Collectors.toList());
+        allForCampaign.forEach(t -> {
+            BigDecimal amount;
+            Long relatedCampaignId;
+            String description;
+            if (campaignId.equals(t.getFromCampaignId())) {
+                // Đang gửi tiền → hiển thị campaign đích
+                amount = t.getAmount().negate();
+                relatedCampaignId = t.getToCampaignId();
+                Campaign related = campaignRepository.findById(t.getToCampaignId()).orElse(null);
+                String targetTitle = related != null ? related.getTitle() : "#" + t.getToCampaignId();
+                description = "Hỗ trợ cho chiến dịch " + targetTitle;
+            } else {
+                // Đang nhận tiền
+                amount = t.getAmount();
+                relatedCampaignId = t.getFromCampaignId();
+                description = "Nhận tiền hỗ trợ từ Quỹ Chung";
+            }
             allTransactions.add(AggregatedTransactionResponse.builder()
                     .id("INT-" + t.getId())
                     .type("INTERNAL_TRANSFER")
-                    .description(t.getReason() != null ? "Quỹ chung: " + t.getReason() : "Chuyển từ Quỹ Chung")
-                    .amount(t.getAmount())
+                    .description(description)
+                    .amount(amount)
                     .date(t.getCreatedAt() != null ? t.getCreatedAt().toString() : null)
+                    .relatedCampaignId(relatedCampaignId)
                     .build());
         });
 
