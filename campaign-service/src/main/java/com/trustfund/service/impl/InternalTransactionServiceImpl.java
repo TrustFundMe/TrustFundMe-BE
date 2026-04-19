@@ -39,6 +39,25 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Số tiền phải lớn hơn 0");
                 }
 
+                // Validate: nếu nguồn là Quỹ chung (type = GENERAL_FUND hoặc
+                // ID=GENERAL_FUND_ID), kiểm tra số dư đủ
+                if (fromCampaignId != null) {
+                        Campaign sourceCandidate = campaignRepository.findById(fromCampaignId).orElse(null);
+                        if (sourceCandidate != null) {
+                                boolean isGeneralFund = com.trustfund.model.Campaign.TYPE_GENERAL_FUND
+                                                .equals(sourceCandidate.getType())
+                                                || GENERAL_FUND_ID.equals(fromCampaignId);
+
+                                if (isGeneralFund && amount.compareTo(sourceCandidate.getBalance()) > 0) {
+                                        java.text.NumberFormat format = java.text.NumberFormat
+                                                        .getInstance(new java.util.Locale("vi", "VN"));
+                                        String currentBal = format.format(sourceCandidate.getBalance()) + " VNĐ";
+                                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                                        "Số dư quỹ chung không đủ (Hiện tại: " + currentBal + ")");
+                                }
+                        }
+                }
+
                 // Validate campaigns exist
                 if (fromCampaignId != null) {
                         campaignRepository.findById(fromCampaignId)
@@ -143,6 +162,12 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
                                 System.out.println("[DIAGNOSTIC] Source Campaign (ID: " + from.getId()
                                                 + ") Balance Before: "
                                                 + from.getBalance().toPlainString());
+
+                                if (from.getBalance().compareTo(tx.getAmount()) < 0) {
+                                        throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                                                        "Số dư của Quỹ không đủ để thực hiện giao dịch");
+                                }
+
                                 from.setBalance(from.getBalance().subtract(tx.getAmount()));
                                 System.out.println("[DIAGNOSTIC] Source Campaign (ID: " + from.getId()
                                                 + ") Calculated After: "
