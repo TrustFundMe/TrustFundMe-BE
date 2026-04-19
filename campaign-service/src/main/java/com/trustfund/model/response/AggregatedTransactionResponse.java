@@ -19,4 +19,5 @@ public class AggregatedTransactionResponse {
     private String date;
     private BigDecimal balanceAfter;
     private Long relatedCampaignId; // ID campaign đối tác (campaign nhận tiền khi đang gửi)
+    private Long expenditureId;     // ID expenditure gốc (dùng cho chi tiêu & hoàn trả)
 }

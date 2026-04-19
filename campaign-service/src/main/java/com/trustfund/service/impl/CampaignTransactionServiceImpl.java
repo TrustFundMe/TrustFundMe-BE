@@ -99,9 +99,10 @@ public class CampaignTransactionServiceImpl implements CampaignTransactionServic
             allTransactions.add(AggregatedTransactionResponse.builder()
                     .id("EXP-" + e.getId())
                     .type(isRefund ? "REFUND" : "EXPENDITURE")
-                    .description(isRefund ? "Hoàn trả chi phí #" + e.getExpenditure().getId() : "Chi tiêu #" + e.getExpenditure().getId())
+                    .description(isRefund ? "Hoàn trả cho đợt chi tiêu này" : "Giải ngân cho đợt chi tiêu này")
                     .amount(isRefund ? e.getAmount() : e.getAmount().negate())
                     .date(e.getCreatedAt() != null ? e.getCreatedAt().toString() : null)
+                    .expenditureId(e.getExpenditure().getId())
                     .build());
         });
 
