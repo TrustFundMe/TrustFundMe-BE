@@ -50,7 +50,7 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
 
                                 if (isGeneralFund && amount.compareTo(sourceCandidate.getBalance()) > 0) {
                                         java.text.NumberFormat format = java.text.NumberFormat
-                                                        .getInstance(new java.util.Locale("vi", "VN"));
+                                                        .getInstance(java.util.Locale.of("vi", "VN"));
                                         String currentBal = format.format(sourceCandidate.getBalance()) + " VNĐ";
                                         throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                                                         "Số dư quỹ chung không đủ (Hiện tại: " + currentBal + ")");
