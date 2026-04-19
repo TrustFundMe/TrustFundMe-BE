@@ -192,6 +192,7 @@ public class TrustScoreServiceImpl implements TrustScoreService {
             log.error("CRITICAL ERROR getting user score for userId={}: {}", userId, e.getMessage(), e);
             return UserTrustScoreResponse.builder()
                     .userId(userId)
+                    .userFullName("N/A")
                     .totalScore(0)
                     .build();
         }

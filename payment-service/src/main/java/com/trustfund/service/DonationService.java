@@ -916,7 +916,9 @@ public class DonationService {
                 if (campaignIds == null || campaignIds.isEmpty()) {
                         return java.math.BigDecimal.ZERO;
                 }
-                return donationRepository.sumDonationAmountByCampaignIds(campaignIds);
+                return java.util.Optional.ofNullable(
+                        donationRepository.sumDonationAmountByCampaignIds(campaignIds))
+                        .orElse(java.math.BigDecimal.ZERO);
         }
 
         @Transactional(readOnly = true)
