@@ -31,5 +31,5 @@ public interface InternalTransactionService {
 
     InternalTransaction updateEvidence(Long id, Long evidenceImageId);
 
-    List<InternalTransaction> getCompletedTransactionsToCampaign(Long campaignId);
+    List<InternalTransaction> getApprovedReceivedByCampaign(Long campaignId);
 }

@@ -4,5 +4,6 @@ public enum InternalTransactionStatus {
     PENDING,
     APPROVED,
     REJECTED,
-    COMPLETED
+    COMPLETED,
+    GENERAL
 }

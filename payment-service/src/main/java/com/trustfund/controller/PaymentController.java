@@ -231,4 +231,15 @@ public class PaymentController {
                 .collect(java.util.stream.Collectors.toList());
         return ResponseEntity.ok(donationService.getTotalRaisedByCampaignIds(ids));
     }
+
+    @GetMapping("/campaign/{campaignId}/paid-donations")
+    public ResponseEntity<?> getPaidDonationsByCampaign(@PathVariable("campaignId") Long campaignId) {
+        try {
+            List<?> donations = donationService.getPaidDonationsByCampaign(campaignId);
+            return ResponseEntity.ok(donations);
+        } catch (Exception e) {
+            log.error("Failed to fetch paid donations for campaign {}", campaignId, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

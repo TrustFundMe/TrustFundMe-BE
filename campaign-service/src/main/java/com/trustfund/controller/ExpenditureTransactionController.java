@@ -68,6 +68,17 @@ public class ExpenditureTransactionController {
         return ResponseEntity.ok(expenditureService.getTotalDisbursedByFundOwner(fundOwnerId));
     }
 
+    @GetMapping("/campaign/{campaignId}/completed")
+    @Operation(summary = "Lấy giao dịch chi tiêu COMPLETED theo campaignId")
+    public ResponseEntity<List<ExpenditureTransactionResponse>> getCompletedByCampaign(
+            @PathVariable("campaignId") Long campaignId) {
+        List<ExpenditureTransaction> txs = repository.findByCampaignIdAndStatus(campaignId, "COMPLETED");
+        List<ExpenditureTransactionResponse> responses = txs.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(responses);
+    }
+
     private ExpenditureTransactionResponse mapToResponse(ExpenditureTransaction tx) {
         return ExpenditureTransactionResponse.builder()
                 .id(tx.getId())

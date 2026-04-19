@@ -21,6 +21,9 @@ public interface ExpenditureTransactionRepository extends JpaRepository<Expendit
 
     Page<ExpenditureTransaction> findByTypeAndStatus(String type, String status, Pageable pageable);
 
+    @Query("SELECT t FROM ExpenditureTransaction t WHERE t.expenditure.campaignId = :campaignId AND t.status = :status ORDER BY t.createdAt DESC")
+    List<ExpenditureTransaction> findByCampaignIdAndStatus(@Param("campaignId") Long campaignId, @Param("status") String status);
+
     @Query("SELECT SUM(t.amount) FROM ExpenditureTransaction t, Campaign c WHERE t.expenditure.campaignId = c.id AND c.fundOwnerId = :fundOwnerId AND t.type = 'PAYOUT' AND t.status = 'COMPLETED'")
     BigDecimal sumCompletedPayoutsByFundOwnerId(@Param("fundOwnerId") Long fundOwnerId);
 }

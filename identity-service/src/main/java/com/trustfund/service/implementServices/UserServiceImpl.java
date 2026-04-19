@@ -290,23 +290,54 @@ public class UserServiceImpl implements UserService {
             var candidateEmails = new java.util.ArrayList<String>();
             var candidatePhones = new java.util.ArrayList<String>();
             var userByEmail = new java.util.LinkedHashMap<String, User>();
+            var rowByEmail = new java.util.LinkedHashMap<String, Integer>();
 
+            int rowIndex = 2; // Row 1 is header
             for (User u : users) {
                 String email = (u.getEmail() != null ? u.getEmail().toLowerCase().trim() : "");
                 String phone = (u.getPhoneNumber() != null ? u.getPhoneNumber().trim() : "");
+                String fullName = (u.getFullName() != null ? u.getFullName().trim() : "");
 
                 if (email.isEmpty()) {
-                    skipped.add("Dòng trống (bỏ qua)");
+                    if (phone.isEmpty() && fullName.isEmpty()) {
+                        // Completely empty row, silently ignore
+                        rowIndex++;
+                        continue;
+                    } else {
+                        skipped.add("Dòng " + rowIndex + ": Thiếu email ở dòng có dữ liệu");
+                        rowIndex++;
+                        continue;
+                    }
+                }
+
+                if (!email.matches("^[A-Za-z0-9+_.-]+@(.+)$")) {
+                    skipped.add("Dòng " + rowIndex + ": Email không hợp lệ (" + email + ")");
+                    rowIndex++;
                     continue;
                 }
 
                 if (emailsInFile.contains(email)) {
-                    skipped.add("Trùng email trong file: " + email);
+                    skipped.add("Dòng " + rowIndex + ": Trùng email trong file (" + email + ")");
+                    rowIndex++;
                     continue;
                 }
 
-                if (!phone.isEmpty() && phonesInFile.contains(phone)) {
-                    skipped.add("Trùng SĐT trong file: " + phone + " (email: " + email + ")");
+                if (!phone.isEmpty()) {
+                    if (!phone.matches("^0[0-9]{9}$")) {
+                        skipped.add("Dòng " + rowIndex + ": SĐT không hợp lệ (" + phone + ")");
+                        rowIndex++;
+                        continue;
+                    }
+                    if (phonesInFile.contains(phone)) {
+                        skipped.add("Dòng " + rowIndex + ": Trùng SĐT trong file (" + phone + ")");
+                        rowIndex++;
+                        continue;
+                    }
+                }
+
+                if (fullName.isEmpty()) {
+                    skipped.add("Dòng " + rowIndex + ": Thiếu họ tên");
+                    rowIndex++;
                     continue;
                 }
 
@@ -317,6 +348,9 @@ public class UserServiceImpl implements UserService {
                 if (!phone.isEmpty())
                     candidatePhones.add(phone);
                 userByEmail.put(email, u);
+                rowByEmail.put(email, rowIndex);
+                
+                rowIndex++;
             }
 
             // Phase 1b: Batch check DB existence (single query each)
@@ -328,8 +362,9 @@ public class UserServiceImpl implements UserService {
             // Phase 1c: Final validation against DB
             var validEmails = new java.util.HashSet<String>();
             for (String email : emailsInFile) {
+                int rIndex = rowByEmail.get(email);
                 if (existingEmails.contains(email)) {
-                    skipped.add("Email đã tồn tại: " + email);
+                    skipped.add("Dòng " + rIndex + ": Email đã tồn tại trong hệ thống (" + email + ")");
                     continue;
                 }
                 validEmails.add(email);
@@ -338,16 +373,25 @@ public class UserServiceImpl implements UserService {
             for (var entry : userByEmail.entrySet()) {
                 String email = entry.getKey();
                 User u = entry.getValue();
+                int rIndex = rowByEmail.get(email);
                 String phone = (u.getPhoneNumber() != null ? u.getPhoneNumber().trim() : "");
                 if (!phone.isEmpty() && existingPhones.contains(phone) && validEmails.contains(email)) {
-                    skipped.add("SĐT đã tồn tại: " + phone + " (email: " + email + ")");
+                    skipped.add("Dòng " + rIndex + ": SĐT đã tồn tại trong hệ thống (" + phone + ")");
                     validEmails.remove(email);
                 }
             }
 
+            // Reject the entire file if there are any errors or duplicates
+            if (!skipped.isEmpty()) {
+                log.warn("Excel import rejected: found {} errors", skipped.size());
+                return ImportResult.builder()
+                        .imported(0)
+                        .skipped(skipped.size())
+                        .skippedReasons(skipped)
+                        .build();
+            }
+
             // Phase 2: Build and save valid users
-            // Encode default password ONCE and reuse for all rows (BCrypt is slow, avoid N
-            // encodes)
             String defaultPasswordHash = passwordEncoder.encode("TrustFund123@");
             List<User> validUsers = validEmails.stream()
                     .map(email -> {
@@ -363,12 +407,12 @@ public class UserServiceImpl implements UserService {
             }
 
             int imported = validUsers.size();
-            log.info("Excel import: {} imported, {} skipped", imported, skipped.size());
+            log.info("Excel import: {} imported", imported);
 
             return ImportResult.builder()
                     .imported(imported)
-                    .skipped(skipped.size())
-                    .skippedReasons(skipped)
+                    .skipped(0)
+                    .skippedReasons(new java.util.ArrayList<>())
                     .build();
 
         } catch (java.io.IOException e) {

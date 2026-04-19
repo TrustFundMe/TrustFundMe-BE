@@ -27,6 +27,7 @@ public class CampaignController {
 
     private final CampaignService campaignService;
     private final CampaignStatisticsService campaignStatisticsService;
+    private final com.trustfund.service.CampaignTransactionService campaignTransactionService;
 
     @GetMapping
     @Operation(summary = "Get all campaigns (paginated)", description = "Retrieve a paginated list of all campaigns (Public - no authentication required)")
@@ -143,5 +144,13 @@ public class CampaignController {
     public ResponseEntity<CampaignStatisticsResponse> getStatistics(
             @PathVariable("fundOwnerId") Long fundOwnerId) {
         return ResponseEntity.ok(campaignStatisticsService.getStatisticsByFundOwner(fundOwnerId));
+    }
+
+    @GetMapping("/{id}/transactions-history")
+    @Operation(summary = "Lấy lịch sử giao dịch tổng hợp của chiến dịch",
+            description = "Trả về danh sách gộp từ payment, expenditure và internal transactions")
+    public ResponseEntity<List<com.trustfund.model.response.AggregatedTransactionResponse>> getTransactionHistory(
+            @PathVariable("id") Long id) {
+        return ResponseEntity.ok(campaignTransactionService.getCampaignTransactionHistory(id));
     }
 }

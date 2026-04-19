@@ -240,8 +240,8 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
         }
 
         @Override
-        public List<InternalTransaction> getCompletedTransactionsToCampaign(Long campaignId) {
-                return transactionRepository.findByToCampaignIdAndStatusOrderByCreatedAtDesc(campaignId,
-                                InternalTransactionStatus.APPROVED);
+        public List<InternalTransaction> getApprovedReceivedByCampaign(Long campaignId) {
+                return transactionRepository.findByToCampaignIdAndStatusOrderByCreatedAtDesc(
+                                campaignId, InternalTransactionStatus.APPROVED);
         }
 }

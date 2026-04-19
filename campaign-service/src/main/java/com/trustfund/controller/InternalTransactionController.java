@@ -103,8 +103,10 @@ public class InternalTransactionController {
     }
 
     @GetMapping("/campaign/{campaignId}/received")
-    @Operation(summary = "Lấy các giao dịch nhận từ Quỹ chung của một Campaign (Cho Analytics)")
-    public ResponseEntity<List<InternalTransaction>> getReceivedTransactions(@PathVariable Long campaignId) {
-        return ResponseEntity.ok(transactionService.getCompletedTransactionsToCampaign(campaignId));
+    @Operation(summary = "Lấy giao dịch nội bộ APPROVED nhận vào chiến dịch")
+    public ResponseEntity<List<InternalTransaction>> getApprovedReceivedByCampaign(
+            @PathVariable("campaignId") Long campaignId) {
+        List<InternalTransaction> txs = transactionService.getApprovedReceivedByCampaign(campaignId);
+        return ResponseEntity.ok(txs);
     }
 }
