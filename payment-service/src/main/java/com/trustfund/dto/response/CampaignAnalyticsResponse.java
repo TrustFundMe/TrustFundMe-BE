@@ -18,6 +18,7 @@ public class CampaignAnalyticsResponse {
     private BigDecimal totalSpent;
     private BigDecimal currentBalance;
     private BigDecimal targetAmount;
+    private BigDecimal receivedFromGeneralFund;
     private java.time.LocalDateTime approvedAt;
     private List<ChartPoint> chartData;
 

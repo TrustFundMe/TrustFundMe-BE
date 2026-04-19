@@ -58,9 +58,6 @@ public class UserKYCServiceImpl implements UserKYCService {
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
 
-        // Send notification for submission
-        sendKYCNotification(savedKYC, KYCStatus.PENDING, null);
-
         return mapToResponse(savedKYC);
     }
 
@@ -111,9 +108,6 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setRejectionReason(null);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
-
-        // Send notification for resubmission
-        sendKYCNotification(savedKYC, KYCStatus.PENDING, null);
 
         return mapToResponse(savedKYC);
     }
@@ -181,17 +175,18 @@ public class UserKYCServiceImpl implements UserKYCService {
     }
 
     private void sendKYCNotification(UserKYC kyc, KYCStatus status, String rejectionReason) {
+        if (status == KYCStatus.PENDING) {
+            return;
+        }
+
         try {
             boolean isApproved = status == KYCStatus.APPROVED;
-            boolean isPending = status == KYCStatus.PENDING;
-            
-            String title = isApproved ? "Xác thực danh tính (KYC) thành công" 
-                         : isPending ? "Đã nhận hồ sơ xác thực danh tính (KYC)"
-                         : "Xác thực danh tính (KYC) bị từ chối";
-                         
+
+            String title = isApproved ? "Xác thực danh tính (KYC) thành công"
+                    : "Xác thực danh tính (KYC) bị từ chối";
+
             String content = isApproved
                     ? "Chúc mừng! Hồ sơ KYC của bạn đã được duyệt thành công. Bây giờ bạn có thể tạo chiến dịch gây quỹ."
-                    : isPending ? "Hồ sơ KYC của bạn đã được gửi và đang chờ nhân viên kiểm duyệt. Chúng tôi sẽ thông báo kết quả cho bạn sớm nhất."
                     : "Rất tiếc, hồ sơ KYC của bạn đã bị từ chối. Lý do: " + rejectionReason;
 
             java.util.Map<String, Object> notificationData = new java.util.HashMap<>();

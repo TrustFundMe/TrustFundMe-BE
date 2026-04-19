@@ -2,7 +2,9 @@ package com.trustfund.controller;
 
 import com.trustfund.client.EmailServiceClient;
 import com.trustfund.client.IdentityServiceClient;
+import com.trustfund.client.NotificationServiceClient;
 import com.trustfund.model.CampaignCommitment;
+import com.trustfund.model.request.NotificationRequest;
 import com.trustfund.model.response.CampaignResponse;
 import com.trustfund.model.response.UserKYCResponse;
 import com.trustfund.repository.CampaignCommitmentRepository;
@@ -27,6 +29,7 @@ public class CampaignCommitmentController {
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
     private final EmailServiceClient emailServiceClient;
+    private final NotificationServiceClient notificationServiceClient;
 
     @PostMapping("/send-email/{campaignId}")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
@@ -52,7 +55,8 @@ public class CampaignCommitmentController {
             var ownerInfo = identityServiceClient.getUserById(fundOwnerId);
             if (ownerInfo == null) {
                 log.error("❌ Cannot get owner info for fundOwnerId={}", fundOwnerId);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Không thể truy xuất thông tin chủ chiến dịch");
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Không thể truy xuất thông tin chủ chiến dịch");
             }
 
             String toEmail = ownerInfo.getEmail();
@@ -70,12 +74,31 @@ public class CampaignCommitmentController {
             } else {
                 log.info("➔ KYC found for user {}: fullName='{}', address='{}', workplace='{}', idNumber='{}...'",
                         fundOwnerId, kycData.getFullName(), kycData.getAddress(),
-                        kycData.getWorkplace(), kycData.getIdNumber() != null ? kycData.getIdNumber().substring(0, Math.min(4, kycData.getIdNumber().length())) : "N/A");
+                        kycData.getWorkplace(),
+                        kycData.getIdNumber() != null
+                                ? kycData.getIdNumber().substring(0, Math.min(4, kycData.getIdNumber().length()))
+                                : "N/A");
             }
 
             // 4. Gửi email với KYC data (OCR)
             String campaignTitle = campaign.getTitle() != null ? campaign.getTitle() : "Chiến dịch #" + campaignId;
             emailServiceClient.sendCommitmentRequestEmail(toEmail, ownerName, campaignTitle, campaignId, kycData);
+
+            // 5. Gửi Notification trong App nhắc nhở kí cam kết
+            try {
+                notificationServiceClient.sendNotification(NotificationRequest.builder()
+                        .userId(fundOwnerId)
+                        .type("COMMITMENT_REQUIRED")
+                        .targetId(campaignId)
+                        .targetType("CAMPAIGN")
+                        .title("Yêu cầu ký cam kết")
+                        .content(
+                                "Vui lòng kiểm tra email và hoàn tất ký bản cam kết trách nhiệm để được duyệt chiến dịch: "
+                                        + campaignTitle)
+                        .build());
+            } catch (Exception e) {
+                log.warn("⚠️ Failed to send in-app notification for campaign {}: {}", campaignId, e.getMessage());
+            }
 
             log.info("✅ SUCCESS: Commitment email sent for campaign {}", campaignId);
             return ResponseEntity.ok().body("Đã gửi email thành công");
@@ -109,8 +132,7 @@ public class CampaignCommitmentController {
                 emailServiceClient.sendCommitmentSuccessEmail(
                         ownerInfo.getEmail(),
                         ownerInfo.getFullName(),
-                        campaign.getTitle()
-                );
+                        campaign.getTitle());
             }
         } catch (Exception e) {
             log.error("➔ Warning: Could not send confirmation email after signing: {}", e.getMessage());

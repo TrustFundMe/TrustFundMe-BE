@@ -52,7 +52,8 @@ public class SecurityConfig {
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/campaigns/fund-owner/**")
                                                 .permitAll()
-                                                .requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance").permitAll()
+                                                .requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance")
+                                                .permitAll()
                                                 .requestMatchers("/api/campaigns/**").authenticated()
                                                 // Fundraising Goals endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/fundraising-goals/**")
@@ -67,6 +68,9 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**")
                                                 .permitAll()
                                                 .requestMatchers("/api/expenditures/items/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET,
+                                                                "/api/internal-transactions/campaign/**")
+                                                .permitAll()
                                                 // Feed posts endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/feed-posts/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()
@@ -100,11 +104,10 @@ public class SecurityConfig {
                         response.setContentType("application/json;charset=UTF-8");
 
                         String jsonResponse = String.format(
-                                "{\"timestamp\":\"%s\", \"status\":403, \"error\":\"Forbidden\", \"message\":\"%s\", \"path\":\"%s\"}",
-                                LocalDateTime.now().toString(),
-                                accessDeniedException.getMessage().replace("\"", "\\\""),
-                                request.getRequestURI()
-                        );
+                                        "{\"timestamp\":\"%s\", \"status\":403, \"error\":\"Forbidden\", \"message\":\"%s\", \"path\":\"%s\"}",
+                                        LocalDateTime.now().toString(),
+                                        accessDeniedException.getMessage().replace("\"", "\\\""),
+                                        request.getRequestURI());
 
                         response.getWriter().write(jsonResponse);
                 };

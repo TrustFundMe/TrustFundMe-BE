@@ -23,6 +23,9 @@ public interface InternalTransactionRepository extends JpaRepository<InternalTra
         Page<InternalTransaction> findByFromCampaignIdOrToCampaignIdOrderByCreatedAtDesc(Long fromId, Long toId,
                         Pageable pageable);
 
+        List<InternalTransaction> findByToCampaignIdAndStatusOrderByCreatedAtDesc(Long toCampaignId,
+                        InternalTransactionStatus status);
+
         @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId = :campaignId AND t.type = :type AND t.status = :status")
         BigDecimal sumAmountByFromCampaignIdAndTypeAndStatus(
                         @Param("campaignId") Long campaignId,
@@ -34,4 +37,12 @@ public interface InternalTransactionRepository extends JpaRepository<InternalTra
                         @Param("campaignId") Long campaignId,
                         @Param("type") InternalTransactionType type,
                         @Param("status") InternalTransactionStatus status);
+
+        @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.fromCampaignId IN (SELECT c.id FROM Campaign c WHERE c.type = 'GENERAL_FUND') AND t.status IN ('APPROVED', 'COMPLETED')")
+        BigDecimal sumOutcomeFromGeneralFund();
+
+        @Query("SELECT SUM(t.amount) FROM InternalTransaction t WHERE t.toCampaignId IN (SELECT c.id FROM Campaign c WHERE c.type = 'GENERAL_FUND') AND t.status IN ('APPROVED', 'COMPLETED')")
+        BigDecimal sumIncomeToGeneralFund();
+
+        Long countByStatus(InternalTransactionStatus status);
 }

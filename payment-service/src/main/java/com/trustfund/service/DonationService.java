@@ -629,8 +629,10 @@ public class DonationService {
                                 campaignId,
                                 "PAID");
                 List<Map<String, Object>> allExpenditures = new java.util.ArrayList<>();
+                List<Map<String, Object>> allInternalIncomes = new java.util.ArrayList<>();
                 BigDecimal totalReceived = BigDecimal.ZERO;
                 BigDecimal totalSpent = BigDecimal.ZERO;
+                BigDecimal receivedFromGeneralFund = BigDecimal.ZERO;
 
                 try {
                         String expUrl = campaignServiceUrl + "/api/expenditures/campaign/" + campaignId;
@@ -645,6 +647,18 @@ public class DonationService {
                         }
                 } catch (Exception e) {
                         log.warn("Could not fetch expenditures for analytics: {}", e.getMessage());
+                }
+
+                try {
+                        String internalUrl = campaignServiceUrl + "/api/internal-transactions/campaign/" + campaignId
+                                        + "/received";
+                        @SuppressWarnings("unchecked")
+                        List<Map<String, Object>> internals = restTemplate.getForObject(internalUrl, List.class);
+                        if (internals != null) {
+                                allInternalIncomes.addAll(internals);
+                        }
+                } catch (Exception e) {
+                        log.warn("Could not fetch internal incomes for analytics: {}", e.getMessage());
                 }
 
                 // Merge events and calculate running balance
@@ -670,6 +684,15 @@ public class DonationService {
                                         : java.time.LocalDateTime.now();
                         BigDecimal a = new BigDecimal(exp.get("totalAmount").toString());
                         events.add(new Event(t, a, true));
+                }
+
+                for (Map<String, Object> inc : allInternalIncomes) {
+                        java.time.LocalDateTime t = inc.get("createdAt") != null
+                                        ? java.time.LocalDateTime.parse(inc.get("createdAt").toString())
+                                        : java.time.LocalDateTime.now();
+                        BigDecimal a = new BigDecimal(inc.get("amount").toString());
+                        events.add(new Event(t, a, false));
+                        receivedFromGeneralFund = receivedFromGeneralFund.add(a);
                 }
 
                 events.sort(java.util.Comparator.comparing(e -> e.time));
@@ -744,6 +767,7 @@ public class DonationService {
                                 .totalSpent(totalSpent)
                                 .currentBalance(currentBalance)
                                 .targetAmount(targetAmount)
+                                .receivedFromGeneralFund(receivedFromGeneralFund)
                                 .approvedAt(approvedAt)
                                 .chartData(chartData)
                                 .build();
@@ -779,10 +803,10 @@ public class DonationService {
         @Transactional(readOnly = true)
         public List<RecentDonorResponse> getDonorsByItem(Long expenditureItemId) {
                 log.info("👥 Getting donors for expenditure item ID: {}", expenditureItemId);
-                
+
                 List<DonationItem> donationItems = donationItemRepository
                                 .findByExpenditureItemIdInAndDonationStatusJpql(List.of(expenditureItemId), "PAID");
-                
+
                 List<Donation> donations = donationItems.stream()
                                 .map(DonationItem::getDonation)
                                 .filter(Objects::nonNull)
@@ -817,22 +841,23 @@ public class DonationService {
 
                         // Calculate the exact amount donated for this item in this donation
                         BigDecimal itemAmount = donationItems.stream()
-                                .filter(di -> di.getDonation().getId().equals(d.getId()))
-                                .map(di -> di.getAmount() != null ? di.getAmount() : BigDecimal.ZERO)
-                                .reduce(BigDecimal.ZERO, BigDecimal::add);
+                                        .filter(di -> di.getDonation().getId().equals(d.getId()))
+                                        .map(di -> di.getAmount() != null ? di.getAmount() : BigDecimal.ZERO)
+                                        .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                         // Calculate the quantity donated for this item in this donation
                         int itemQuantity = donationItems.stream()
-                                .filter(di -> di.getDonation().getId().equals(d.getId()))
-                                .mapToInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
-                                .sum();
+                                        .filter(di -> di.getDonation().getId().equals(d.getId()))
+                                        .mapToInt(di -> di.getQuantity() != null ? di.getQuantity() : 0)
+                                        .sum();
 
                         return RecentDonorResponse.builder()
                                         .donationId(d.getId())
                                         .donorId(anon ? null : d.getDonorId())
                                         .donorName(name)
                                         .donorAvatar(avatar)
-                                        .amount(itemAmount.compareTo(BigDecimal.ZERO) > 0 ? itemAmount : d.getTotalAmount())
+                                        .amount(itemAmount.compareTo(BigDecimal.ZERO) > 0 ? itemAmount
+                                                        : d.getTotalAmount())
                                         .quantity(itemQuantity > 0 ? itemQuantity : 1)
                                         .createdAt(d.getCreatedAt())
                                         .anonymous(anon)

@@ -202,17 +202,16 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
                                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
                                                 "Không tìm thấy Quỹ chung"));
 
-                // Chỉ tính các giao dịch COMPLETED cho thống kê
-                BigDecimal outcome = transactionRepository.sumAmountByFromCampaignIdAndTypeAndStatus(
-                                GENERAL_FUND_ID, InternalTransactionType.SUPPORT, InternalTransactionStatus.COMPLETED);
-
-                BigDecimal income = transactionRepository.sumAmountByToCampaignIdAndTypeAndStatus(
-                                GENERAL_FUND_ID, InternalTransactionType.RECOVERY, InternalTransactionStatus.COMPLETED);
+                // Tính tổng chi tiêu / thu dựa trên các giao dịch hợp lệ
+                BigDecimal outcome = transactionRepository.sumOutcomeFromGeneralFund();
+                BigDecimal income = transactionRepository.sumIncomeToGeneralFund();
+                Long count = transactionRepository.countByStatus(InternalTransactionStatus.APPROVED);
 
                 Map<String, BigDecimal> stats = new HashMap<>();
                 stats.put("balance", generalFund.getBalance());
                 stats.put("outcome", outcome != null ? outcome : BigDecimal.ZERO);
                 stats.put("income", income != null ? income : BigDecimal.ZERO);
+                stats.put("transactionCount", count != null ? BigDecimal.valueOf(count) : BigDecimal.ZERO);
 
                 return stats;
         }
@@ -238,5 +237,11 @@ public class InternalTransactionServiceImpl implements InternalTransactionServic
 
                 tx.setEvidenceImageId(evidenceImageId);
                 return transactionRepository.save(tx);
+        }
+
+        @Override
+        public List<InternalTransaction> getCompletedTransactionsToCampaign(Long campaignId) {
+                return transactionRepository.findByToCampaignIdAndStatusOrderByCreatedAtDesc(campaignId,
+                                InternalTransactionStatus.APPROVED);
         }
 }
