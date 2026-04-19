@@ -74,7 +74,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return true;
         }
 
-        // /api/media - POST (upload), GET (read), DELETE and PATCH (update metadata) are public
+        // /api/media - POST (upload), GET (read), DELETE and PATCH (update metadata)
+        // are public
         if (path.startsWith("/api/media")) {
             return method == HttpMethod.POST || method == HttpMethod.GET
                     || method == HttpMethod.DELETE || method == HttpMethod.PATCH;
@@ -96,7 +97,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Payment Service - Create donation and fetch donation details are public for
         // guests
-        if (path.equals("/api/payments/create") || path.startsWith("/api/payments/donation/") || path.startsWith("/api/payments/donations/")) {
+        if (path.equals("/api/payments/create") || path.startsWith("/api/payments/donation/")
+                || path.startsWith("/api/payments/donations/")) {
             return method == HttpMethod.POST || method == HttpMethod.GET;
         }
 
@@ -127,6 +129,16 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
 
         // Email endpoints - commitment email sending (called by campaign-service)
         if (path.startsWith("/api/emails/")) {
+            return true;
+        }
+
+        // AI Service endpoints - called from frontend without auth
+        if (path.startsWith("/api/generate-description") ||
+                path.startsWith("/api/parse-expenditure-excel") ||
+                path.startsWith("/api/ocr-kyc") ||
+                path.startsWith("/api/analyze-flag") ||
+                path.startsWith("/api/analyze-expenditure") ||
+                path.startsWith("/api/generate-suggestion-labels")) {
             return true;
         }
 
