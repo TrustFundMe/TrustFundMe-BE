@@ -33,8 +33,10 @@ public class CampaignCommitmentController {
 
     @PostMapping("/send-email/{campaignId}")
     @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
-    public ResponseEntity<?> sendCommitmentEmail(@PathVariable Long campaignId) {
-        log.info("➔ [EMAIL_REQUEST] sendCommitmentEmail called for campaignId={}", campaignId);
+    public ResponseEntity<?> sendCommitmentEmail(
+            @PathVariable Long campaignId,
+            @RequestParam(required = false) String frontendUrl) {
+        log.info("➔ [EMAIL_REQUEST] sendCommitmentEmail called for campaignId={}, frontendUrl={}", campaignId, frontendUrl);
         try {
             // 1. Lấy thông tin campaign
             CampaignResponse campaign = campaignService.getById(campaignId);
@@ -82,7 +84,7 @@ public class CampaignCommitmentController {
 
             // 4. Gửi email với KYC data (OCR)
             String campaignTitle = campaign.getTitle() != null ? campaign.getTitle() : "Chiến dịch #" + campaignId;
-            emailServiceClient.sendCommitmentRequestEmail(toEmail, ownerName, campaignTitle, campaignId, kycData);
+            emailServiceClient.sendCommitmentRequestEmail(toEmail, ownerName, campaignTitle, campaignId, kycData, frontendUrl);
 
             // 5. Gửi Notification trong App nhắc nhở kí cam kết
             try {

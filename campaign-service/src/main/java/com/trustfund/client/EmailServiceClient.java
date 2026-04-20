@@ -32,7 +32,8 @@ public class EmailServiceClient {
             String ownerName,
             String campaignTitle,
             Long campaignId,
-            UserKYCResponse kycData) {
+            UserKYCResponse kycData,
+            String frontendUrl) {
         String url = identityServiceUrl + "/api/emails/commitment-email";
         try {
             Map<String, Object> body = new HashMap<>();
@@ -40,6 +41,7 @@ public class EmailServiceClient {
             body.put("ownerName", ownerName != null ? ownerName : "Quý thành viên");
             body.put("campaignTitle", campaignTitle);
             body.put("campaignId", campaignId);
+            body.put("frontendUrl", frontendUrl);
             if (kycData != null) {
                 body.put("fullName", kycData.getFullName() != null ? kycData.getFullName() : "");
                 body.put("address", kycData.getAddress() != null ? kycData.getAddress() : "");

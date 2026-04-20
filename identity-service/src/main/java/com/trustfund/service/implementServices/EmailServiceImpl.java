@@ -49,7 +49,8 @@ public class EmailServiceImpl implements EmailService {
     public void sendCommitmentRequestEmail(
             String toEmail, String ownerName, String campaignTitle, Long campaignId,
             String fullName, String address, String workplace, String taxId,
-            String idNumber, String issueDate, String issuePlace, String phoneNumber) {
+            String idNumber, String issueDate, String issuePlace, String phoneNumber,
+            String frontendUrl) {
         if (fromEmail == null || fromEmail.trim().isEmpty()) {
             log.error("Email configuration is missing. Cannot send commitment email.");
             throw new IllegalStateException("Email service is not configured");
@@ -60,13 +61,20 @@ public class EmailServiceImpl implements EmailService {
             helper.setFrom(fromEmail);
             helper.setTo(toEmail);
             helper.setSubject("[YÊU CẦU] Ký bản cam kết trách nhiệm chiến dịch - TrustFundME");
-            String signingUrl = frontendUrl + "/fund-owner/campaign/" + campaignId + "/commitment";
+            
+            // Sử dụng frontendUrl được truyền vào, nếu null/trống thì fallback về biến môi trường
+            String baseUrl = (frontendUrl != null && !frontendUrl.isBlank()) ? frontendUrl : this.frontendUrl;
+            // Đảm bảo không có dấu gạch chéo cuối cùng để tránh link sai //
+            baseUrl = baseUrl.replaceAll("/$", "");
+            
+            String signingUrl = baseUrl + "/fund-owner/campaign/" + campaignId + "/commitment";
+            
             helper.setText(buildCommitmentEmail(
                     ownerName, campaignTitle, signingUrl,
                     fullName, address, workplace, taxId,
                     idNumber, issueDate, issuePlace, phoneNumber), true);
             mailSender.send(message);
-            log.info("Commitment email sent to: {} (fullName='{}', address='{}')", toEmail, fullName, address);
+            log.info("Commitment email sent to: {} using baseUrl: {}", toEmail, baseUrl);
         } catch (MessagingException e) {
             log.error("Failed to send commitment email to {}: {}", toEmail, e.getMessage());
             throw new RuntimeException("Failed to send commitment email", e);

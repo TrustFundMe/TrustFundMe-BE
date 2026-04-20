@@ -5,7 +5,8 @@ public interface EmailService {
     void sendCommitmentRequestEmail(
             String toEmail, String ownerName, String campaignTitle, Long campaignId,
             String fullName, String address, String workplace, String taxId,
-            String idNumber, String issueDate, String issuePlace, String phoneNumber);
+            String idNumber, String issueDate, String issuePlace, String phoneNumber,
+            String frontendUrl);
     void sendEvidenceReminder(String toEmail, String ownerName, String campaignTitle, String expenditurePlan, java.math.BigDecimal amount, java.time.LocalDateTime dueDate);
     void sendFraudReport(String toEmail, String ownerName, String campaignTitle, String reason, String evidence);
     void sendCommitmentSuccessEmail(String toEmail, String ownerName, String campaignTitle);

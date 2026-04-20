@@ -33,7 +33,8 @@ public class EmailController {
                 request.getIdNumber(),
                 request.getIssueDate(),
                 request.getIssuePlace(),
-                request.getPhoneNumber()
+                request.getPhoneNumber(),
+                request.getFrontendUrl()
         );
         return ResponseEntity.ok().build();
     }
@@ -91,6 +92,7 @@ public class EmailController {
         private String issueDate;    // ngày cấp
         private String issuePlace;   // nơi cấp
         private String phoneNumber;  // số điện thoại
+        private String frontendUrl;  // Dynamic frontend URL
     }
 
     @lombok.Data
