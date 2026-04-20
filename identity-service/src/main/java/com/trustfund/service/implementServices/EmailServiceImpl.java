@@ -20,6 +20,9 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username:}")
     private String fromEmail;
 
+    @Value("${FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     public void sendOtpEmail(String toEmail, String otp, String userName, String purpose) {
         if (fromEmail == null || fromEmail.trim().isEmpty()) {
@@ -57,7 +60,7 @@ public class EmailServiceImpl implements EmailService {
             helper.setFrom(fromEmail);
             helper.setTo(toEmail);
             helper.setSubject("[YÊU CẦU] Ký bản cam kết trách nhiệm chiến dịch - TrustFundME");
-            String signingUrl = "http://localhost:3000/fund-owner/campaign/" + campaignId + "/commitment";
+            String signingUrl = frontendUrl + "/fund-owner/campaign/" + campaignId + "/commitment";
             helper.setText(buildCommitmentEmail(
                     ownerName, campaignTitle, signingUrl,
                     fullName, address, workplace, taxId,

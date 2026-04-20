@@ -51,7 +51,7 @@ public class DonationService {
         @Qualifier("campaignEnrichmentRestTemplate")
         private final RestTemplate campaignEnrichmentRestTemplate;
 
-        @Value("${app.frontend.url:http://localhost:3000}")
+        @Value("${FRONTEND_URL:http://localhost:3000}")
         private String frontendUrl;
 
         @Value("${app.campaign-service.url:http://localhost:8082}")

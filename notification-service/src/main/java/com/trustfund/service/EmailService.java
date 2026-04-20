@@ -19,6 +19,9 @@ public class EmailService {
     @Value("${spring.mail.username:}")
     private String fromEmail;
 
+    @Value("${FRONTEND_URL:http://localhost:3000}")
+    private String frontendUrl;
+
     public void sendEmail(String to, String subject, String content) {
         if (fromEmail == null || fromEmail.trim().isEmpty()) {
             log.error("Email configuration is missing. Cannot send email.");
@@ -69,7 +72,7 @@ public class EmailService {
 
     public void sendCommitmentRequestEmail(String to, String userName, String campaignTitle, Long campaignId) {
         String subject = "[YÊU CẦU] Ký bản cam kết trách nhiệm chiến dịch - TrustFundME";
-        String signingUrl = "http://localhost:3000/fund-owner/campaign/" + campaignId + "/commitment";
+        String signingUrl = frontendUrl + "/fund-owner/campaign/" + campaignId + "/commitment";
         
         String htmlContent = "<!DOCTYPE html>" +
                 "<html><body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
