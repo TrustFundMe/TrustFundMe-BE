@@ -138,7 +138,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 path.startsWith("/api/ocr-kyc") ||
                 path.startsWith("/api/analyze-flag") ||
                 path.startsWith("/api/analyze-expenditure") ||
-                path.startsWith("/api/generate-suggestion-labels")) {
+                path.startsWith("/api/generate-suggestion-labels") ||
+                path.startsWith("/api/analyze-evidence") ||
+                path.startsWith("/api/generate-post")) {
             return true;
         }
 
