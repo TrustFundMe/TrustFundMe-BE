@@ -18,6 +18,11 @@ public interface UserKYCRepository extends JpaRepository<UserKYC, Long> {
 
     Optional<UserKYC> findByIdNumber(String idNumber);
 
+    // Dùng khi có thể tồn tại nhiều bản ghi trùng (tránh NonUniqueResultException)
+    Optional<UserKYC> findFirstByIdNumber(String idNumber);
+
+    Optional<UserKYC> findByUser_Id(Long userId);
+
     Page<UserKYC> findByStatus(KYCStatus status, Pageable pageable);
 
     long countByStatus(KYCStatus status);

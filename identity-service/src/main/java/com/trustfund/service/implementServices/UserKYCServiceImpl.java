@@ -40,6 +40,17 @@ public class UserKYCServiceImpl implements UserKYCService {
             throw new BadRequestException("KYC already submitted");
         }
 
+        // Kiểm tra trùng số định danh với người dùng KHÁC trong hệ thống
+        if (request.getIdNumber() != null && !request.getIdNumber().isBlank()) {
+            userKYCRepository.findFirstByIdNumber(request.getIdNumber()).ifPresent(existing -> {
+                if (!existing.getUser().getId().equals(userId)) {
+                    throw new BadRequestException(
+                        "Số định danh '" + request.getIdNumber() + "' đã được đăng ký bởi tài khoản khác trong hệ thống. Vui lòng kiểm tra lại thông tin."
+                    );
+                }
+            });
+        }
+
         UserKYC userKYC = new UserKYC();
         userKYC.setUser(user);
         userKYC.setFullNameOcr(request.getFullName());

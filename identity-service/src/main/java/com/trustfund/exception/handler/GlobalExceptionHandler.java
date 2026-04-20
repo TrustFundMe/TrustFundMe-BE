@@ -5,6 +5,7 @@ import com.trustfund.exception.exceptions.NotFoundException;
 import com.trustfund.exception.exceptions.UnauthorizedException;
 import com.trustfund.model.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.IncorrectResultSizeDataAccessException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import jakarta.persistence.NonUniqueResultException;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Map;
@@ -60,6 +62,16 @@ public class GlobalExceptionHandler {
                         .data(fieldErrors)
                         .timestamp(LocalDateTime.now())
                         .build());
+    }
+
+    @ExceptionHandler({NonUniqueResultException.class, IncorrectResultSizeDataAccessException.class})
+    public ResponseEntity<ApiResponse<Void>> handleDuplicateDataException(Exception ex) {
+        log.error("Duplicate data error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(
+                    "Số định danh này đã tồn tại trong hệ thống với nhiều tài khoản khác nhau. Vui lòng liên hệ quản trị viên để xử lý.",
+                    HttpStatus.BAD_REQUEST.value()
+                ));
     }
 
     @ExceptionHandler(Exception.class)
