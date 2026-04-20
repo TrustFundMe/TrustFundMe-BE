@@ -84,6 +84,76 @@ services:
     networks:
       - trustfund
 
+  chat-service:
+    build: ./chat-service
+    container_name: trustfund-chat-service
+    restart: always
+    ports:
+      - "8086:8086"
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/trustfundme_chat_db?createDatabaseIfNotExist=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "12345"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka"
+      JWT_SECRET: "${JWT_SECRET}"
+      IDENTITY_SERVICE_URL: "http://trustfund-identity-service:8081"
+      NOTIFICATION_SERVICE_URL: "http://trustfund-notification-service:8088"
+    depends_on:
+      - mysql
+      - discovery-server
+    networks:
+      - trustfund
+
+  notification-service:
+    build: ./notification-service
+    container_name: trustfund-notification-service
+    restart: always
+    ports:
+      - "8088:8088"
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/trustfundme_notification_db?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "12345"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka"
+      JWT_SECRET: "${JWT_SECRET}"
+      IDENTITY_SERVICE_URL: "http://trustfund-identity-service:8081"
+      GMAIL_USERNAME: "${GMAIL_USERNAME}"
+      GMAIL_APP_PASSWORD: "${GMAIL_APP_PASSWORD}"
+    depends_on:
+      - mysql
+      - discovery-server
+    networks:
+      - trustfund
+
+  payment-service:
+    build: ./payment-service
+    container_name: trustfund-payment-service
+    restart: always
+    ports:
+      - "8087:8087"
+    environment:
+      SPRING_PROFILES_ACTIVE: "prod"
+      SPRING_DATASOURCE_URL: "jdbc:mysql://mysql:3306/trustfundme_payment_db?createDatabaseIfNotExist=true"
+      SPRING_DATASOURCE_USERNAME: "root"
+      SPRING_DATASOURCE_PASSWORD: "12345"
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://discovery-server:8761/eureka"
+      JWT_SECRET: "${JWT_SECRET}"
+      CAMPAIGN_SERVICE_URL: "http://trustfund-campaign-service:8082"
+      IDENTITY_SERVICE_URL: "http://trustfund-identity-service:8081"
+      FRONTEND_URL: "http://localhost:3000"
+      PAYOS_CLIENT_ID: "${PAYOS_CLIENT_ID}"
+      PAYOS_API_KEY: "${PAYOS_API_KEY}"
+      PAYOS_CHECKSUM_KEY: "${PAYOS_CHECKSUM_KEY}"
+      PUSHER_KEY: "${PUSHER_KEY}"
+      PUSHER_CLUSTER: "${PUSHER_CLUSTER}"
+    depends_on:
+      - mysql
+      - discovery-server
+    networks:
+      - trustfund
+
 networks:
   trustfund:
     driver: bridge
