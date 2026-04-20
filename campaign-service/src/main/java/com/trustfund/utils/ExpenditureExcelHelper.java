@@ -160,47 +160,70 @@ public class ExpenditureExcelHelper {
             Iterator<Row> rows = sheet.iterator();
 
             List<CreateExpenditureItemRequest> items = new ArrayList<>();
+            if (!rows.hasNext()) return items;
 
-            int rowNumber = 0;
+            Row headerRow = rows.next();
+            int nameIdx = -1, qtyIdx = -1, priceIdx = -1, noteIdx = -1;
+
+            // Map column indices dynamically
+            for (Cell cell : headerRow) {
+                String header = getCellStringValue(cell).toLowerCase();
+                int colIdx = cell.getColumnIndex();
+                if (header.contains("tên") || header.contains("hàng") || header.contains("vật")) nameIdx = colIdx;
+                else if (header.contains("số lượng") || header.contains("sl")) qtyIdx = colIdx;
+                else if (header.contains("đơn giá") || header.contains("giá")) priceIdx = colIdx;
+                else if (header.contains("ghi chú") || header.contains("note")) noteIdx = colIdx;
+            }
+
+            // Fallback for strict old template matching if dynamic matching failed
+            if (nameIdx == -1) nameIdx = 1;
+            if (qtyIdx == -1) qtyIdx = 2;
+            if (priceIdx == -1) priceIdx = 3;
+            // if noteIdx is still -1, it means we didn't find "ghi chú", we'll just leave it and not import note
+
+            // But wait, what if the user used the legacy template with "thành tiền" in col 4 and "ghi chú" in col 5?
+            // If they didn't have a header row that matched, we default to:
+            if (noteIdx == -1) noteIdx = 5;
+
             while (rows.hasNext()) {
                 Row currentRow = rows.next();
-
-                if (rowNumber == 0) {
-                    rowNumber++;
-                    continue;
+                
+                // Skip empty rows
+                boolean isEmptyRow = true;
+                for (Cell cell : currentRow) {
+                    if (cell != null && cell.getCellType() != CellType.BLANK) {
+                        isEmptyRow = false;
+                        break;
+                    }
                 }
+                if (isEmptyRow) continue;
 
-                Iterator<Cell> cellsInRow = currentRow.iterator();
                 CreateExpenditureItemRequest item = new CreateExpenditureItemRequest();
 
-                int cellIdx = 0;
-                while (cellsInRow.hasNext()) {
-                    Cell currentCell = cellsInRow.next();
+                if (nameIdx != -1) {
+                    Cell c = currentRow.getCell(nameIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setCategory(getCellStringValue(c));
+                }
+                if (qtyIdx != -1) {
+                    Cell c = currentRow.getCell(qtyIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setQuantity(getCellIntValue(c));
+                }
+                if (priceIdx != -1) {
+                    Cell c = currentRow.getCell(priceIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setExpectedPrice(getCellBigDecimalValue(c));
+                }
+                if (noteIdx != -1) {
+                    Cell c = currentRow.getCell(noteIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setNote(getCellStringValue(c));
+                }
 
-                    switch (cellIdx) {
-                        case 0: // STT – bỏ qua
-                            break;
-                        case 1: // Tên hàng hóa / Dịch vụ
-                            item.setCategory(getCellStringValue(currentCell));
-                            break;
-                        case 2: // Số lượng dự kiến
-                            item.setQuantity(getCellIntValue(currentCell));
-                            break;
-                        case 3: // Đơn giá dự kiến
-                            item.setExpectedPrice(getCellBigDecimalValue(currentCell));
-                            break;
-                        case 4: // Thành tiền – bỏ qua
-                            break;
-                        case 5: // Ghi chú
-                            item.setNote(getCellStringValue(currentCell));
-                            break;
-                    }
-                    cellIdx++;
+                // If name is empty, skip this row (probably end of data)
+                if (item.getCategory() == null || item.getCategory().trim().isEmpty()) {
+                    continue;
                 }
 
                 item.setPrice(BigDecimal.ZERO);
                 items.add(item);
-                rowNumber++;
             }
 
             return items;
