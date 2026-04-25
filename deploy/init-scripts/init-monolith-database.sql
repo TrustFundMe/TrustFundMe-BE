@@ -329,6 +329,7 @@ CREATE TABLE appointment_schedules (
     status VARCHAR(50) NOT NULL COMMENT 'PENDING, CONFIRMED, CANCELLED, COMPLETED',
     location VARCHAR(500),
     purpose TEXT,
+    created_by_role VARCHAR(50) DEFAULT 'ROLE_STAFF' COMMENT 'ROLE_USER, ROLE_STAFF',
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
     INDEX idx_donor_id (donor_id),

@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.web.server.ResponseStatusException;
 import com.trustfund.client.NotificationServiceClient;
 import com.trustfund.model.request.NotificationRequest;
@@ -31,6 +32,7 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
     private final AppointmentScheduleRepository repository;
     private final RestTemplate restTemplate;
     private final NotificationServiceClient notificationServiceClient;
+    private final HttpServletRequest httpServletRequest;
 
     @Value("${identity.service.url:http://localhost:8081}")
     private String identityServiceUrl;
@@ -52,6 +54,39 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
                             "Hiện tại còn " + hoursUntilStart + " tiếng đến thời điểm bắt đầu.");
         }
 
+        String userIdHeader = httpServletRequest.getHeader("X-User-Id");
+        String roleHeader = httpServletRequest.getHeader("X-User-Role");
+        
+        String creatorRole = "ROLE_USER"; // Default
+        
+        // 1. Identify by User ID (Most reliable in appointment context)
+        if (userIdHeader != null) {
+            try {
+                Long currentUserId = Long.parseLong(userIdHeader);
+                if (currentUserId.equals(request.getDonorId())) {
+                    creatorRole = "ROLE_USER";
+                } else if (currentUserId.equals(request.getStaffId())) {
+                    creatorRole = "ROLE_STAFF";
+                } else {
+                    // Fallback to role header if current user is neither donor nor staff (e.g. Admin)
+                    if (roleHeader != null) {
+                        String roleUpper = roleHeader.toUpperCase();
+                        if (roleUpper.contains("STAFF") || roleUpper.contains("ADMIN")) {
+                            creatorRole = "ROLE_STAFF";
+                        } else if (roleUpper.contains("USER") || roleUpper.contains("OWNER")) {
+                            creatorRole = "ROLE_USER";
+                        }
+                    }
+                }
+            } catch (NumberFormatException ignored) {
+                if (roleHeader != null && roleHeader.toUpperCase().contains("STAFF")) {
+                    creatorRole = "ROLE_STAFF";
+                }
+            }
+        } else if (roleHeader != null && roleHeader.toUpperCase().contains("STAFF")) {
+            creatorRole = "ROLE_STAFF";
+        }
+
         AppointmentSchedule appointment = AppointmentSchedule.builder()
                 .donorId(request.getDonorId())
                 .staffId(request.getStaffId())
@@ -60,9 +95,21 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
                 .location(request.getLocation())
                 .purpose(request.getPurpose())
                 .status(request.getStatus() != null ? request.getStatus() : AppointmentStatus.PENDING)
+                .createdByRole(creatorRole)
                 .build();
 
-        return mapToResponse(repository.save(appointment));
+        AppointmentSchedule saved = repository.save(appointment);
+
+        // Determine who to notify based on who is creating the appointment
+        String role = httpServletRequest.getHeader("X-User-Role");
+        boolean isStaff = role != null && role.contains("ROLE_STAFF");
+        
+        Long targetUserId = isStaff ? saved.getDonorId() : saved.getStaffId();
+        
+        // Send notification for PENDING status
+        sendAppointmentNotification(saved, AppointmentStatus.PENDING, targetUserId);
+
+        return mapToResponse(saved);
     }
 
     @Override
@@ -121,12 +168,30 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
             }
         }
 
+        // Enforce confirmation rules
+        if (status == AppointmentStatus.CONFIRMED) {
+            String currentRole = httpServletRequest.getHeader("X-User-Role");
+            boolean isStaffAction = currentRole != null && currentRole.contains("ROLE_STAFF");
+            boolean createdByStaff = "ROLE_STAFF".equals(appointment.getCreatedByRole());
+
+            if (isStaffAction && createdByStaff) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Staff không thể xác nhận lịch hẹn do chính mình tạo.");
+            }
+            if (!isStaffAction && !createdByStaff) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Người dùng không thể xác nhận lịch hẹn do chính mình tạo.");
+            }
+        }
+
         appointment.setStatus(status);
         AppointmentSchedule saved = repository.save(appointment);
 
-        // Send notification for CONFIRMED or CANCELLED status
+        // Send notification to the OTHER party
+        String role = httpServletRequest.getHeader("X-User-Role");
+        boolean isStaffAction = role != null && role.contains("ROLE_STAFF");
+        Long targetUserId = isStaffAction ? saved.getDonorId() : saved.getStaffId();
+
         if (status == AppointmentStatus.CONFIRMED || status == AppointmentStatus.CANCELLED) {
-            sendAppointmentNotification(saved, status);
+            sendAppointmentNotification(saved, status, targetUserId);
         }
 
         return mapToResponse(saved);
@@ -158,24 +223,43 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
         }
     }
 
-    private void sendAppointmentNotification(AppointmentSchedule appointment, AppointmentStatus status) {
+    private void sendAppointmentNotification(AppointmentSchedule appointment, AppointmentStatus status, Long targetUserId) {
         try {
-            boolean isConfirmed = status == AppointmentStatus.CONFIRMED;
-            String title = isConfirmed ? "Lịch hẹn đã được xác nhận" : "Lịch hẹn đã bị hủy";
+            String title;
+            String content;
+            String type;
 
             String startTimeStr = appointment.getStartTime().toString().replace("T", " ");
-            String content = isConfirmed
-                    ? "Lịch hẹn của bạn vào lúc " + startTimeStr + " tại " + appointment.getLocation()
-                            + " đã được xác nhận."
-                    : "Rất tiếc, lịch hẹn của bạn vào lúc " + startTimeStr + " đã bị hủy.";
+
+            switch (status) {
+                case PENDING:
+                    title = "Lời mời hẹn mới";
+                    content = "Bạn có một lời mời hẹn vào lúc " + startTimeStr + " tại " + appointment.getLocation()
+                            + ". Vui lòng kiểm tra lịch để xác nhận.";
+                    type = "APPOINTMENT_PENDING";
+                    break;
+                case CONFIRMED:
+                    title = "Lịch hẹn đã được xác nhận";
+                    content = "Lịch hẹn vào lúc " + startTimeStr + " tại " + appointment.getLocation()
+                            + " đã được xác nhận bởi đối phương.";
+                    type = "APPOINTMENT_CONFIRMED";
+                    break;
+                case CANCELLED:
+                    title = "Lịch hẹn đã bị hủy";
+                    content = "Rất tiếc, lịch hẹn vào lúc " + startTimeStr + " đã bị hủy.";
+                    type = "APPOINTMENT_CANCELLED";
+                    break;
+                default:
+                    return;
+            }
 
             java.util.Map<String, Object> notificationData = new java.util.HashMap<>();
             notificationData.put("appointmentId", appointment.getId());
             notificationData.put("status", status.name());
 
             NotificationRequest notificationRequest = NotificationRequest.builder()
-                    .userId(appointment.getDonorId())
-                    .type(isConfirmed ? "APPOINTMENT_CONFIRMED" : "APPOINTMENT_CANCELLED")
+                    .userId(targetUserId)
+                    .type(type)
                     .targetId(appointment.getId())
                     .targetType("APPOINTMENT")
                     .title(title)
@@ -184,10 +268,10 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
                     .build();
 
             log.info("[AppointmentService] Sending notification to user {} for appointment {}",
-                    appointment.getDonorId(), appointment.getId());
+                    targetUserId, appointment.getId());
             notificationServiceClient.sendNotification(notificationRequest);
         } catch (Exception e) {
-            log.error("Error sending appointment notification for user {}: {}", appointment.getDonorId(),
+            log.error("Error sending appointment notification for user {}: {}", targetUserId,
                     e.getMessage());
         }
     }
@@ -204,6 +288,7 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
                 .status(appointment.getStatus())
                 .location(appointment.getLocation())
                 .purpose(appointment.getPurpose())
+                .createdByRole(appointment.getCreatedByRole())
                 .createdAt(appointment.getCreatedAt())
                 .updatedAt(appointment.getUpdatedAt())
                 .build();

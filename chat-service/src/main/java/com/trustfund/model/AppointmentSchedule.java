@@ -42,6 +42,9 @@ public class AppointmentSchedule {
     @Column(name = "purpose", length = 500)
     private String purpose;
 
+    @Column(name = "created_by_role", length = 50)
+    private String createdByRole;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -23,6 +23,7 @@ public class AppointmentScheduleResponse {
     private AppointmentStatus status;
     private String location;
     private String purpose;
+    private String createdByRole;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
