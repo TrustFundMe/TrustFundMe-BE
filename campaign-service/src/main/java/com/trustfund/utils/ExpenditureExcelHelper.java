@@ -25,7 +25,7 @@ public class ExpenditureExcelHelper {
     static String SHEET_ITEMS = "HẠNG MỤC CHI TIẾT";
 
     static String[] HEADERS_PLAN = {
-        "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Mô tả", "Điều kiện giải ngân"
+        "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Mô tả"
     };
 
     static String[] HEADERS_ITEMS = {
@@ -114,8 +114,8 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] planSamples = {
-                { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026", "Móc giải ngân đầu tiên để mua nhu yếu phẩm", "Sau khi campaign được duyệt" },
-                { "2", "Đợt 2: Phục hồi sinh kế", "16/05/2026", "30/06/2026", "Hỗ trợ hạt giống và công cụ sản xuất", "Sau khi hoàn thành đợt 1" }
+                { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026", "Móc giải ngân đầu tiên để mua nhu yếu phẩm" },
+                { "2", "Đợt 2: Phục hồi sinh kế", "16/05/2026", "30/06/2026", "Hỗ trợ hạt giống và công cụ sản xuất" }
             };
 
             for (int i = 0; i < planSamples.length; i++) {
@@ -187,7 +187,7 @@ public class ExpenditureExcelHelper {
                             .startDate(startIdx != -1 ? getCellStringValue(row.getCell(startIdx)) : "")
                             .endDate(endIdx != -1 ? getCellStringValue(row.getCell(endIdx)) : "")
                             .description(descIdx != -1 ? getCellStringValue(row.getCell(descIdx)) : "")
-                            .releaseCondition(condIdx != -1 ? getCellStringValue(row.getCell(condIdx)) : "")
+                            .releaseCondition("")
                             .categories(new ArrayList<>())
                             .build();
                     milestones.add(milestone);
