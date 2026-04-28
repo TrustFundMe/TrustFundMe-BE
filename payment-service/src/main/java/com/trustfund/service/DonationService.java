@@ -9,7 +9,6 @@ import com.trustfund.model.Payment;
 import com.trustfund.repository.DonationItemRepository;
 import com.trustfund.repository.DonationRepository;
 import com.trustfund.repository.PaymentRepository;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,7 +38,6 @@ import com.trustfund.dto.response.RecentDonorResponse;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DonationService {
 
         private final PayOS payOS;
@@ -47,8 +45,6 @@ public class DonationService {
         private final DonationItemRepository donationItemRepository;
         private final PaymentRepository paymentRepository;
         private final RestTemplate restTemplate;
-
-        @Qualifier("campaignEnrichmentRestTemplate")
         private final RestTemplate campaignEnrichmentRestTemplate;
 
         @Value("${FRONTEND_URL:http://localhost:3000}")
@@ -59,6 +55,21 @@ public class DonationService {
 
         @Value("${app.identity-service.url:http://localhost:8081}")
         private String identityServiceUrl;
+
+        public DonationService(
+                        PayOS payOS,
+                        DonationRepository donationRepository,
+                        DonationItemRepository donationItemRepository,
+                        PaymentRepository paymentRepository,
+                        RestTemplate restTemplate,
+                        @Qualifier("campaignEnrichmentRestTemplate") RestTemplate campaignEnrichmentRestTemplate) {
+                this.payOS = payOS;
+                this.donationRepository = donationRepository;
+                this.donationItemRepository = donationItemRepository;
+                this.paymentRepository = paymentRepository;
+                this.restTemplate = restTemplate;
+                this.campaignEnrichmentRestTemplate = campaignEnrichmentRestTemplate;
+        }
 
         @Transactional
         public PaymentResponse createPayment(CreatePaymentRequest request) throws Exception {
@@ -942,16 +953,17 @@ public class DonationService {
                         return java.math.BigDecimal.ZERO;
                 }
                 return java.util.Optional.ofNullable(
-                        donationRepository.sumDonationAmountByCampaignIds(campaignIds))
-                        .orElse(java.math.BigDecimal.ZERO);
+                                donationRepository.sumDonationAmountByCampaignIds(campaignIds))
+                                .orElse(java.math.BigDecimal.ZERO);
         }
 
         @Transactional(readOnly = true)
         public List<Map<String, Object>> getPaidDonationsByCampaign(Long campaignId) {
                 log.info("➔ [PAYMENT-SERVICE] Fetching PAID donations for campaignId: {}", campaignId);
-                List<Donation> donations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(campaignId, "PAID");
+                List<Donation> donations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(campaignId,
+                                "PAID");
                 log.info("➔ [PAYMENT-SERVICE] Found {} PAID donations in database", donations.size());
-                
+
                 return donations.stream().map(d -> {
                         Map<String, Object> map = new HashMap<>();
                         map.put("id", d.getId());
