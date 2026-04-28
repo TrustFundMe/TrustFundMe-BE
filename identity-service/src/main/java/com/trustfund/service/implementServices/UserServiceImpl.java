@@ -117,6 +117,14 @@ public class UserServiceImpl implements UserService {
             }
             user.setAvatarUrl(request.getAvatarUrl());
         }
+        if (request.getCvUrl() != null) {
+            // Nếu có cvUrl cũ và khác với mới, xóa file cũ
+            String oldCvUrl = user.getCvUrl();
+            if (oldCvUrl != null && !oldCvUrl.equals(request.getCvUrl())) {
+                deleteOldAvatarFile(oldCvUrl); // Reuse delete logic as it just hits the media-service by URL
+            }
+            user.setCvUrl(request.getCvUrl());
+        }
         if (request.getPassword() != null && !request.getPassword().isEmpty()) {
             user.setPassword(passwordEncoder.encode(request.getPassword()));
         }

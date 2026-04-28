@@ -1,13 +1,17 @@
 package com.trustfund.service.impl;
 
 import com.trustfund.model.Expenditure;
+import com.trustfund.model.ExpenditureCatology;
 import com.trustfund.model.ExpenditureItem;
 import com.trustfund.model.ExpenditureTransaction;
+import com.trustfund.repository.ExpenditureCatologyRepository;
 import com.trustfund.repository.ExpenditureTransactionRepository;
 import com.trustfund.model.response.CampaignResponse;
+import com.trustfund.model.response.ExpenditureCatologyResponse;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
+import com.trustfund.model.request.CreateExpenditureCatologyRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
@@ -41,6 +45,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     private final ExpenditureRepository expenditureRepository;
     private final ExpenditureItemRepository expenditureItemRepository;
+    private final ExpenditureCatologyRepository catologyRepository;
     private final ExpenditureTransactionRepository transactionRepository;
     private final CampaignService campaignService;
     private final IdentityServiceClient identityServiceClient;
@@ -67,44 +72,14 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public ExpenditureResponse createExpenditure(CreateExpenditureRequest request) {
         CampaignResponse campaign = campaignService.getById(request.getCampaignId());
+        log.info("Creating expenditure for campaign ID: {}, plan: {}", request.getCampaignId(), request.getPlan());
 
         if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Chiến dịch đã bị vô hiệu hóa, không thể yêu cầu chi tiêu.");
         }
 
-        // === VALIDATION: Kiểm tra điều kiện tạo expenditure mới ===
-        List<ExpenditureResponse> existingExps = getExpendituresByCampaign(request.getCampaignId());
 
-        if (!existingExps.isEmpty()) {
-            // Chỉ kiểm tra khoản chi gần nhất (ID cao nhất)
-            ExpenditureResponse latestExp = existingExps.stream()
-                    .max(java.util.Comparator.comparingLong(ExpenditureResponse::getId))
-                    .orElse(null);
-
-            if (latestExp != null) {
-                boolean isDisbursed = "DISBURSED".equalsIgnoreCase(latestExp.getStatus());
-                boolean isRejected = "REJECTED".equalsIgnoreCase(latestExp.getStatus());
-                boolean hasEvidence = "SUBMITTED".equalsIgnoreCase(latestExp.getEvidenceStatus())
-                        || "APPROVED".equalsIgnoreCase(latestExp.getEvidenceStatus());
-
-                if (!isDisbursed && !isRejected) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Chỉ được tạo khoản chi mới khi khoản chi gần nhất đã được giải ngân hoặc bị từ chối.");
-                }
-
-                if (isDisbursed && !hasEvidence) {
-                    throw new ResponseStatusException(HttpStatus.CONFLICT,
-                            "Vui lòng nộp báo cáo minh chứng sử dụng vốn cho khoản chi đã giải ngân trước khi tạo khoản chi mới.");
-                }
-            }
-        }
-        // === END VALIDATION ===
-
-        if ("AUTHORIZED".equalsIgnoreCase(campaign.getType()) && request.getEvidenceDueAt() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "Hạn nộp minh chứng là bắt buộc đối với loại chiến dịch này");
-        }
 
         // ITEMIZED: cần staff duyệt trước (PENDING_REVIEW) — giống AUTHORIZED
         // AUTHORIZED: cần staff duyệt trước (PENDING_REVIEW)
@@ -113,15 +88,37 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         BigDecimal totalExpectedAmount = BigDecimal.ZERO;
 
-        if (request.getItems() != null) {
-            totalAmount = request.getItems().stream()
-                    .map(item -> item.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+        // Tính tổng từ categories (nếu có) hoặc items trực tiếp (backward compat)
+        List<CreateExpenditureItemRequest> allItemRequests = new java.util.ArrayList<>();
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            for (CreateExpenditureCatologyRequest cat : request.getCategories()) {
+                if (cat.getItems() != null) {
+                    allItemRequests.addAll(cat.getItems());
+                }
+            }
+        } else if (request.getItems() != null) {
+            allItemRequests.addAll(request.getItems());
+        }
+
+        if (!allItemRequests.isEmpty()) {
+            totalAmount = allItemRequests.stream()
+                    .map(item -> {
+                        BigDecimal price = item.getActualPrice() != null ? item.getActualPrice() : BigDecimal.ZERO;
+                        int qty = item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0;
+                        return price.multiply(BigDecimal.valueOf(qty));
+                    })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            totalExpectedAmount = request.getItems().stream()
-                    .map(item -> item.getExpectedPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+            totalExpectedAmount = allItemRequests.stream()
+                    .map(item -> {
+                        BigDecimal price = item.getExpectedPrice() != null ? item.getExpectedPrice() : BigDecimal.ZERO;
+                        int qty = item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0;
+                        return price.multiply(BigDecimal.valueOf(qty));
+                    })
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
         }
+
+        log.info("Calculated amounts - total: {}, expected: {}", totalAmount, totalExpectedAmount);
 
         BigDecimal variance = totalExpectedAmount.subtract(totalAmount);
 
@@ -145,21 +142,69 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .variance(variance)
                 .plan(request.getPlan())
                 .status(initialStatus)
+                .startDate(request.getStartDate())
+                .endDate(request.getEndDate())
                 .build();
 
         final Expenditure savedExpenditure = expenditureRepository.save(expenditure);
 
-        if (request.getItems() != null && !request.getItems().isEmpty()) {
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            for (CreateExpenditureCatologyRequest catReq : request.getCategories()) {
+                BigDecimal catExpectedAmount = BigDecimal.ZERO;
+                if (catReq.getItems() != null) {
+                    catExpectedAmount = catReq.getItems().stream()
+                            .map(i -> {
+                                BigDecimal price = i.getExpectedPrice() != null ? i.getExpectedPrice() : BigDecimal.ZERO;
+                                int qty = i.getExpectedQuantity() != null ? i.getExpectedQuantity() : 0;
+                                return price.multiply(BigDecimal.valueOf(qty));
+                            })
+                            .reduce(BigDecimal.ZERO, BigDecimal::add);
+                }
+
+                ExpenditureCatology catology = ExpenditureCatology.builder()
+                        .expenditure(savedExpenditure)
+                        .name(catReq.getName())
+                        .description(catReq.getDescription())
+                        .expectedAmount(catExpectedAmount)
+                        .actualAmount(BigDecimal.ZERO)
+                        .withdrawalCondition(catReq.getWithdrawalCondition())
+                        .build();
+                ExpenditureCatology savedCatology = catologyRepository.save(catology);
+
+                if (catReq.getItems() != null) {
+                    List<ExpenditureItem> items = catReq.getItems().stream()
+                            .map(itemReq -> ExpenditureItem.builder()
+                                    .expenditure(savedExpenditure)
+                                    .catology(savedCatology)
+                                    .category(itemReq.getCategory())
+                                    .expectedQuantity(itemReq.getExpectedQuantity())
+                                    .actualQuantity(0)
+                                    .quantityLeft(itemReq.getExpectedQuantity())
+                                    .actualPrice(BigDecimal.ZERO)
+                                    .expectedPrice(itemReq.getExpectedPrice())
+                                    .note(itemReq.getNote())
+                                    .purchaseLocation(itemReq.getPurchaseLocation())
+                                    .brand(itemReq.getBrand())
+                                    .unit(itemReq.getUnit())
+                                    .build())
+                            .collect(Collectors.toList());
+                    expenditureItemRepository.saveAll(items);
+                }
+            }
+        } else if (request.getItems() != null && !request.getItems().isEmpty()) {
             List<ExpenditureItem> items = request.getItems().stream()
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
                             .category(itemReq.getCategory())
-                            .quantity(itemReq.getQuantity())
+                            .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
-                            .quantityLeft(itemReq.getQuantity())
-                            .price(BigDecimal.ZERO)
+                            .quantityLeft(itemReq.getExpectedQuantity())
+                            .actualPrice(BigDecimal.ZERO)
                             .expectedPrice(itemReq.getExpectedPrice())
                             .note(itemReq.getNote())
+                            .purchaseLocation(itemReq.getPurchaseLocation())
+                            .brand(itemReq.getBrand())
+                            .unit(itemReq.getUnit())
                             .build())
                     .collect(Collectors.toList());
             expenditureItemRepository.saveAll(items);
@@ -217,12 +262,17 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .id(item.getId())
                 .expenditureId(item.getExpenditure().getId())
                 .category(item.getCategory())
-                .quantity(item.getQuantity())
+                .expectedQuantity(item.getExpectedQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
-                .price(item.getPrice())
+                .actualPrice(item.getActualPrice())
                 .expectedPrice(item.getExpectedPrice())
                 .note(item.getNote())
+                .purchaseLocation(item.getPurchaseLocation())
+                .brand(item.getBrand())
+                .unit(item.getUnit())
+                .catologyId(item.getCatologyId())
+                .catologyName(item.getCatology() != null ? item.getCatology().getName() : null)
                 .createdAt(item.getCreatedAt())
                 .updatedAt(item.getUpdatedAt())
                 .build();
@@ -273,6 +323,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .isWithdrawalRequested(expenditure.getIsWithdrawalRequested())
                     .plan(expenditure.getPlan())
                     .status(expenditure.getStatus())
+                    .startDate(expenditure.getStartDate())
+                    .endDate(expenditure.getEndDate())
                     .staffReviewId(expenditure.getStaffReviewId())
                     .rejectReason(expenditure.getRejectReason())
                     .createdAt(expenditure.getCreatedAt())
@@ -625,8 +677,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if (updateItem.getActualQuantity() != null) {
                 item.setActualQuantity(updateItem.getActualQuantity());
             }
-            if (updateItem.getPrice() != null) {
-                item.setPrice(updateItem.getPrice());
+            if (updateItem.getActualPrice() != null) {
+                item.setActualPrice(updateItem.getActualPrice());
             }
             expenditureItemRepository.save(item);
         }
@@ -668,10 +720,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .map(itemReq -> ExpenditureItem.builder()
                         .expenditure(expenditure)
                         .category(itemReq.getCategory())
-                        .quantity(itemReq.getQuantity())
+                        .expectedQuantity(itemReq.getExpectedQuantity())
                         .actualQuantity(0)
-                        .quantityLeft(itemReq.getQuantity())
-                        .price(BigDecimal.ZERO)
+                        .quantityLeft(itemReq.getExpectedQuantity())
+                        .actualPrice(BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
                         .note(itemReq.getNote())
                         .build())
@@ -696,7 +748,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         ExpenditureItem item = expenditureItemRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Item not found: " + id));
 
-        int currentLeft = item.getQuantityLeft() != null ? item.getQuantityLeft() : item.getQuantity();
+        int currentLeft = item.getQuantityLeft() != null ? item.getQuantityLeft() : item.getExpectedQuantity();
         item.setQuantityLeft(Math.max(0, currentLeft - amountToDeduct));
         expenditureItemRepository.save(item);
     }
@@ -719,24 +771,46 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(expenditureId);
 
         BigDecimal totalExpectedAmount = items.stream()
-                .map(item -> item.getExpectedPrice().multiply(BigDecimal.valueOf(item.getQuantity())))
+                .map(item -> item.getExpectedPrice().multiply(BigDecimal.valueOf(item.getExpectedQuantity())))
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         BigDecimal totalAmount = items.stream()
                 .map(item -> {
-                    BigDecimal price = item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO;
+                    BigDecimal price = item.getActualPrice() != null ? item.getActualPrice() : BigDecimal.ZERO;
                     Integer qty = item.getActualQuantity() != null ? item.getActualQuantity() : 0;
                     return price.multiply(BigDecimal.valueOf(qty));
                 })
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Giữ nguyên totalReceivedAmount (đã được set đúng từ disbursement)
-        // Chỉ cập nhật totalExpectedAmount, totalAmount và variance
         expenditure.setTotalExpectedAmount(totalExpectedAmount);
         expenditure.setTotalAmount(totalAmount);
         expenditure.setVariance(
                 (expenditure.getTotalReceivedAmount() != null ? expenditure.getTotalReceivedAmount() : BigDecimal.ZERO)
                         .subtract(totalAmount));
+
+        // Cập nhật amounts cho từng catology
+        List<ExpenditureCatology> catologies = catologyRepository.findByExpenditureId(expenditureId);
+        for (ExpenditureCatology cat : catologies) {
+            List<ExpenditureItem> catItems = items.stream()
+                    .filter(i -> cat.getId().equals(i.getCatologyId()))
+                    .collect(Collectors.toList());
+
+            BigDecimal catExpected = catItems.stream()
+                    .map(i -> i.getExpectedPrice().multiply(BigDecimal.valueOf(i.getExpectedQuantity())))
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal catActual = catItems.stream()
+                    .map(i -> {
+                        BigDecimal p = i.getActualPrice() != null ? i.getActualPrice() : BigDecimal.ZERO;
+                        Integer q = i.getActualQuantity() != null ? i.getActualQuantity() : 0;
+                        return p.multiply(BigDecimal.valueOf(q));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            cat.setExpectedAmount(catExpected);
+            cat.setActualAmount(catActual);
+        }
+        catologyRepository.saveAll(catologies);
 
         return expenditureRepository.save(expenditure);
     }
@@ -929,5 +1003,28 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return expenditureRepository.findByCampaignIdInOrderByCreatedAtDesc(campaignIds).stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenditureCatologyResponse> getExpenditureCategories(Long expenditureId) {
+        List<ExpenditureCatology> catologies = catologyRepository.findByExpenditureId(expenditureId);
+        return catologies.stream().map(cat -> {
+            List<ExpenditureItemResponse> itemResponses = cat.getItems() != null
+                    ? cat.getItems().stream().map(this::mapToItemResponse).collect(Collectors.toList())
+                    : java.util.Collections.emptyList();
+            return ExpenditureCatologyResponse.builder()
+                    .id(cat.getId())
+                    .expenditureId(cat.getExpenditureId())
+                    .name(cat.getName())
+                    .description(cat.getDescription())
+                    .expectedAmount(cat.getExpectedAmount())
+                    .actualAmount(cat.getActualAmount())
+                    .withdrawalCondition(cat.getWithdrawalCondition())
+                    .items(itemResponses)
+                    .createdAt(cat.getCreatedAt())
+                    .updatedAt(cat.getUpdatedAt())
+                    .build();
+        }).collect(Collectors.toList());
     }
 }

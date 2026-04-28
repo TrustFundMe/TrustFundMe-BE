@@ -3,6 +3,7 @@ package com.trustfund.service;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
+import com.trustfund.model.response.ExpenditureCatologyResponse;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
@@ -62,4 +63,6 @@ public interface ExpenditureService {
         BigDecimal getTotalDisbursedByFundOwner(Long fundOwnerId);
 
         List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId);
+
+        List<ExpenditureCatologyResponse> getExpenditureCategories(Long expenditureId);
 }

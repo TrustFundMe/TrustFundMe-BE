@@ -1,5 +1,6 @@
 package com.trustfund.controller;
 
+import com.trustfund.model.response.ExpenditureCatologyResponse;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
@@ -99,6 +100,12 @@ public class ExpenditureController {
         return ResponseEntity.ok(expenditureService.getExpenditureItems(id));
     }
 
+    @GetMapping("/{id}/categories")
+    @Operation(summary = "Lấy danh mục chi tiêu", description = "Lấy danh sách danh mục (ExpenditureCatology) kèm items thuộc về một khoản chi tiêu.")
+    public ResponseEntity<List<ExpenditureCatologyResponse>> getCategories(@PathVariable("id") Long id) {
+        return ResponseEntity.ok(expenditureService.getExpenditureCategories(id));
+    }
+
     @PutMapping("/{id}/disbursement-proof")
     @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
     public ResponseEntity<ExpenditureResponse> updateDisbursementProof(@PathVariable("id") Long id,
@@ -178,7 +185,7 @@ public class ExpenditureController {
     @Operation(summary = "Tải file mẫu Excel nhập khoản chi", description = "Tải file mẫu Excel với dữ liệu minh hoạ để người dùng nhập theo.")
     public ResponseEntity<byte[]> downloadTemplate() {
         java.io.ByteArrayInputStream data = expenditureService.exportItemsToExcelTemplate();
-        String filename = "KhoanChi_Mau_"
+        String filename = "Mau_Ke_Hoach_Chi_Tieu_Tong_Hop_"
                 + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
         return ResponseEntity.ok()
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
@@ -187,9 +194,9 @@ public class ExpenditureController {
                 .body(data.readAllBytes());
     }
 
-    @PostMapping("/import")
-    @Operation(summary = "Nhập hạng mục chi tiêu từ Excel", description = "Đọc file Excel và trả về danh sách hạng mục chi tiêu để xem trước trước khi tạo khoản chi.")
-    public ResponseEntity<?> importItemsFromExcel(@RequestParam("file") MultipartFile file) {
+    @PostMapping("/import-bulk")
+    @Operation(summary = "Nhập toàn bộ mốc và hạng mục chi tiêu từ Excel", description = "Đọc file Excel và trả về cấu trúc phân cấp các mốc giải ngân, hạng mục và vật phẩm.")
+    public ResponseEntity<?> importBulkFromExcel(@RequestParam("file") MultipartFile file) {
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(java.util.Map.of("error", "File không được để trống"));
         }
@@ -198,12 +205,12 @@ public class ExpenditureController {
                     .body(java.util.Map.of("error", "Vui lòng upload file Excel (.xlsx hoặc .xls)"));
         }
         try {
-            java.util.List<CreateExpenditureItemRequest> items = ExpenditureExcelHelper
-                    .excelToItems(file.getInputStream());
+            java.util.List<com.trustfund.model.request.BulkMilestoneImportRequest> data = ExpenditureExcelHelper
+                    .excelToMilestones(file.getInputStream());
             return ResponseEntity.ok(java.util.Map.of(
                     "success", true,
-                    "message", "Đọc " + items.size() + " hạng mục từ file Excel thành công",
-                    "data", items));
+                    "message", "Đọc " + data.size() + " mốc giải ngân từ file Excel thành công",
+                    "data", data));
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("error", "Không thể đọc file Excel: " + e.getMessage()));

@@ -16,12 +16,17 @@ public class ExpenditureItemResponse {
     private Long id;
     private Long expenditureId;
     private String category;
-    private Integer quantity;
+    private Integer expectedQuantity;
     private Integer actualQuantity;
     private Integer quantityLeft;
-    private BigDecimal price;
+    private BigDecimal actualPrice;
     private BigDecimal expectedPrice;
     private String note;
+    private String purchaseLocation;
+    private String brand;
+    private String unit;
+    private Long catologyId;
+    private String catologyName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

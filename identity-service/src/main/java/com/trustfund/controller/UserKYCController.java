@@ -24,7 +24,7 @@ public class UserKYCController {
     private final UserKYCService userKYCService;
 
     @PostMapping("/users/{userId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN') or #userId.toString() == authentication.name")
     @Operation(summary = "Submit KYC for User (Staff Only)", description = "Staff inputs KYC data for a user to verify them")
     public ResponseEntity<KYCResponse> submitKYC(@PathVariable("userId") Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
@@ -34,7 +34,7 @@ public class UserKYCController {
     }
 
     @PutMapping("/users/{userId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN') or #userId.toString() == authentication.name")
     @Operation(summary = "Update KYC for User (Staff Only)", description = "Staff updates/resubmits KYC data for a user")
     public ResponseEntity<KYCResponse> resubmitKYC(@PathVariable("userId") Long userId,
             @Valid @RequestBody SubmitKYCRequest request) {
@@ -53,7 +53,7 @@ public class UserKYCController {
     }
 
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('STAFF','ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF','ADMIN') or #userId.toString() == authentication.name")
     @Operation(summary = "Get KYC by user ID", description = "Get KYC details of a specific user (STAFF/ADMIN only)")
     public ResponseEntity<KYCResponse> getKYCByUserId(@PathVariable("userId") Long userId) {
         return ResponseEntity.ok(userKYCService.getKYCByUserId(userId));

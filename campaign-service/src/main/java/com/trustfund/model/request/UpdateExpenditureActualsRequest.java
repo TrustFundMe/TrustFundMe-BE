@@ -23,6 +23,6 @@ public class UpdateExpenditureActualsRequest {
         private Integer actualQuantity;
 
         @DecimalMin(value = "0.0", message = "Giá thực tế không được nhỏ hơn 0")
-        private BigDecimal price; // Actual Price
+        private BigDecimal actualPrice; // Actual Price
     }
 }
