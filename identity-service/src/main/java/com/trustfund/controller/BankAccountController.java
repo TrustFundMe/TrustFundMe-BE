@@ -156,6 +156,14 @@ public class BankAccountController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/campaign/{campaignId}")
+    @Operation(summary = "Get bank account by campaign ID", description = "Get details of a bank account linked to a specific campaign")
+    public ResponseEntity<BankAccountResponse> getByCampaignId(@PathVariable("campaignId") Long campaignId) {
+        return bankAccountService.findByCampaignId(campaignId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
     private String getRole(Authentication authentication) {
         return authentication.getAuthorities().stream()
                 .findFirst()

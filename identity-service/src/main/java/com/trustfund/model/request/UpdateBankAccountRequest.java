@@ -26,4 +26,9 @@ public class UpdateBankAccountRequest {
     @NotBlank(message = "Tên chủ tài khoản không được để trống")
     @Size(min = 6, max = 255, message = "Tên chủ tài khoản phải từ 6 đến 255 ký tự")
     private String accountHolderName;
+
+    @Size(max = 512, message = "Webhook key không được quá 512 ký tự")
+    private String webhookKey;
+
+    private Long campaignId;
 }

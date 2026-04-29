@@ -47,6 +47,12 @@ public class BankAccount {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
+    @Column(name = "webhook_key", length = 512)
+    private String webhookKey;
+
+    @Column(name = "campaign_id")
+    private Long campaignId;
+
     @PrePersist
     protected void onCreate() {
         if (createdAt == null) {

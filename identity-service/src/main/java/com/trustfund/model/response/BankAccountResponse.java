@@ -20,6 +20,8 @@ public class BankAccountResponse {
     private String accountHolderName;
     private Boolean isVerified;
     private String status;
+    private String webhookKey;
+    private Long campaignId;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime createdAt;

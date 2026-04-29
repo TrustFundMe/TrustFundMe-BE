@@ -38,6 +38,8 @@ public class SecurityConfig {
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/api/payments/webhook").permitAll()
+                                                .requestMatchers("/api/payments/casso-webhook").permitAll()
+                                                .requestMatchers("/api/payments/casso/**").permitAll()
                                                 .requestMatchers("/api/payments/create").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/donation/**")
                                                 .permitAll()

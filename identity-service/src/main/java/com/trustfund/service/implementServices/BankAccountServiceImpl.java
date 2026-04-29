@@ -13,6 +13,7 @@ import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
 import com.trustfund.repository.UserKYCRepository;
 import com.trustfund.service.interfaceServices.BankAccountService;
+import com.trustfund.utils.EncryptionUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,6 +27,7 @@ public class BankAccountServiceImpl implements BankAccountService {
     private final UserRepository userRepository;
     private final BankAccountRepository bankAccountRepository;
     private final UserKYCRepository userKYCRepository;
+    private final EncryptionUtils encryptionUtils;
 
     @Override
     public BankAccountResponse create(CreateBankAccountRequest request, String userIdStr) {
@@ -44,6 +46,8 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .accountHolderName(request.getAccountHolderName())
                 .isVerified(true) // Auto-verify when STAFF creates
                 .status("APPROVED") // Auto-approve when STAFF creates
+                .webhookKey(request.getWebhookKey() != null ? encryptionUtils.encrypt(request.getWebhookKey()) : null)
+                .campaignId(request.getCampaignId())
                 .build();
 
         BankAccount saved = bankAccountRepository.save(bankAccount);
@@ -158,6 +162,12 @@ public class BankAccountServiceImpl implements BankAccountService {
         bankAccount.setBankCode(request.getBankCode());
         bankAccount.setAccountNumber(request.getAccountNumber());
         bankAccount.setAccountHolderName(request.getAccountHolderName());
+        
+        if (request.getWebhookKey() != null) {
+            bankAccount.setWebhookKey(encryptionUtils.encrypt(request.getWebhookKey()));
+        }
+
+        bankAccount.setCampaignId(request.getCampaignId());
 
         // Reset verification status if details are updated by owner
         if (bankAccount.getUser().getId().equals(currentUserId)) {
@@ -230,6 +240,8 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .accountHolderName(bankAccount.getAccountHolderName())
                 .isVerified(bankAccount.getIsVerified())
                 .status(bankAccount.getStatus())
+                .webhookKey(bankAccount.getWebhookKey() != null ? encryptionUtils.decrypt(bankAccount.getWebhookKey()) : null)
+                .campaignId(bankAccount.getCampaignId())
                 .createdAt(bankAccount.getCreatedAt())
                 .updatedAt(bankAccount.getUpdatedAt())
                 .build();
@@ -267,6 +279,8 @@ public class BankAccountServiceImpl implements BankAccountService {
                     .accountHolderName(request.getAccountHolderName())
                     .isVerified(true) // Auto-verify when STAFF submits
                     .status("APPROVED") // Auto-approve when STAFF submits
+                    .webhookKey(request.getWebhookKey() != null ? encryptionUtils.encrypt(request.getWebhookKey()) : null)
+                    .campaignId(request.getCampaignId())
                     .build();
         }
 
@@ -292,5 +306,24 @@ public class BankAccountServiceImpl implements BankAccountService {
     public boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId) {
         return bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
                 accountNumber.trim(), bankCode.trim(), currentUserId);
+    }
+
+    @Override
+    public java.util.Optional<BankAccountResponse> findByAccountNumber(String accountNumber) {
+        return bankAccountRepository.findByAccountNumber(accountNumber.trim())
+                .stream().findFirst()
+                .map(this::toBankAccountResponse);
+    }
+
+    @Override
+    public java.util.Optional<BankAccountResponse> findByAccountNumberAndBankCode(String accountNumber, String bankCode) {
+        return bankAccountRepository.findByAccountNumberAndBankCode(accountNumber.trim(), bankCode.trim())
+                .map(this::toBankAccountResponse);
+    }
+
+    @Override
+    public java.util.Optional<BankAccountResponse> findByCampaignId(Long campaignId) {
+        return bankAccountRepository.findByCampaignId(campaignId)
+                .map(this::toBankAccountResponse);
     }
 }
