@@ -28,6 +28,8 @@ public class ExpenditureResponse {
     private Boolean isWithdrawalRequested;
     private String plan;
     private String status;
+    private LocalDateTime startDate;
+    private LocalDateTime endDate;
     private Long staffReviewId;
     private String rejectReason;
     private LocalDateTime createdAt;

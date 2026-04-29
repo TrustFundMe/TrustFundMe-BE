@@ -19,16 +19,22 @@ public class CreateExpenditureItemRequest {
     @NotBlank(message = "Danh mục không được để trống")
     private String category;
 
-    @NotNull(message = "Số lượng không được để trống")
-    private Integer quantity;
+    @NotNull(message = "Số lượng dự kiến không được để trống")
+    private Integer expectedQuantity;
 
-    @NotNull(message = "Giá không được để trống")
-    @DecimalMin(value = "0.0", message = "Giá không được nhỏ hơn 0")
-    private BigDecimal price;
+    @NotNull(message = "Giá thực tế không được để trống")
+    @DecimalMin(value = "0.0", message = "Giá thực tế không được nhỏ hơn 0")
+    private BigDecimal actualPrice;
 
     @NotNull(message = "Giá dự kiến không được để trống")
     @DecimalMin(value = "0.0", message = "Giá dự kiến không được nhỏ hơn 0")
     private BigDecimal expectedPrice;
 
     private String note;
+
+    private String purchaseLocation;
+
+    private String brand;
+
+    private String unit;
 }

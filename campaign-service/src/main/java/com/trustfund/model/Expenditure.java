@@ -60,6 +60,12 @@ public class Expenditure {
 
     @Column(name = "status", length = 50)
     private String status;
+
+    @Column(name = "start_date")
+    private LocalDateTime startDate;
+
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
     
     @Column(name = "staff_review_id")
     private Long staffReviewId;

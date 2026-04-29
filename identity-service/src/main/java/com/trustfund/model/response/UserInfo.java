@@ -18,6 +18,7 @@ public class UserInfo {
     private String fullName;
     private String phoneNumber;
     private String avatarUrl;
+    private String cvUrl;
     private User.Role role;
     @JsonProperty("verified")
     private Boolean verified;
@@ -38,6 +39,7 @@ public class UserInfo {
                 .fullName(user.getFullName())
                 .phoneNumber(user.getPhoneNumber())
                 .avatarUrl(user.getAvatarUrl())
+                .cvUrl(user.getCvUrl())
                 .role(user.getRole())
                 .verified(user.getVerified())
                 .kycVerified(user.getKycVerified())

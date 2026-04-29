@@ -9,14 +9,16 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "expenditure_items")
+@Table(name = "expenditure_catology")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ExpenditureItem {
+public class ExpenditureCatology {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,43 +32,30 @@ public class ExpenditureItem {
     @Column(name = "expenditure_id", insertable = false, updatable = false)
     private Long expenditureId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "catology_id")
-    @JsonIgnore
-    private ExpenditureCatology catology;
+    @Column(name = "name", nullable = false, length = 255, columnDefinition = "NVARCHAR(255)")
+    private String name;
 
-    @Column(name = "catology_id", insertable = false, updatable = false)
-    private Long catologyId;
+    @Column(name = "description", length = 1000, columnDefinition = "NVARCHAR(1000)")
+    private String description;
 
-    @Column(name = "category", length = 255)
-    private String category;
+    @Column(name = "expected_amount", precision = 19, scale = 4)
+    @Builder.Default
+    private BigDecimal expectedAmount = BigDecimal.ZERO;
 
-    @Column(name = "expected_quantity")
-    private Integer expectedQuantity;
+    @Column(name = "actual_amount", precision = 19, scale = 4)
+    @Builder.Default
+    private BigDecimal actualAmount = BigDecimal.ZERO;
 
-    @Column(name = "actual_quantity")
-    private Integer actualQuantity;
+    @Column(name = "balance", precision = 19, scale = 4)
+    @Builder.Default
+    private BigDecimal balance = BigDecimal.ZERO;
 
-    @Column(name = "quantity_left")
-    private Integer quantityLeft;
+    @Column(name = "withdrawal_condition", length = 1000, columnDefinition = "NVARCHAR(1000)")
+    private String withdrawalCondition;
 
-    @Column(name = "actual_price", precision = 19, scale = 4)
-    private BigDecimal actualPrice;
-
-    @Column(name = "expected_price", precision = 19, scale = 4)
-    private BigDecimal expectedPrice;
-
-    @Column(name = "note", length = 1000)
-    private String note;
-
-    @Column(name = "purchase_location", length = 500)
-    private String purchaseLocation;
-
-    @Column(name = "brand", length = 255)
-    private String brand;
-
-    @Column(name = "unit", length = 50)
-    private String unit;
+    @OneToMany(mappedBy = "catology", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ExpenditureItem> items = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
