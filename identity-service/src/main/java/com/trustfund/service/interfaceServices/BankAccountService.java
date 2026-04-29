@@ -19,6 +19,10 @@ public interface BankAccountService {
 
     BankAccountResponse submitBankAccount(Long userId, CreateBankAccountRequest request);
 
+    java.util.Optional<BankAccountResponse> findByAccountNumber(String accountNumber);
+
+    java.util.Optional<BankAccountResponse> findByAccountNumberAndBankCode(String accountNumber, String bankCode);
+
     org.springframework.data.domain.Page<BankAccountResponse> getPendingBankAccounts(
             org.springframework.data.domain.Pageable pageable);
 
@@ -31,4 +35,6 @@ public interface BankAccountService {
     List<BankAccountResponse> getByUserId(Long userId);
 
     boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId);
+
+    java.util.Optional<BankAccountResponse> findByCampaignId(Long campaignId);
 }
