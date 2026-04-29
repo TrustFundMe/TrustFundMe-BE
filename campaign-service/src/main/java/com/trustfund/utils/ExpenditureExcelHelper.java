@@ -25,18 +25,21 @@ public class ExpenditureExcelHelper {
     static String SHEET_ITEMS = "HẠNG MỤC CHI TIẾT";
 
     static String[] HEADERS_PLAN = {
-        "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Mô tả"
+            "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Mô tả"
     };
 
     static String[] HEADERS_ITEMS = {
-        "STT", "Tên đợt giải ngân", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua", "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
-        "Thành tiền dự kiến (VNĐ)", "Ghi chú"
+            "STT", "Tên đợt giải ngân", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
+            "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
+            "Thành tiền dự kiến (VNĐ)", "Ghi chú"
     };
 
     public static boolean hasExcelFormat(MultipartFile file) {
-        if (TYPE.equals(file.getContentType())) return true;
+        if (TYPE.equals(file.getContentType()))
+            return true;
         String filename = file.getOriginalFilename();
-        if (filename == null) return false;
+        if (filename == null)
+            return false;
         String lower = filename.toLowerCase();
         return lower.endsWith(".xlsx") || lower.endsWith(".xls");
     }
@@ -52,7 +55,7 @@ public class ExpenditureExcelHelper {
 
             CellStyle headerStyle = workbook.createCellStyle();
             headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
-            headerStyle.setFillPattern(FillPatternType.solid_foreground);
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
             Font headerFont = workbook.createFont();
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
@@ -114,8 +117,10 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] planSamples = {
-                { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026", "Móc giải ngân đầu tiên để mua nhu yếu phẩm" },
-                { "2", "Đợt 2: Phục hồi sinh kế", "16/05/2026", "30/06/2026", "Hỗ trợ hạt giống và công cụ sản xuất" }
+                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026",
+                            "Móc giải ngân đầu tiên để mua nhu yếu phẩm" },
+                    { "2", "Đợt 2: Phục hồi sinh kế", "16/05/2026", "30/06/2026",
+                            "Hỗ trợ hạt giống và công cụ sản xuất" }
             };
 
             for (int i = 0; i < planSamples.length; i++) {
@@ -124,7 +129,8 @@ public class ExpenditureExcelHelper {
                     row.createCell(j).setCellValue(planSamples[i][j]);
                 }
             }
-            for (int i = 0; i < HEADERS_PLAN.length; i++) planSheet.autoSizeColumn(i);
+            for (int i = 0; i < HEADERS_PLAN.length; i++)
+                planSheet.autoSizeColumn(i);
 
             // SHEET 2: HẠNG MỤC CHI TIẾT
             Sheet itemSheet = workbook.createSheet(SHEET_ITEMS);
@@ -136,9 +142,12 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] itemSamples = {
-                { "1", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart", "100", "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
-                { "2", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý", "50", "Chai", "18000", "900000", "" },
-                { "3", "Đợt 2: Phục hồi sinh kế", "Nông nghiệp", "Hạt giống rau", "Trang nông", "Cửa hàng vật tư", "50", "Gói", "25000", "1250000", "" }
+                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart", "100",
+                            "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
+                    { "2", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý", "50", "Chai",
+                            "18000", "900000", "" },
+                    { "3", "Đợt 2: Phục hồi sinh kế", "Nông nghiệp", "Hạt giống rau", "Trang nông", "Cửa hàng vật tư",
+                            "50", "Gói", "25000", "1250000", "" }
             };
 
             for (int i = 0; i < itemSamples.length; i++) {
@@ -147,7 +156,8 @@ public class ExpenditureExcelHelper {
                     row.createCell(j).setCellValue(itemSamples[i][j]);
                 }
             }
-            for (int i = 0; i < HEADERS_ITEMS.length; i++) itemSheet.autoSizeColumn(i);
+            for (int i = 0; i < HEADERS_ITEMS.length; i++)
+                itemSheet.autoSizeColumn(i);
 
             workbook.write(out);
             return new ByteArrayInputStream(out.toByteArray());
@@ -159,10 +169,11 @@ public class ExpenditureExcelHelper {
     public static List<com.trustfund.model.request.BulkMilestoneImportRequest> excelToMilestones(InputStream is) {
         try (Workbook workbook = new XSSFWorkbook(is)) {
             List<com.trustfund.model.request.BulkMilestoneImportRequest> milestones = new ArrayList<>();
-            
+
             // 1. Phân tích Tab Kế hoạch (Sheet 0)
             Sheet planSheet = workbook.getSheet(SHEET_PLAN);
-            if (planSheet == null) planSheet = workbook.getSheetAt(0);
+            if (planSheet == null)
+                planSheet = workbook.getSheetAt(0);
             Iterator<Row> planRows = planSheet.iterator();
             if (planRows.hasNext()) {
                 Row header = planRows.next();
@@ -170,19 +181,27 @@ public class ExpenditureExcelHelper {
                 for (Cell cell : header) {
                     String h = getCellStringValue(cell).toLowerCase();
                     int col = cell.getColumnIndex();
-                    if (h.contains("tên") || h.contains("mốc")) titleIdx = col;
-                    else if (h.contains("bắt đầu")) startIdx = col;
-                    else if (h.contains("kết thúc") || h.contains("dự kiến")) endIdx = col;
-                    else if (h.contains("mô tả")) descIdx = col;
-                    else if (h.contains("điều kiện")) condIdx = col;
+                    if (h.contains("tên") || h.contains("mốc"))
+                        titleIdx = col;
+                    else if (h.contains("bắt đầu"))
+                        startIdx = col;
+                    else if (h.contains("kết thúc") || h.contains("dự kiến"))
+                        endIdx = col;
+                    else if (h.contains("mô tả"))
+                        descIdx = col;
+                    else if (h.contains("điều kiện"))
+                        condIdx = col;
                 }
                 while (planRows.hasNext()) {
                     Row row = planRows.next();
-                    if (isEmptyRow(row)) continue;
+                    if (isEmptyRow(row))
+                        continue;
                     String title = getCellStringValue(row.getCell(titleIdx)).trim();
-                    if (title.isEmpty()) continue;
-                    
-                    com.trustfund.model.request.BulkMilestoneImportRequest milestone = com.trustfund.model.request.BulkMilestoneImportRequest.builder()
+                    if (title.isEmpty())
+                        continue;
+
+                    com.trustfund.model.request.BulkMilestoneImportRequest milestone = com.trustfund.model.request.BulkMilestoneImportRequest
+                            .builder()
                             .milestoneTitle(title)
                             .startDate(startIdx != -1 ? getCellStringValue(row.getCell(startIdx)) : "")
                             .endDate(endIdx != -1 ? getCellStringValue(row.getCell(endIdx)) : "")
@@ -196,33 +215,46 @@ public class ExpenditureExcelHelper {
 
             // 2. Phân tích Tab Chi tiết (Sheet 1)
             Sheet itemSheet = workbook.getSheet(SHEET_ITEMS);
-            if (itemSheet == null && workbook.getNumberOfSheets() > 1) itemSheet = workbook.getSheetAt(1);
+            if (itemSheet == null && workbook.getNumberOfSheets() > 1)
+                itemSheet = workbook.getSheetAt(1);
             if (itemSheet != null) {
                 Iterator<Row> itemRows = itemSheet.iterator();
                 if (itemRows.hasNext()) {
                     Row header = itemRows.next();
-                    int milIdx = -1, catIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, unitIdx = -1, brandIdx = -1, locIdx = -1, noteIdx = -1;
+                    int milIdx = -1, catIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, unitIdx = -1, brandIdx = -1,
+                            locIdx = -1, noteIdx = -1;
                     for (Cell cell : header) {
                         String h = getCellStringValue(cell).toLowerCase();
                         int col = cell.getColumnIndex();
-                        if (h.contains("đợt")) milIdx = col;
-                        else if (h.contains("hạng mục")) catIdx = col;
-                        else if (h.contains("tên hàng") || h.contains("vật phẩm")) nameIdx = col;
-                        else if (h.contains("số lượng")) qtyIdx = col;
-                        else if (h.contains("đơn giá")) priceIdx = col;
-                        else if (h.contains("đơn vị")) unitIdx = col;
-                        else if (h.contains("nhãn")) brandIdx = col;
-                        else if (h.contains("địa điểm")) locIdx = col;
-                        else if (h.contains("ghi chú")) noteIdx = col;
+                        if (h.contains("đợt"))
+                            milIdx = col;
+                        else if (h.contains("hạng mục"))
+                            catIdx = col;
+                        else if (h.contains("tên hàng") || h.contains("vật phẩm"))
+                            nameIdx = col;
+                        else if (h.contains("số lượng"))
+                            qtyIdx = col;
+                        else if (h.contains("đơn giá"))
+                            priceIdx = col;
+                        else if (h.contains("đơn vị"))
+                            unitIdx = col;
+                        else if (h.contains("nhãn"))
+                            brandIdx = col;
+                        else if (h.contains("địa điểm"))
+                            locIdx = col;
+                        else if (h.contains("ghi chú"))
+                            noteIdx = col;
                     }
 
                     while (itemRows.hasNext()) {
                         Row row = itemRows.next();
-                        if (isEmptyRow(row)) continue;
+                        if (isEmptyRow(row))
+                            continue;
                         String milTitle = getCellStringValue(row.getCell(milIdx)).trim();
                         String catName = getCellStringValue(row.getCell(catIdx)).trim();
                         String itemName = getCellStringValue(row.getCell(nameIdx)).trim();
-                        if (milTitle.isEmpty() || catName.isEmpty() || itemName.isEmpty()) continue;
+                        if (milTitle.isEmpty() || catName.isEmpty() || itemName.isEmpty())
+                            continue;
 
                         // Tìm milestone đã tạo từ tab plan hoặc tạo mới nếu chưa có
                         com.trustfund.model.request.BulkMilestoneImportRequest milestone = milestones.stream()
@@ -234,7 +266,8 @@ public class ExpenditureExcelHelper {
                             milestones.add(milestone);
                         }
 
-                        com.trustfund.model.request.CreateExpenditureCatologyRequest category = milestone.getCategories().stream()
+                        com.trustfund.model.request.CreateExpenditureCatologyRequest category = milestone
+                                .getCategories().stream()
                                 .filter(c -> c.getName().equalsIgnoreCase(catName))
                                 .findFirst().orElse(null);
                         if (category == null) {
@@ -247,10 +280,14 @@ public class ExpenditureExcelHelper {
                         item.setCategory(itemName);
                         item.setExpectedQuantity(getCellIntValue(row.getCell(qtyIdx)));
                         item.setExpectedPrice(getCellBigDecimalValue(row.getCell(priceIdx)));
-                        if (unitIdx != -1) item.setUnit(getCellStringValue(row.getCell(unitIdx)));
-                        if (brandIdx != -1) item.setBrand(getCellStringValue(row.getCell(brandIdx)));
-                        if (locIdx != -1) item.setPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
-                        if (noteIdx != -1) item.setNote(getCellStringValue(row.getCell(noteIdx)));
+                        if (unitIdx != -1)
+                            item.setUnit(getCellStringValue(row.getCell(unitIdx)));
+                        if (brandIdx != -1)
+                            item.setBrand(getCellStringValue(row.getCell(brandIdx)));
+                        if (locIdx != -1)
+                            item.setPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
+                        if (noteIdx != -1)
+                            item.setNote(getCellStringValue(row.getCell(noteIdx)));
                         item.setActualPrice(BigDecimal.ZERO);
                         category.getItems().add(item);
                     }
@@ -263,17 +300,20 @@ public class ExpenditureExcelHelper {
     }
 
     private static boolean isEmptyRow(Row row) {
-        if (row == null) return true;
+        if (row == null)
+            return true;
         for (int i = 0; i < row.getLastCellNum(); i++) {
             Cell cell = row.getCell(i);
-            if (cell != null && cell.getCellType() != CellType.BLANK) return false;
+            if (cell != null && cell.getCellType() != CellType.BLANK)
+                return false;
         }
         return true;
     }
 
     /**
      * Đọc file Excel nhập vào, trả về danh sách CreateExpenditureItemRequest.
-     * Cột: STT (bỏ qua), Tên hàng hóa, Số lượng, Đơn giá, Thành tiền (bỏ qua), Ghi chú
+     * Cột: STT (bỏ qua), Tên hàng hóa, Số lượng, Đơn giá, Thành tiền (bỏ qua), Ghi
+     * chú
      */
     public static List<CreateExpenditureItemRequest> excelToItems(InputStream is) {
         try (Workbook workbook = new XSSFWorkbook(is)) {
@@ -284,7 +324,8 @@ public class ExpenditureExcelHelper {
             Iterator<Row> rows = sheet.iterator();
 
             List<CreateExpenditureItemRequest> items = new ArrayList<>();
-            if (!rows.hasNext()) return items;
+            if (!rows.hasNext())
+                return items;
 
             Row headerRow = rows.next();
             int nameIdx = -1, qtyIdx = -1, priceIdx = -1, noteIdx = -1, unitIdx = -1, brandIdx = -1, locationIdx = -1;
@@ -293,28 +334,41 @@ public class ExpenditureExcelHelper {
             for (Cell cell : headerRow) {
                 String header = getCellStringValue(cell).toLowerCase();
                 int colIdx = cell.getColumnIndex();
-                if (header.contains("tên") || header.contains("hàng") || header.contains("vật")) nameIdx = colIdx;
-                else if (header.contains("số lượng") || header.contains("sl")) qtyIdx = colIdx;
-                else if (header.contains("đơn giá") || header.contains("giá")) priceIdx = colIdx;
-                else if (header.contains("ghi chú") || header.contains("note")) noteIdx = colIdx;
-                else if (header.contains("đơn vị") || header.contains("unit")) unitIdx = colIdx;
-                else if (header.contains("nhãn") || header.contains("brand")) brandIdx = colIdx;
-                else if (header.contains("điểm") || header.contains("location")) locationIdx = colIdx;
+                if (header.contains("tên") || header.contains("hàng") || header.contains("vật"))
+                    nameIdx = colIdx;
+                else if (header.contains("số lượng") || header.contains("sl"))
+                    qtyIdx = colIdx;
+                else if (header.contains("đơn giá") || header.contains("giá"))
+                    priceIdx = colIdx;
+                else if (header.contains("ghi chú") || header.contains("note"))
+                    noteIdx = colIdx;
+                else if (header.contains("đơn vị") || header.contains("unit"))
+                    unitIdx = colIdx;
+                else if (header.contains("nhãn") || header.contains("brand"))
+                    brandIdx = colIdx;
+                else if (header.contains("điểm") || header.contains("location"))
+                    locationIdx = colIdx;
             }
 
             // Fallback for strict old template matching if dynamic matching failed
-            if (nameIdx == -1) nameIdx = 1;
-            if (qtyIdx == -1) qtyIdx = 2;
-            if (priceIdx == -1) priceIdx = 3;
-            // if noteIdx is still -1, it means we didn't find "ghi chú", we'll just leave it and not import note
+            if (nameIdx == -1)
+                nameIdx = 1;
+            if (qtyIdx == -1)
+                qtyIdx = 2;
+            if (priceIdx == -1)
+                priceIdx = 3;
+            // if noteIdx is still -1, it means we didn't find "ghi chú", we'll just leave
+            // it and not import note
 
-            // But wait, what if the user used the legacy template with "thành tiền" in col 4 and "ghi chú" in col 5?
+            // But wait, what if the user used the legacy template with "thành tiền" in col
+            // 4 and "ghi chú" in col 5?
             // If they didn't have a header row that matched, we default to:
-            if (noteIdx == -1) noteIdx = 5;
+            if (noteIdx == -1)
+                noteIdx = 5;
 
             while (rows.hasNext()) {
                 Row currentRow = rows.next();
-                
+
                 // Skip empty rows
                 boolean isEmptyRow = true;
                 for (Cell cell : currentRow) {
@@ -323,7 +377,8 @@ public class ExpenditureExcelHelper {
                         break;
                     }
                 }
-                if (isEmptyRow) continue;
+                if (isEmptyRow)
+                    continue;
 
                 CreateExpenditureItemRequest item = new CreateExpenditureItemRequest();
 
@@ -378,7 +433,8 @@ public class ExpenditureExcelHelper {
     }
 
     private static String getCellStringValue(Cell cell) {
-        if (cell == null) return "";
+        if (cell == null)
+            return "";
         switch (cell.getCellType()) {
             case STRING:
                 return cell.getStringCellValue().trim();
@@ -401,7 +457,8 @@ public class ExpenditureExcelHelper {
     }
 
     private static Integer getCellIntValue(Cell cell) {
-        if (cell == null) return 1;
+        if (cell == null)
+            return 1;
         switch (cell.getCellType()) {
             case NUMERIC:
                 return (int) cell.getNumericCellValue();
@@ -417,7 +474,8 @@ public class ExpenditureExcelHelper {
     }
 
     private static BigDecimal getCellBigDecimalValue(Cell cell) {
-        if (cell == null) return BigDecimal.ZERO;
+        if (cell == null)
+            return BigDecimal.ZERO;
         switch (cell.getCellType()) {
             case NUMERIC:
                 return BigDecimal.valueOf(cell.getNumericCellValue());

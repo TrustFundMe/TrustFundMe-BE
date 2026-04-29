@@ -65,4 +65,6 @@ public interface ExpenditureService {
         List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId);
 
         List<ExpenditureCatologyResponse> getExpenditureCategories(Long expenditureId);
+
+        com.trustfund.model.response.AuditResultResponse auditExpenditure(Long id);
 }
