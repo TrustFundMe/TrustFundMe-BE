@@ -509,8 +509,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 expenditure.setTotalReceivedAmount(disbursementAmount);
                 expenditureRepository.save(expenditure);
 
-                // Trừ số dư chiến dịch khi giải ngân
-                campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
+                // Ghi chú: Không trừ số dư ở đây nữa vì Webhook Casso sẽ tự động trừ khi thấy giao dịch ngân hàng âm
+                // campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
 
                 log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id,
                         disbursementAmount, campaign.getId());

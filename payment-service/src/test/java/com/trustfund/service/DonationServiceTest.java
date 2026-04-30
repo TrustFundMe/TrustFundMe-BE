@@ -2,10 +2,8 @@ package com.trustfund.service;
 
 import com.trustfund.dto.response.CheckItemLimitResponse;
 import com.trustfund.model.Donation;
-import com.trustfund.model.Payment;
 import com.trustfund.repository.DonationItemRepository;
 import com.trustfund.repository.DonationRepository;
-import com.trustfund.repository.PaymentRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,9 +26,6 @@ class DonationServiceTest {
 
     @Mock
     private DonationRepository donationRepository;
-
-    @Mock
-    private PaymentRepository paymentRepository;
 
     @Mock
     private DonationItemRepository donationItemRepository;
@@ -210,16 +205,8 @@ class DonationServiceTest {
     // ─── Helpers ───────────────────────────────────────────
 
     private Donation buildDonation(Long id, String status) {
-        Payment payment = Payment.builder()
-                .id(id)
-                .amount(new BigDecimal("100000"))
-                .status(status)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
         return Donation.builder()
                 .id(id)
-                .payment(payment)
                 .donorId(1L)
                 .campaignId(1L)
                 .donationAmount(new BigDecimal("100000"))

@@ -22,7 +22,7 @@ public interface DonationRepository extends JpaRepository<Donation, Long> {
 
     List<Donation> findByCampaignId(Long campaignId);
 
-    java.util.Optional<Donation> findByPayment(com.trustfund.model.Payment payment);
+    java.util.Optional<Donation> findByOrderCode(Long orderCode);
 
     java.util.List<Donation> findAllByStatusAndCreatedAtBefore(String status, java.time.LocalDateTime threshold);
 

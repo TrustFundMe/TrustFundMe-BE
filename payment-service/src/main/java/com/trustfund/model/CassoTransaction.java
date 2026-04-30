@@ -1,5 +1,6 @@
 package com.trustfund.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -42,6 +43,10 @@ public class CassoTransaction {
     private String counterAccountNumber;
     private String counterAccountBankName;
     private String counterAccountBankId;
+    
+    @Transient
+    @JsonProperty("donorName")
+    private String donorName;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

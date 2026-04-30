@@ -25,9 +25,11 @@ public class Donation {
     @Column(name = "campaign_id")
     private Long campaignId;
 
-    @OneToOne(cascade = CascadeType.ALL)
-    @JoinColumn(name = "payment_id", referencedColumnName = "id")
-    private Payment payment;
+    @Column(name = "qr_code", length = 1000)
+    private String qrCode;
+
+    @Column(name = "order_code")
+    private Long orderCode;
 
     @Builder.Default
     @Column(name = "is_anonymous")

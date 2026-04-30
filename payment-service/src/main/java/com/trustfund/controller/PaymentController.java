@@ -3,6 +3,7 @@ package com.trustfund.controller;
 import com.trustfund.dto.request.CreatePaymentRequest;
 import com.trustfund.dto.response.CampaignAnalyticsResponse;
 import com.trustfund.dto.response.PaymentResponse;
+import com.trustfund.model.CassoTransaction;
 import com.trustfund.service.DonationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class PaymentController {
 
     private final DonationService donationService;
+    private final com.trustfund.service.CassoWebhookService cassoWebhookService;
 
     @PostMapping("/create")
     public ResponseEntity<?> createPayment(@RequestBody CreatePaymentRequest request) {
@@ -199,6 +201,11 @@ public class PaymentController {
             log.error("Failed to fetch paginated donations", e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    @GetMapping("/campaign/{campaignId}")
+    public ResponseEntity<List<CassoTransaction>> getTransactionsByCampaign(@PathVariable("campaignId") Long campaignId) {
+        return ResponseEntity.ok(cassoWebhookService.getTransactionsByCampaign(campaignId));
     }
 
     @GetMapping("/donations/item/{expenditureItemId}/exists")

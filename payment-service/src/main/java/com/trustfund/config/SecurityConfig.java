@@ -40,6 +40,7 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/payments/webhook").permitAll()
                                                 .requestMatchers("/api/payments/casso-webhook").permitAll()
                                                 .requestMatchers("/api/payments/casso/**").permitAll()
+                                                .requestMatchers("/api/payments/debug/**").permitAll()
                                                 .requestMatchers("/api/payments/create").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/donation/**")
                                                 .permitAll()

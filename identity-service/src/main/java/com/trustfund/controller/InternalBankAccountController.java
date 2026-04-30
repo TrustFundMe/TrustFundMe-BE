@@ -31,4 +31,11 @@ public class InternalBankAccountController {
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
+
+    @GetMapping("/by-campaign-id")
+    public ResponseEntity<BankAccountResponse> getByCampaignId(@RequestParam("campaignId") Long campaignId) {
+        return bankAccountService.findByCampaignId(campaignId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
 }

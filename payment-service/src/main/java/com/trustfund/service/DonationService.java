@@ -5,19 +5,15 @@ import com.trustfund.dto.response.CheckItemLimitResponse;
 import com.trustfund.dto.response.PaymentResponse;
 import com.trustfund.model.Donation;
 import com.trustfund.model.DonationItem;
-import com.trustfund.model.Payment;
 import com.trustfund.repository.DonationItemRepository;
 import com.trustfund.repository.DonationRepository;
-import com.trustfund.repository.PaymentRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import vn.payos.PayOS;
-import vn.payos.model.v2.paymentRequests.CreatePaymentLinkRequest;
-import vn.payos.model.v2.paymentRequests.CreatePaymentLinkResponse;
-import vn.payos.model.v2.paymentRequests.PaymentLinkItem;
+
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -43,7 +39,6 @@ public class DonationService {
         private final PayOS payOS;
         private final DonationRepository donationRepository;
         private final DonationItemRepository donationItemRepository;
-        private final PaymentRepository paymentRepository;
         private final RestTemplate restTemplate;
         private final RestTemplate campaignEnrichmentRestTemplate;
 
@@ -60,35 +55,30 @@ public class DonationService {
                         PayOS payOS,
                         DonationRepository donationRepository,
                         DonationItemRepository donationItemRepository,
-                        PaymentRepository paymentRepository,
                         RestTemplate restTemplate,
                         @Qualifier("campaignEnrichmentRestTemplate") RestTemplate campaignEnrichmentRestTemplate) {
                 this.payOS = payOS;
                 this.donationRepository = donationRepository;
                 this.donationItemRepository = donationItemRepository;
-                this.paymentRepository = paymentRepository;
                 this.restTemplate = restTemplate;
                 this.campaignEnrichmentRestTemplate = campaignEnrichmentRestTemplate;
         }
 
         @Transactional
         public PaymentResponse createPayment(CreatePaymentRequest request) throws Exception {
-                Payment payment = Payment.builder()
-                                .description(request.getDescription())
-                                .amount(request.getDonationAmount().add(request.getTipAmount()))
-                                .status("PENDING")
-                                .build();
+                BigDecimal donationAmount = request.getDonationAmount() != null ? request.getDonationAmount() : BigDecimal.ZERO;
+                BigDecimal tipAmount = request.getTipAmount() != null ? request.getTipAmount() : BigDecimal.ZERO;
+                BigDecimal totalAmount = donationAmount.add(tipAmount);
 
                 Donation donation = Donation.builder()
                                 .donorId(request.getDonorId())
                                 .campaignId(request.getCampaignId())
-                                .donationAmount(request.getDonationAmount())
-                                .tipAmount(request.getTipAmount())
-                                .totalAmount(request.getDonationAmount().add(request.getTipAmount()))
+                                .donationAmount(donationAmount)
+                                .tipAmount(tipAmount)
+                                .totalAmount(totalAmount)
                                 .status("PENDING")
                                 .isAnonymous(request.getIsAnonymous() != null ? request.getIsAnonymous()
                                                 : (request.getDonorId() == null))
-                                .payment(payment)
                                 .build();
 
                 donation = donationRepository.save(donation);
@@ -106,57 +96,50 @@ public class DonationService {
                         donationItemRepository.saveAll(items);
                 }
 
-                // Generate unique orderCode using the current time substring and the donation
-                // ID
+                // Generate unique orderCode using the current time substring and the donation ID
                 long orderCode = Long.parseLong(String.valueOf(System.currentTimeMillis()).substring(4)
                                 + String.format("%04d", donation.getId() % 10000));
 
-                payment.setOrderCode(orderCode);
-                paymentRepository.save(payment);
-
+                donation.setOrderCode(orderCode);
+                
                 long totalAmountLong = donation.getTotalAmount().longValue();
 
-                List<PaymentLinkItem> payosItems = List.of(
-                                PaymentLinkItem.builder()
-                                                .name("Donation for Campaign #" + request.getCampaignId())
-                                                .quantity(1)
-                                                .price(totalAmountLong)
-                                                .build());
-
-                String paymentDescription = request.getDescription() != null && !request.getDescription().isEmpty()
-                                ? request.getDescription()
-                                : "Campaign " + request.getCampaignId();
-
-                // Truncate if too long (PayOS limit is usually 255 but banks truncate to 20-50
-                // chars)
-                if (paymentDescription.length() > 50) {
-                        paymentDescription = paymentDescription.substring(0, 47) + "...";
+                // Fetch Campaign Bank Account from Identity Service to generate VietQR
+                String qrCodeUrl = "";
+                try {
+                    String bankAccountUrl = identityServiceUrl + "/api/internal/bank-accounts/by-campaign-id?campaignId=" + request.getCampaignId();
+                    log.info("Fetching bank account for Campaign {} to generate VietQR", request.getCampaignId());
+                    @SuppressWarnings("unchecked")
+                    Map<String, Object> bankAccount = restTemplate.getForObject(bankAccountUrl, Map.class);
+                    
+                    if (bankAccount != null && bankAccount.get("accountNumber") != null && bankAccount.get("bankCode") != null) {
+                        String bankCode = String.valueOf(bankAccount.get("bankCode"));
+                        if ("MBB".equalsIgnoreCase(bankCode)) {
+                            bankCode = "MB";
+                        }
+                        String accNum = String.valueOf(bankAccount.get("accountNumber"));
+                        String accName = bankAccount.get("accountHolderName") != null ? String.valueOf(bankAccount.get("accountHolderName")) : "";
+                        
+                        qrCodeUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=TF%%20%d&accountName=%s",
+                            bankCode, accNum, totalAmountLong, donation.getId(), java.net.URLEncoder.encode(accName, "UTF-8").replace("+", "%20"));
+                        log.info("Successfully generated VietQR URL for Campaign {}: {}", request.getCampaignId(), qrCodeUrl);
+                    } else {
+                        log.warn("Missing bank details for Campaign {}", request.getCampaignId());
+                    }
+                } catch (Exception e) {
+                    log.error("Failed to generate VietQR for Campaign {}: {}", request.getCampaignId(), e.getMessage());
                 }
 
-                CreatePaymentLinkRequest paymentData = CreatePaymentLinkRequest.builder()
-                                .orderCode(orderCode)
-                                .amount(totalAmountLong)
-                                .description(paymentDescription)
-                                .returnUrl(frontendUrl + "/donation/success?donationId=" + donation.getId())
-                                .cancelUrl(frontendUrl + "/donation/cancel?donationId=" + donation.getId()
-                                                + "&campaignId="
-                                                + donation.getCampaignId())
-                                .items(payosItems)
-                                .build();
-
-                CreatePaymentLinkResponse checkoutResponseData = payOS.paymentRequests().create(paymentData);
-
-                payment.setPaymentLinkId(checkoutResponseData.getPaymentLinkId());
-                payment.setQrCode(checkoutResponseData.getQrCode());
-                paymentRepository.save(payment);
+                donation.setQrCode(qrCodeUrl);
+                donationRepository.save(donation);
 
                 // Immediate quantity deduction
                 processQuantityUpdate(donation);
 
                 return PaymentResponse.builder()
-                                .paymentUrl(checkoutResponseData.getCheckoutUrl())
-                                .qrCode(checkoutResponseData.getQrCode())
-                                .paymentLinkId(checkoutResponseData.getPaymentLinkId())
+                                .paymentUrl(qrCodeUrl) // Send QR code back as paymentUrl for frontend fallback
+                                .qrCode(qrCodeUrl)
+                                .paymentLinkId(String.valueOf(orderCode))
                                 .donationId(donation.getId())
                                 .build();
         }
@@ -171,22 +154,17 @@ public class DonationService {
                 String paymentLinkId = String.valueOf(data.get("paymentLinkId"));
                 String status = String.valueOf(data.get("status"));
 
-                paymentRepository.findByPaymentLinkId(paymentLinkId).ifPresent(payment -> {
-                        payment.setStatus(status);
-                        paymentRepository.save(payment);
-
-                        donationRepository.findByPayment(payment).ifPresent(donation -> {
+                donationRepository.findByOrderCode(Long.parseLong(paymentLinkId)).ifPresent(donation -> {
                                 String oldStatus = donation.getStatus();
                                 donation.setStatus(status);
                                 donationRepository.save(donation);
 
                                 if ("PAID".equals(status)) {
-                                        updateCampaignBalance(donation);
+                                        // updateCampaignBalance(donation);
                                 } else if (("FAILED".equals(status) || "CANCELLED".equals(status))
                                                 && "PENDING".equals(oldStatus)) {
                                         processQuantityRollback(donation);
                                 }
-                        });
                 });
         }
 
@@ -195,41 +173,33 @@ public class DonationService {
                 Donation donation = donationRepository.findById(donationId)
                                 .orElseThrow(() -> new RuntimeException("Donation not found"));
 
-                if (donation.getPayment() != null) {
-                        try {
-                                if (donation.getPayment().getOrderCode() == null) {
-                                        throw new RuntimeException("Payment orderCode is missing");
-                                }
-                                // Check real status from PayOS API using the payment's orderCode
-                                vn.payos.model.v2.paymentRequests.PaymentLink payosData = payOS.paymentRequests()
-                                                .get(donation.getPayment().getOrderCode());
-                                String realStatus = payosData.getStatus().toString();
-
-                                log.info("🔍 PayOS Status for Donation {}: {}", donationId, realStatus);
-
-                                // Sync status if it's different
-                                if (!realStatus.equals(donation.getStatus())) {
-                                        log.info("🔄 Syncing status for Donation {}: {} -> {}", donationId,
-                                                        donation.getStatus(), realStatus);
-                                        String oldStatus = donation.getStatus();
-                                        donation.setStatus(realStatus);
-                                        if (donation.getPayment() != null) {
-                                                donation.getPayment().setStatus(realStatus);
-                                        }
-                                        donationRepository.save(donation);
-
-                                        if ("PAID".equals(realStatus)) {
-                                                processQuantityUpdate(donation);
-                                                // Fetch again with lock for balance sync
-                                                this.syncBalanceForDonation(donation.getId());
-                                        } else if ("FAILED".equals(realStatus) || "CANCELLED".equals(realStatus)) {
-                                                processQuantityRollback(donation);
-                                        }
-                                }
-                        } catch (Exception e) {
-                                log.error("❌ Failed to verify payment with PayOS for donation {}: {}", donationId,
-                                                e.getMessage());
+                try {
+                        if (donation.getOrderCode() == null) {
+                                throw new RuntimeException("Donation orderCode is missing");
                         }
+                        // Check real status from PayOS API using the donation's orderCode
+                        vn.payos.model.v2.paymentRequests.PaymentLink payosData = payOS.paymentRequests()
+                                        .get(donation.getOrderCode());
+                        String realStatus = payosData.getStatus().toString();
+
+                        log.info("🔍 PayOS Status for Donation {}: {}", donationId, realStatus);
+
+                        // Sync status if it's different
+                        if (!realStatus.equals(donation.getStatus())) {
+                                log.info("🔄 Syncing status for Donation {}: {} -> {}", donationId,
+                                                donation.getStatus(), realStatus);
+                                donation.setStatus(realStatus);
+                                donationRepository.save(donation);
+
+                                if ("PAID".equals(realStatus)) {
+                                        processQuantityUpdate(donation);
+                                } else if ("FAILED".equals(realStatus) || "CANCELLED".equals(realStatus)) {
+                                        processQuantityRollback(donation);
+                                }
+                        }
+                } catch (Exception e) {
+                        log.error("❌ Failed to verify payment with PayOS for donation {}: {}", donationId,
+                                        e.getMessage());
                 }
         }
 
@@ -240,8 +210,10 @@ public class DonationService {
                                 .campaignId(donation.getCampaignId())
                                 .donationAmount(donation.getDonationAmount())
                                 .totalAmount(donation.getTotalAmount())
-                                .status(donation.getPayment() != null ? donation.getPayment().getStatus() : "PENDING")
-                                .paymentLinkId(donation.getPayment() != null ? donation.getPayment().getPaymentLinkId()
+                                .status(donation.getStatus())
+                                .qrCode(donation.getQrCode())
+                                .paymentUrl(donation.getQrCode())
+                                .paymentLinkId(donation.getOrderCode() != null ? donation.getOrderCode().toString()
                                                 : null)
                                 .build())
                                 .orElseThrow(() -> new RuntimeException("Donation not found with id: " + id));
@@ -250,9 +222,6 @@ public class DonationService {
         public void failDonation(Donation donation) {
                 if (donation != null && "PENDING".equals(donation.getStatus())) {
                         donation.setStatus("FAILED");
-                        if (donation.getPayment() != null) {
-                                donation.getPayment().setStatus("FAILED");
-                        }
                         donationRepository.save(donation);
                         processQuantityRollback(donation);
                 }
@@ -900,38 +869,50 @@ public class DonationService {
                         return;
                 }
 
-                log.info("➔ [DEBUG] updateCampaignBalance starting for donation {}. Status: {}, IsSynced: {}",
-                                donation.getId(), donation.getStatus(), donation.getIsBalanceSynchronized());
-
                 if (!"PAID".equals(donation.getStatus())) {
-                        log.warn("➔ [DEBUG] Skip balance update: donation {} is not PAID (current status: {})",
-                                        donation.getId(), donation.getStatus());
+                        log.debug("Skip balance update: donation {} is not PAID", donation.getId());
                         return;
                 }
 
                 if (Boolean.TRUE.equals(donation.getIsBalanceSynchronized())) {
-                        log.info("➔ [DEBUG] Balance already synchronized for donation {}. Skipping.", donation.getId());
+                        log.debug("Balance already synchronized for donation {}. Skipping.", donation.getId());
                         return;
                 }
 
-                try {
-                        log.info("🚀 [DEBUG] SYNCHRONIZING balance for donation {}: campaignId={}, amount={}",
-                                        donation.getId(), donation.getCampaignId(), donation.getDonationAmount());
+                updateBalanceOnlyInCampaignService(donation.getCampaignId(), donation.getDonationAmount());
+                
+                donation.setIsBalanceSynchronized(true);
+                donationRepository.save(donation);
+                log.info("✅ SUCCESS: Balance synchronized for donation {}", donation.getId());
+        }
 
-                        String updateUrl = campaignServiceUrl + "/api/campaigns/" + donation.getCampaignId()
-                                        + "/update-balance?amount=" + donation.getDonationAmount();
+        /**
+         * Chốt số dư cho Donation mà không gọi API update-balance của campaign-service
+         * (Dùng khi balance đã được update trực tiếp từ CassoTransaction)
+         */
+        @Transactional
+        public void markAsBalancedSynced(Donation donation) {
+            if (donation != null) {
+                donation.setIsBalanceSynchronized(true);
+                donationRepository.save(donation);
+                log.info("➔ Donation {} marked as balance-synced (No external API call)", donation.getId());
+            }
+        }
 
-                        log.info("➔ [DEBUG] Calling campaign-service: PUT {}", updateUrl);
-                        restTemplate.exchange(updateUrl, org.springframework.http.HttpMethod.PUT, null, Void.class);
-
-                        donation.setIsBalanceSynchronized(true);
-                        donationRepository.save(donation);
-                        log.info("✅ [DEBUG] SUCCESS: Balance synchronized for donation {}", donation.getId());
-                } catch (Exception e) {
-                        log.error("❌ [DEBUG] FAILED to update campaign balance for donation {}: {} - {}",
-                                        donation.getId(), e.getClass().getName(), e.getMessage());
-                        throw e; // Relaunch to let transation roll back if necessary or let controller handle
-                }
+        /**
+         * Chỉ gọi API cập nhật số dư bên Campaign Service
+         */
+        public void updateBalanceOnlyInCampaignService(Long campaignId, BigDecimal amount) {
+            if (campaignId == null || amount == null) return;
+            try {
+                String updateUrl = campaignServiceUrl + "/api/campaigns/" + campaignId
+                                + "/update-balance?amount=" + amount;
+                log.info("➔ [API] Calling campaign-service: PUT {}", updateUrl);
+                restTemplate.exchange(updateUrl, org.springframework.http.HttpMethod.PUT, null, Void.class);
+            } catch (Exception e) {
+                log.error("❌ FAILED to update campaign balance for campaign {}: {}", campaignId, e.getMessage());
+                throw e;
+            }
         }
 
         public List<Donation> getDonationsByStatus(String status) {

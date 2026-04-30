@@ -32,6 +32,11 @@ public class CassoTransactionController {
         return ResponseEntity.ok(cassoWebhookService.getTransactionsByCampaign(campaignId));
     }
 
+    @GetMapping("/debug/enrich/{donationId}")
+    public ResponseEntity<?> debugEnrich(@PathVariable("donationId") Long donationId) {
+        return ResponseEntity.ok(cassoWebhookService.debugEnrich(donationId));
+    }
+
     @GetMapping("/account/{accountNumber}/since")
     public ResponseEntity<List<CassoTransaction>> getTransactionsSince(
             @PathVariable("accountNumber") String accountNumber,
