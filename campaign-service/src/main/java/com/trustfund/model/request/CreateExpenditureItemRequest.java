@@ -16,8 +16,12 @@ import java.math.BigDecimal;
 @Builder
 public class CreateExpenditureItemRequest {
 
-    @NotBlank(message = "Danh mục không được để trống")
-    private String category;
+    @NotBlank(message = "Tên hàng hóa không được để trống")
+    private String name;
+
+    @NotBlank(message = "Loại hàng không được để trống")
+
+    private String expectedPurchaseLink;
 
     @NotNull(message = "Số lượng dự kiến không được để trống")
     private Integer expectedQuantity;

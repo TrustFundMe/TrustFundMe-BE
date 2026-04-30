@@ -15,7 +15,9 @@ import java.time.LocalDateTime;
 public class ExpenditureItemResponse {
     private Long id;
     private Long expenditureId;
-    private String category;
+    private String name;
+    private String expectedPurchaseLink;
+    private String actualPurchaseLink;
     private Integer expectedQuantity;
     private Integer actualQuantity;
     private Integer quantityLeft;
