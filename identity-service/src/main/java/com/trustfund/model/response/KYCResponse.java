@@ -34,6 +34,12 @@ public class KYCResponse {
     private String selfieImage;
     private KYCStatus status;
     private String rejectionReason;
+    // ── Face biometric data ──
+    private String faceDescriptor;
+    private String livenessMetadata;
+    private String faceMeshSample;
+    /** Whether this KYC has passed face liveness check */
+    private boolean livenessVerified;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

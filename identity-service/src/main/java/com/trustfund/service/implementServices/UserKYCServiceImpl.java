@@ -65,6 +65,9 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setFaceDescriptor(request.getFaceDescriptor());
+        userKYC.setLivenessMetadata(request.getLivenessMetadata());
+        userKYC.setFaceMeshSample(request.getFaceMeshSample());
         userKYC.setStatus(KYCStatus.PENDING);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
@@ -115,6 +118,9 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setFaceDescriptor(request.getFaceDescriptor());
+        userKYC.setLivenessMetadata(request.getLivenessMetadata());
+        userKYC.setFaceMeshSample(request.getFaceMeshSample());
         userKYC.setStatus(KYCStatus.PENDING);
         userKYC.setRejectionReason(null);
 
@@ -252,6 +258,10 @@ public class UserKYCServiceImpl implements UserKYCService {
                 .selfieImage(kyc.getSelfieImage())
                 .status(kyc.getStatus())
                 .rejectionReason(kyc.getRejectionReason())
+                .faceDescriptor(kyc.getFaceDescriptor())
+                .livenessMetadata(kyc.getLivenessMetadata())
+                .faceMeshSample(kyc.getFaceMeshSample())
+                .livenessVerified(kyc.getFaceDescriptor() != null && !kyc.getFaceDescriptor().isEmpty())
                 .createdAt(kyc.getCreatedAt())
                 .updatedAt(kyc.getUpdatedAt())
                 .build();

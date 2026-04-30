@@ -73,6 +73,19 @@ public class UserKYC {
     @Column(name = "tax_id", length = 50)
     private String taxId;
 
+    // ── Face biometric fields ──
+    /** Face descriptor vector (128-dim JSON array) for face comparison */
+    @Column(name = "face_descriptor", columnDefinition = "JSON")
+    private String faceDescriptor;
+
+    /** Liveness proof metadata (turn steps, timestamp, duration) */
+    @Column(name = "liveness_metadata", columnDefinition = "JSON")
+    private String livenessMetadata;
+
+    /** Sample of key 3D face mesh landmark points */
+    @Column(name = "face_mesh_sample", columnDefinition = "JSON")
+    private String faceMeshSample;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
