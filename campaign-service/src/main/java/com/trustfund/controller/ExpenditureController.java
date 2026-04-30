@@ -228,4 +228,12 @@ public class ExpenditureController {
     public ResponseEntity<List<ExpenditureResponse>> getByOwnerId(@PathVariable("ownerId") Long ownerId) {
         return ResponseEntity.ok(expenditureService.getExpendituresByFundOwner(ownerId));
     }
+
+    @PostMapping("/{id}/audit")
+    @Operation(summary = "Kiểm toán bằng AI", description = "Dùng AI Perplexity để kiểm tra xem giá chi tiêu dự kiến có bị khai khống so với giá thị trường không.")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<com.trustfund.model.response.AuditResultResponse> auditExpenditure(
+            @PathVariable("id") Long id) {
+        return ResponseEntity.ok(expenditureService.auditExpenditure(id));
+    }
 }

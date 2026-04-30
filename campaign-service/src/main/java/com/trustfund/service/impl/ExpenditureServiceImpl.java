@@ -51,6 +51,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final IdentityServiceClient identityServiceClient;
     private final NotificationServiceClient notificationServiceClient;
     private final com.trustfund.service.TrustScoreService trustScoreService;
+    private final com.trustfund.client.PerplexityClient perplexityClient;
     private final JdbcTemplate jdbcTemplate;
 
     @PostConstruct
@@ -78,8 +79,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Chiến dịch đã bị vô hiệu hóa, không thể yêu cầu chi tiêu.");
         }
-
-
 
         // ITEMIZED: cần staff duyệt trước (PENDING_REVIEW) — giống AUTHORIZED
         // AUTHORIZED: cần staff duyệt trước (PENDING_REVIEW)
@@ -154,7 +153,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 if (catReq.getItems() != null) {
                     catExpectedAmount = catReq.getItems().stream()
                             .map(i -> {
-                                BigDecimal price = i.getExpectedPrice() != null ? i.getExpectedPrice() : BigDecimal.ZERO;
+                                BigDecimal price = i.getExpectedPrice() != null ? i.getExpectedPrice()
+                                        : BigDecimal.ZERO;
                                 int qty = i.getExpectedQuantity() != null ? i.getExpectedQuantity() : 0;
                                 return price.multiply(BigDecimal.valueOf(qty));
                             })
@@ -583,7 +583,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @Override
     @Transactional
-    public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt, BigDecimal withdrawAmount) {
+    public ExpenditureResponse requestWithdrawal(Long id, java.time.LocalDateTime evidenceDueAt,
+            BigDecimal withdrawAmount) {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
 
@@ -598,7 +599,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         expenditure.setStatus("WITHDRAWAL_REQUESTED");
 
-        // Xác định số tiền rút: ITEMIZED dùng withdrawAmount từ FE (nếu có) hoặc balance, MONEY dùng totalExpectedAmount
+        // Xác định số tiền rút: ITEMIZED dùng withdrawAmount từ FE (nếu có) hoặc
+        // balance, MONEY dùng totalExpectedAmount
         CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
         log.info(
                 "requestWithdrawal DEBUG: expenditureId={}, campaignId={}, campaignType={}, campaignBalance={}, totalExpectedAmount={}, withdrawAmountFromUser={}",
@@ -1026,5 +1028,34 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .updatedAt(cat.getUpdatedAt())
                     .build();
         }).collect(Collectors.toList());
+    }
+
+    @Override
+    public com.trustfund.model.response.AuditResultResponse auditExpenditure(Long id) {
+        Expenditure expenditure = expenditureRepository.findById(id)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
+
+        List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(id);
+
+        List<java.util.Map<String, Object>> itemsToAudit = items.stream().map(item -> {
+            java.util.Map<String, Object> map = new java.util.HashMap<>();
+            map.put("itemName", item.getCategory());
+            map.put("brand", item.getBrand());
+            map.put("unit", item.getUnit());
+            map.put("purchaseLocation", item.getPurchaseLocation());
+            map.put("note", item.getNote());
+            map.put("declaredPrice", item.getExpectedPrice());
+            map.put("quantity", item.getExpectedQuantity());
+            return map;
+        }).collect(java.util.stream.Collectors.toList());
+
+        com.trustfund.model.response.AuditResultResponse response = perplexityClient.auditExpenseItems(itemsToAudit);
+        if (response == null) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Cannot get audit result from Perplexity AI");
+        }
+        return response;
     }
 }

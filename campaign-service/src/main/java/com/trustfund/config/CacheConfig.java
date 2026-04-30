@@ -15,7 +15,8 @@ public class CacheConfig {
 
     @Bean
     public CacheManager cacheManager() {
-        CaffeineCacheManager cacheManager = new CaffeineCacheManager("postValidationViews");
+        CaffeineCacheManager cacheManager = new CaffeineCacheManager("postValidationViews", "systemConfigCache",
+                "systemConfigCache_v");
         cacheManager.setCaffeine(Caffeine.newBuilder()
                 .expireAfterWrite(60, TimeUnit.MINUTES)
                 .maximumSize(10000)
