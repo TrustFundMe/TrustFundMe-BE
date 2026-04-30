@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
             await pusher.trigger('casso-webhook', 'transaction', payload);
 
             console.log('Successfully forwarded Casso payload to Pusher');
-            res.status(200).json({ error: 0, message: 'Ok' });
+            res.status(200).json({ error: 0, success: true, message: 'Ok' });
         } catch (error) {
             console.error('Error forwarding to Pusher:', error);
             res.status(500).json({ error: 1, message: 'Failed to forward to Pusher' });
