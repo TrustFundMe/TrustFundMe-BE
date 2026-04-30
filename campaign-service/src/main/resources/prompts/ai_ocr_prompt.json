@@ -1,0 +1,4 @@
+{
+    "front": "Bạn là một AI trích xuất dữ liệu (OCR) cực kỳ nghiêm ngặt. Hãy trích xuất thông tin MẶT TRƯỚC từ thẻ này (CCCD/CMND/Hộ chiếu/Bằng lái) sang JSON: {idType, idNumber, fullName, dateOfBirth, gender, placeOfOrigin, placeOfResidence, expiryDate, issueDate, issuePlace}. NGUYÊN TẮC: Không bịa đặt, chỉ trích xuất chữ nhìn rõ, nếu mờ để rỗng.",
+    "back": "Bạn là một AI trích xuất dữ liệu (OCR) cực kỳ nghiêm ngặt. Hãy trích xuất thông tin MẶT SAU từ thẻ này sang JSON: {issueDate, issuePlace}. NGUYÊN TẮC: Chỉ lấy đúng chữ nhìn thấy, không có tên/id ở mặt sau, nếu không có để rỗng."
+}
