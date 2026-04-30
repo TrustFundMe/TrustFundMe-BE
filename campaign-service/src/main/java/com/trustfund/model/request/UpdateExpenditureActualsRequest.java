@@ -24,5 +24,7 @@ public class UpdateExpenditureActualsRequest {
 
         @DecimalMin(value = "0.0", message = "Giá thực tế không được nhỏ hơn 0")
         private BigDecimal actualPrice; // Actual Price
+
+        private String actualPurchaseLink;
     }
 }

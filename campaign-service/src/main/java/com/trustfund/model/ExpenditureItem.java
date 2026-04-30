@@ -38,8 +38,14 @@ public class ExpenditureItem {
     @Column(name = "catology_id", insertable = false, updatable = false)
     private Long catologyId;
 
-    @Column(name = "category", length = 255)
-    private String category;
+    @Column(name = "name", length = 255)
+    private String name;
+
+    @Column(name = "expected_purchase_link", length = 1000)
+    private String expectedPurchaseLink;
+
+    @Column(name = "actual_purchase_link", length = 1000)
+    private String actualPurchaseLink;
 
     @Column(name = "expected_quantity")
     private Integer expectedQuantity;

@@ -29,8 +29,8 @@ public class ExpenditureExcelHelper {
     };
 
     static String[] HEADERS_ITEMS = {
-            "STT", "Tên đợt giải ngân", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
-            "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
+            "STT", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
+            "Link mua dự kiến", "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
             "Thành tiền dự kiến (VNĐ)", "Ghi chú"
     };
 
@@ -72,16 +72,19 @@ public class ExpenditureExcelHelper {
                 Row row = sheet.createRow(rowIdx++);
 
                 row.createCell(0).setCellValue(stt++);
-                row.createCell(1).setCellValue(item.getCategory() != null ? item.getCategory() : "");
-                row.createCell(2).setCellValue(item.getBrand() != null ? item.getBrand() : "");
-                row.createCell(3).setCellValue(item.getPurchaseLocation() != null ? item.getPurchaseLocation() : "");
-                row.createCell(4).setCellValue(item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0);
-                row.createCell(5).setCellValue(item.getUnit() != null ? item.getUnit() : "");
+                row.createCell(1).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
+                row.createCell(2).setCellValue(item.getName() != null ? item.getName() : "");
+                row.createCell(3).setCellValue(item.getBrand() != null ? item.getBrand() : "");
+                row.createCell(4).setCellValue(item.getPurchaseLocation() != null ? item.getPurchaseLocation() : "");
+                row.createCell(5)
+                        .setCellValue(item.getExpectedPurchaseLink() != null ? item.getExpectedPurchaseLink() : "");
+                row.createCell(6).setCellValue(item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0);
+                row.createCell(7).setCellValue(item.getUnit() != null ? item.getUnit() : "");
                 double expectedPrice = toDouble(item.getExpectedPrice());
-                row.createCell(6).setCellValue(expectedPrice);
+                row.createCell(8).setCellValue(expectedPrice);
                 int qty = item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0;
-                row.createCell(7).setCellValue(expectedPrice * qty);
-                row.createCell(8).setCellValue(item.getNote() != null ? item.getNote() : "");
+                row.createCell(9).setCellValue(expectedPrice * qty);
+                row.createCell(10).setCellValue(item.getNote() != null ? item.getNote() : "");
             }
 
             for (int col = 0; col < HEADERS_ITEMS.length; col++) {
@@ -142,12 +145,12 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] itemSamples = {
-                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart", "100",
-                            "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
-                    { "2", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý", "50", "Chai",
-                            "18000", "900000", "" },
-                    { "3", "Đợt 2: Phục hồi sinh kế", "Nông nghiệp", "Hạt giống rau", "Trang nông", "Cửa hàng vật tư",
-                            "50", "Gói", "25000", "1250000", "" }
+                    { "1", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart",
+                            "https://maps.app.goo.gl/xxx", "100", "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
+                    { "2", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý",
+                            "https://shopee.vn/xxx", "50", "Chai", "18000", "900000", "" },
+                    { "3", "Nông nghiệp", "Hạt giống rau", "Trang nông",
+                            "Cửa hàng vật tư", "", "50", "Gói", "25000", "1250000", "" }
             };
 
             for (int i = 0; i < itemSamples.length; i++) {
@@ -177,7 +180,7 @@ public class ExpenditureExcelHelper {
             Iterator<Row> planRows = planSheet.iterator();
             if (planRows.hasNext()) {
                 Row header = planRows.next();
-                int titleIdx = -1, startIdx = -1, endIdx = -1, descIdx = -1, condIdx = -1;
+                int titleIdx = -1, startIdx = -1, endIdx = -1, descIdx = -1;
                 for (Cell cell : header) {
                     String h = getCellStringValue(cell).toLowerCase();
                     int col = cell.getColumnIndex();
@@ -189,8 +192,6 @@ public class ExpenditureExcelHelper {
                         endIdx = col;
                     else if (h.contains("mô tả"))
                         descIdx = col;
-                    else if (h.contains("điều kiện"))
-                        condIdx = col;
                 }
                 while (planRows.hasNext()) {
                     Row row = planRows.next();
@@ -221,8 +222,8 @@ public class ExpenditureExcelHelper {
                 Iterator<Row> itemRows = itemSheet.iterator();
                 if (itemRows.hasNext()) {
                     Row header = itemRows.next();
-                    int milIdx = -1, catIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, unitIdx = -1, brandIdx = -1,
-                            locIdx = -1, noteIdx = -1;
+                    int milIdx = -1, catIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, unitIdx = -1,
+                            brandIdx = -1, locIdx = -1, linkIdx = -1, noteIdx = -1;
                     for (Cell cell : header) {
                         String h = getCellStringValue(cell).toLowerCase();
                         int col = cell.getColumnIndex();
@@ -240,8 +241,10 @@ public class ExpenditureExcelHelper {
                             unitIdx = col;
                         else if (h.contains("nhãn"))
                             brandIdx = col;
-                        else if (h.contains("địa điểm"))
+                        else if (h.contains("địa điểm") || h.contains("nơi mua"))
                             locIdx = col;
+                        else if (h.contains("link") || h.contains("đường dẫn"))
+                            linkIdx = col;
                         else if (h.contains("ghi chú"))
                             noteIdx = col;
                     }
@@ -277,7 +280,8 @@ public class ExpenditureExcelHelper {
                         }
 
                         CreateExpenditureItemRequest item = new CreateExpenditureItemRequest();
-                        item.setCategory(itemName);
+                        item.setName(itemName);
+
                         item.setExpectedQuantity(getCellIntValue(row.getCell(qtyIdx)));
                         item.setExpectedPrice(getCellBigDecimalValue(row.getCell(priceIdx)));
                         if (unitIdx != -1)
@@ -286,6 +290,8 @@ public class ExpenditureExcelHelper {
                             item.setBrand(getCellStringValue(row.getCell(brandIdx)));
                         if (locIdx != -1)
                             item.setPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
+                        if (linkIdx != -1)
+                            item.setExpectedPurchaseLink(getCellStringValue(row.getCell(linkIdx)));
                         if (noteIdx != -1)
                             item.setNote(getCellStringValue(row.getCell(noteIdx)));
                         item.setActualPrice(BigDecimal.ZERO);
@@ -328,7 +334,8 @@ public class ExpenditureExcelHelper {
                 return items;
 
             Row headerRow = rows.next();
-            int nameIdx = -1, qtyIdx = -1, priceIdx = -1, noteIdx = -1, unitIdx = -1, brandIdx = -1, locationIdx = -1;
+            int nameIdx = -1, qtyIdx = -1, priceIdx = -1, noteIdx = -1, unitIdx = -1, brandIdx = -1,
+                    locationIdx = -1, linkIdx = -1;
 
             // Map column indices dynamically
             for (Cell cell : headerRow) {
@@ -348,6 +355,8 @@ public class ExpenditureExcelHelper {
                     brandIdx = colIdx;
                 else if (header.contains("điểm") || header.contains("location"))
                     locationIdx = colIdx;
+                else if (header.contains("link") || header.contains("đường dẫn"))
+                    linkIdx = colIdx;
             }
 
             // Fallback for strict old template matching if dynamic matching failed
@@ -384,7 +393,7 @@ public class ExpenditureExcelHelper {
 
                 if (nameIdx != -1) {
                     Cell c = currentRow.getCell(nameIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setCategory(getCellStringValue(c));
+                    item.setName(getCellStringValue(c));
                 }
                 if (qtyIdx != -1) {
                     Cell c = currentRow.getCell(qtyIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
@@ -410,9 +419,13 @@ public class ExpenditureExcelHelper {
                     Cell c = currentRow.getCell(locationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
                     item.setPurchaseLocation(getCellStringValue(c));
                 }
+                if (linkIdx != -1) {
+                    Cell c = currentRow.getCell(linkIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setExpectedPurchaseLink(getCellStringValue(c));
+                }
 
                 // If name is empty, skip this row (probably end of data)
-                if (item.getCategory() == null || item.getCategory().trim().isEmpty()) {
+                if (item.getName() == null || item.getName().trim().isEmpty()) {
                     continue;
                 }
 

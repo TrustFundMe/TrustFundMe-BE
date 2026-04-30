@@ -176,7 +176,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                             .map(itemReq -> ExpenditureItem.builder()
                                     .expenditure(savedExpenditure)
                                     .catology(savedCatology)
-                                    .category(itemReq.getCategory())
+                                    .name(itemReq.getName())
+                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                                     .expectedQuantity(itemReq.getExpectedQuantity())
                                     .actualQuantity(0)
                                     .quantityLeft(itemReq.getExpectedQuantity())
@@ -195,7 +196,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             List<ExpenditureItem> items = request.getItems().stream()
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
-                            .category(itemReq.getCategory())
+                            .name(itemReq.getName())
+                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                             .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
                             .quantityLeft(itemReq.getExpectedQuantity())
@@ -261,7 +263,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return ExpenditureItemResponse.builder()
                 .id(item.getId())
                 .expenditureId(item.getExpenditure().getId())
-                .category(item.getCategory())
+                .name(item.getName())
+                .expectedPurchaseLink(item.getExpectedPurchaseLink())
+                .actualPurchaseLink(item.getActualPurchaseLink())
                 .expectedQuantity(item.getExpectedQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
@@ -682,6 +686,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if (updateItem.getActualPrice() != null) {
                 item.setActualPrice(updateItem.getActualPrice());
             }
+            if (updateItem.getActualPurchaseLink() != null) {
+                item.setActualPurchaseLink(updateItem.getActualPurchaseLink());
+            }
             expenditureItemRepository.save(item);
         }
 
@@ -721,13 +728,17 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         List<ExpenditureItem> items = itemsRequest.stream()
                 .map(itemReq -> ExpenditureItem.builder()
                         .expenditure(expenditure)
-                        .category(itemReq.getCategory())
+                        .name(itemReq.getName())
+                        .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                         .expectedQuantity(itemReq.getExpectedQuantity())
                         .actualQuantity(0)
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
                         .note(itemReq.getNote())
+                        .brand(itemReq.getBrand())
+                        .unit(itemReq.getUnit())
+                        .purchaseLocation(itemReq.getPurchaseLocation())
                         .build())
                 .collect(Collectors.toList());
 
@@ -1040,7 +1051,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         List<java.util.Map<String, Object>> itemsToAudit = items.stream().map(item -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
-            map.put("itemName", item.getCategory());
+            map.put("itemName", item.getName());
             map.put("brand", item.getBrand());
             map.put("unit", item.getUnit());
             map.put("purchaseLocation", item.getPurchaseLocation());
