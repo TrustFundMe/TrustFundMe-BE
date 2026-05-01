@@ -52,4 +52,14 @@ public class SubmitKYCRequest {
 
     @NotBlank(message = "Vui lòng tải ảnh chân dung")
     private String selfieImage;
+
+    // ── Face biometric fields (optional — from liveness check) ──
+    /** Face descriptor vector as JSON string */
+    private String faceDescriptor;
+
+    /** Liveness detection metadata as JSON string */
+    private String livenessMetadata;
+
+    /** Sample face mesh 3D landmarks as JSON string */
+    private String faceMeshSample;
 }

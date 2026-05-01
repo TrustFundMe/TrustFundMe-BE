@@ -391,6 +391,7 @@ CREATE TABLE users (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     verified BOOLEAN NOT NULL DEFAULT FALSE,
     kyc_verified BOOLEAN NOT NULL DEFAULT FALSE,
+    cv_url VARCHAR(1000) NULL,
     ban_reason VARCHAR(1000) NULL,
     created_at DATETIME NOT NULL,
     updated_at DATETIME,
@@ -447,6 +448,10 @@ CREATE TABLE user_kyc (
     address VARCHAR(1000) NULL,
     workplace VARCHAR(500) NULL,
     tax_id VARCHAR(50) NULL,
+    -- Face biometric data (from MediaPipe liveness check)
+    face_descriptor JSON DEFAULT NULL COMMENT 'Face descriptor vector (128-dim) for face matching',
+    liveness_metadata JSON DEFAULT NULL COMMENT 'Liveness proof: steps completed, timestamp, duration',
+    face_mesh_sample JSON DEFAULT NULL COMMENT 'Sample of 50 key 3D face mesh landmark points',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NULL ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),

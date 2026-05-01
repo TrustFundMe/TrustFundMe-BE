@@ -65,6 +65,9 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setFaceDescriptor(request.getFaceDescriptor());
+        userKYC.setLivenessMetadata(request.getLivenessMetadata());
+        userKYC.setFaceMeshSample(request.getFaceMeshSample());
         userKYC.setStatus(KYCStatus.PENDING);
 
         UserKYC savedKYC = userKYCRepository.save(userKYC);
@@ -115,6 +118,9 @@ public class UserKYCServiceImpl implements UserKYCService {
         userKYC.setIdImageFront(request.getIdImageFront());
         userKYC.setIdImageBack(request.getIdImageBack());
         userKYC.setSelfieImage(request.getSelfieImage());
+        userKYC.setFaceDescriptor(request.getFaceDescriptor());
+        userKYC.setLivenessMetadata(request.getLivenessMetadata());
+        userKYC.setFaceMeshSample(request.getFaceMeshSample());
         userKYC.setStatus(KYCStatus.PENDING);
         userKYC.setRejectionReason(null);
 
@@ -233,27 +239,31 @@ public class UserKYCServiceImpl implements UserKYCService {
     }
 
     private KYCResponse mapToResponse(UserKYC kyc) {
-        KYCResponse response = new KYCResponse();
-        response.setId(kyc.getId());
-        response.setUserId(kyc.getUser().getId());
-        response.setFullName(kyc.getFullNameOcr());
-        response.setAddress(kyc.getAddress());
-        response.setWorkplace(kyc.getWorkplace());
-        response.setTaxId(kyc.getTaxId());
-        response.setEmail(kyc.getUser().getEmail());
-        response.setPhoneNumber(kyc.getUser().getPhoneNumber());
-        response.setIdType(kyc.getIdType());
-        response.setIdNumber(kyc.getIdNumber());
-        response.setIssueDate(kyc.getIssueDate());
-        response.setExpiryDate(kyc.getExpiryDate());
-        response.setIssuePlace(kyc.getIssuePlace());
-        response.setIdImageFront(kyc.getIdImageFront());
-        response.setIdImageBack(kyc.getIdImageBack());
-        response.setSelfieImage(kyc.getSelfieImage());
-        response.setStatus(kyc.getStatus());
-        response.setRejectionReason(kyc.getRejectionReason());
-        response.setCreatedAt(kyc.getCreatedAt());
-        response.setUpdatedAt(kyc.getUpdatedAt());
-        return response;
+        return KYCResponse.builder()
+                .id(kyc.getId())
+                .userId(kyc.getUser().getId())
+                .fullName(kyc.getFullNameOcr())
+                .address(kyc.getAddress())
+                .workplace(kyc.getWorkplace())
+                .taxId(kyc.getTaxId())
+                .email(kyc.getUser().getEmail())
+                .phoneNumber(kyc.getUser().getPhoneNumber())
+                .idType(kyc.getIdType())
+                .idNumber(kyc.getIdNumber())
+                .issueDate(kyc.getIssueDate())
+                .expiryDate(kyc.getExpiryDate())
+                .issuePlace(kyc.getIssuePlace())
+                .idImageFront(kyc.getIdImageFront())
+                .idImageBack(kyc.getIdImageBack())
+                .selfieImage(kyc.getSelfieImage())
+                .status(kyc.getStatus())
+                .rejectionReason(kyc.getRejectionReason())
+                .faceDescriptor(kyc.getFaceDescriptor())
+                .livenessMetadata(kyc.getLivenessMetadata())
+                .faceMeshSample(kyc.getFaceMeshSample())
+                .livenessVerified(kyc.getFaceDescriptor() != null && !kyc.getFaceDescriptor().isEmpty())
+                .createdAt(kyc.getCreatedAt())
+                .updatedAt(kyc.getUpdatedAt())
+                .build();
     }
 }
