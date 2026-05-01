@@ -30,6 +30,10 @@ public class Expenditure {
     @Column(name = "campaign_id", nullable = false)
     private Long campaignId;
 
+    @OneToMany(mappedBy = "expenditure", cascade = CascadeType.ALL, orphanRemoval = true)
+    @Builder.Default
+    private List<ExpenditureEvidence> evidences = new ArrayList<>();
+
     @Column(name = "evidence_due_at")
     private LocalDateTime evidenceDueAt;
 
@@ -60,6 +64,10 @@ public class Expenditure {
 
     @Column(name = "status", length = 50)
     private String status;
+
+    @Column(name = "is_system_generated")
+    @Builder.Default
+    private Boolean isSystemGenerated = false;
 
     @Column(name = "start_date")
     private LocalDateTime startDate;

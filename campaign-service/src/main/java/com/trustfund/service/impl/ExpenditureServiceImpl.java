@@ -11,6 +11,8 @@ import com.trustfund.model.response.ExpenditureCatologyResponse;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
+import com.trustfund.model.response.ExpenditureEvidenceResponse;
+import com.trustfund.model.ExpenditureEvidence;
 import com.trustfund.model.request.CreateExpenditureCatologyRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
@@ -53,6 +55,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     private final com.trustfund.service.TrustScoreService trustScoreService;
     private final com.trustfund.client.PerplexityClient perplexityClient;
     private final JdbcTemplate jdbcTemplate;
+    private final com.trustfund.repository.SystemConfigRepository systemConfigRepository;
+    private final com.trustfund.repository.ExpenditureEvidenceRepository evidenceRepository;
 
     @PostConstruct
     public void cleanupOldDatabaseConstraints() {
@@ -335,6 +339,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .updatedAt(expenditure.getUpdatedAt())
                     .transactions(txResponses)
                     .disbursementProofUrl(proofUrl)
+                    .isSystemGenerated(expenditure.getIsSystemGenerated())
+                    .evidences(expenditure.getEvidences() != null ? expenditure.getEvidences().stream()
+                            .map(this::mapToEvidenceResponse)
+                            .collect(Collectors.toList()) : null)
                     .build();
         } catch (Exception e) {
             log.error("Error mapping expenditure {}: {}", expenditure.getId(), e.getMessage(), e);
@@ -1068,5 +1076,128 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     "Cannot get audit result from Perplexity AI");
         }
         return response;
+    }
+
+    private ExpenditureEvidenceResponse mapToEvidenceResponse(com.trustfund.model.ExpenditureEvidence evidence) {
+        return ExpenditureEvidenceResponse.builder()
+                .id(evidence.getId())
+                .expenditureId(evidence.getExpenditure() != null ? evidence.getExpenditure().getId() : null)
+                .campaignId(evidence.getCampaignId())
+                .cassoTransactionId(evidence.getCassoTransactionId())
+                .amount(evidence.getAmount())
+                .description(evidence.getDescription())
+                .proofUrl(evidence.getProofUrl())
+                .status(evidence.getStatus())
+                .dueAt(evidence.getDueAt())
+                .createdAt(evidence.getCreatedAt())
+                .updatedAt(evidence.getUpdatedAt())
+                .build();
+    }
+
+    @Override
+    @Transactional
+    public void createEvidenceRequirement(com.trustfund.model.request.CreateEvidenceRequirementRequest request) {
+        log.info("➔ [AUTO-EXPENDITURE] Creating evidence requirement for campaign {}: amount={}, date={}, description={}",
+                request.getCampaignId(), request.getAmount(), request.getTransactionDate(), request.getDescription());
+
+        java.time.LocalDateTime txDate = request.getTransactionDate() != null ? request.getTransactionDate() : java.time.LocalDateTime.now();
+
+        java.util.List<Expenditure> candidates = expenditureRepository.findByCampaignId(request.getCampaignId());
+
+        Expenditure expenditure = candidates.stream()
+                .filter(e -> e.getStartDate() != null && e.getEndDate() != null &&
+                            !txDate.isBefore(e.getStartDate()) && !txDate.isAfter(e.getEndDate()))
+                .findFirst()
+                .orElse(null);
+
+        if (expenditure == null) {
+            log.info("➔ [AUTO-EXPENDITURE] No matching expenditure phase found for campaign {} on date {}. Evidence will be unassigned.",
+                    request.getCampaignId(), txDate);
+        }
+
+        int hours = systemConfigRepository.findByConfigKey("EXPENDITURE_EVIDENCE_DEADLINE_HOURS")
+                .map(s -> Integer.parseInt(s.getConfigValue()))
+                .orElse(48);
+
+        com.trustfund.model.ExpenditureEvidence evidence = com.trustfund.model.ExpenditureEvidence.builder()
+                .expenditure(expenditure)
+                .campaignId(request.getCampaignId())
+                .cassoTransactionId(request.getCassoTransactionId())
+                .amount(request.getAmount())
+                .description(request.getDescription())
+                .status("PENDING")
+                .dueAt(java.time.LocalDateTime.now().plusHours(hours))
+                .build();
+
+        evidenceRepository.save(evidence);
+        log.info("✅ [AUTO-EXPENDITURE] Evidence requirement created with ID: {}. Due at: {}", evidence.getId(),
+                evidence.getDueAt());
+
+        // Gửi thông báo cho chủ quỹ
+        try {
+            CampaignResponse campaign = campaignService.getById(request.getCampaignId());
+            com.trustfund.model.request.NotificationRequest notiReq = com.trustfund.model.request.NotificationRequest
+                    .builder()
+                    .userId(campaign.getFundOwnerId())
+                    .type("EXPENDITURE_EVIDENCE_REQUIRED")
+                    .targetId(campaign.getId())
+                    .targetType("CAMPAIGN")
+                    .title("Yêu cầu nộp minh chứng chi tiêu")
+                    .content(String.format(
+                            "Hệ thống ghi nhận giao dịch chi %sđ cho chiến dịch '%s'. Vui lòng nộp minh chứng trước %tF %tT.",
+                            request.getAmount().abs().toString(), campaign.getTitle(), 
+                            evidence.getDueAt(), evidence.getDueAt()))
+                    .build();
+            notificationServiceClient.sendNotification(notiReq);
+        } catch (Exception e) {
+            log.warn("Failed to send notification for automatic evidence requirement: {}", e.getMessage());
+        }
+    }
+
+    @Override
+    @Transactional
+    public void submitEvidence(Long evidenceId, String proofUrl) {
+        com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Evidence not found: " + evidenceId));
+
+        evidence.setProofUrl(proofUrl);
+        evidence.setStatus("SUBMITTED");
+        evidenceRepository.save(evidence);
+        log.info("✅ Evidence {} submitted with URL: {}", evidenceId, proofUrl);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenditureEvidenceResponse> getPendingEvidenceByUser(Long userId) {
+        List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(userId);
+        if (campaignIds.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        // Tìm tất cả minh chứng của các chiến dịch này mà có status là PENDING hoặc OVERDUE
+        return evidenceRepository.findAll().stream()
+                .filter(ev -> campaignIds.contains(ev.getCampaignId()) && 
+                             ("PENDING".equals(ev.getStatus()) || "OVERDUE".equals(ev.getStatus())))
+                .map(this::mapToEvidenceResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public void assignEvidenceToPhase(Long evidenceId, Long expenditureId) {
+        com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(evidenceId)
+                .orElseThrow(() -> new RuntimeException("Evidence not found"));
+        
+        Expenditure expenditure = expenditureRepository.findById(expenditureId)
+                .orElseThrow(() -> new RuntimeException("Expenditure phase not found"));
+        
+        if (!evidence.getCampaignId().equals(expenditure.getCampaignId())) {
+            throw new RuntimeException("Evidence and Phase must belong to the same campaign");
+        }
+
+        evidence.setExpenditure(expenditure);
+        evidenceRepository.save(evidence);
+        log.info("✅ Bound evidence {} to expenditure phase {}", evidenceId, expenditureId);
     }
 }

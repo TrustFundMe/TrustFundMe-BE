@@ -28,6 +28,7 @@ public class ExpenditureResponse {
     private Boolean isWithdrawalRequested;
     private String plan;
     private String status;
+    private Boolean isSystemGenerated;
     private LocalDateTime startDate;
     private LocalDateTime endDate;
     private Long staffReviewId;
@@ -36,4 +37,5 @@ public class ExpenditureResponse {
     private LocalDateTime updatedAt;
     private String disbursementProofUrl;
     private List<ExpenditureTransactionResponse> transactions;
+    private List<ExpenditureEvidenceResponse> evidences;
 }

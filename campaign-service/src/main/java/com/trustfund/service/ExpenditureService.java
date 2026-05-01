@@ -67,4 +67,12 @@ public interface ExpenditureService {
         List<ExpenditureCatologyResponse> getExpenditureCategories(Long expenditureId);
 
         com.trustfund.model.response.AuditResultResponse auditExpenditure(Long id);
+
+        void createEvidenceRequirement(com.trustfund.model.request.CreateEvidenceRequirementRequest request);
+
+        void submitEvidence(Long evidenceId, String proofUrl);
+
+        List<com.trustfund.model.response.ExpenditureEvidenceResponse> getPendingEvidenceByUser(Long userId);
+
+        void assignEvidenceToPhase(Long evidenceId, Long expenditureId);
 }

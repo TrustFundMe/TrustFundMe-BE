@@ -28,6 +28,14 @@ public class GeneralFundSeeder implements CommandLineRunner {
             } else {
                 log.info("General Fund already exists or was skipped.");
             }
+
+            log.info("Seeding system settings...");
+            String settingsSql = "INSERT IGNORE INTO system_config " +
+                    "(config_key, config_value, description, updated_at) " +
+                    "VALUES ('EXPENDITURE_EVIDENCE_DEADLINE_HOURS', '48', 'Thời gian quy định để nộp minh chứng chi tiêu (giờ).', NOW()), " +
+                    "('ENFORCEMENT_INTERVAL_MINUTES', '60', 'Tần suất quét và khóa quỹ vi phạm (phút).', NOW())";
+            jdbcTemplate.update(settingsSql);
+            log.info("Successfully seeded system setting for evidence deadline.");
         } catch (Exception e) {
             log.error(
                     "Failed to seed General Fund. If campaigns table does not exist yet wait for next restart. Error: {}",

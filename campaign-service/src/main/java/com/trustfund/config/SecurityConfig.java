@@ -82,6 +82,7 @@ public class SecurityConfig {
                                                                 "/api/expenditures/transactions/campaign/**")
                                                 .permitAll()
                                                 .requestMatchers("/api/expenditures/items/**").permitAll()
+                                                .requestMatchers("/api/expenditures/internal/**").permitAll()
                                                 // Internal transactions - public read for campaign owners
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/internal-transactions/campaign/**")

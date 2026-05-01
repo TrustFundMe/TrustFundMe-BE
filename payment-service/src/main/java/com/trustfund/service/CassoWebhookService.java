@@ -30,6 +30,9 @@ public class CassoWebhookService {
     @Value("${app.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
 
+    @Value("${app.campaign-service.url:http://localhost:8082}")
+    private String campaignServiceUrl;
+
     @Transactional
     @SuppressWarnings("unchecked")
     public void handleCassoWebhook(Map<String, Object> payload, String signature) {
@@ -103,6 +106,13 @@ public class CassoWebhookService {
 
             // 2. Fetch campaignId for auditing
             Long campaignId = getCampaignIdFromAccount(accountNumber, bankAbbreviation);
+            log.info("➔ [DEBUG] Found campaignId: {} for account: {}", campaignId, accountNumber);
+
+            // ⚠️ CHECK DUPLICATE TID
+            if (cassoTransactionRepository.existsByTid(tid)) {
+                log.warn("⚠️ Casso transaction {} already exists. Skipping to avoid duplicate processing.", tid);
+                return;
+            }
 
             // 3. Log transaction
             CassoTransaction transaction = CassoTransaction.builder()
@@ -119,13 +129,50 @@ public class CassoWebhookService {
                     .counterAccountBankName(data.get("counterAccountBankName") != null ? String.valueOf(data.get("counterAccountBankName")) : null)
                     .counterAccountBankId(data.get("counterAccountBankId") != null ? String.valueOf(data.get("counterAccountBankId")) : null)
                     .build();
-            cassoTransactionRepository.save(transaction);
-            log.info("Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
+            try {
+                cassoTransactionRepository.save(transaction);
+                log.info("✅ Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
+            } catch (org.springframework.dao.DataIntegrityViolationException e) {
+                log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping save but continuing logic.", tid);
+            }
 
-            // NEW: Update campaign balance for EVERY transaction (income or expense)
             if (transaction.getCampaignId() != null) {
                 log.info("➔ [SYNC] Syncing campaign {} balance with transaction amount: {}", transaction.getCampaignId(), transaction.getAmount());
                 donationService.updateBalanceOnlyInCampaignService(transaction.getCampaignId(), transaction.getAmount());
+
+                // NEW: If transaction is negative (expenditure), trigger evidence requirement
+                if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                    log.info("➔ [AUTO-EXPENDITURE] Negative transaction detected for campaign {}. Triggering evidence requirement.", 
+                             transaction.getCampaignId());
+                    try {
+                        String url = campaignServiceUrl + "/api/expenditures/internal/evidence-requirement";
+                        
+                        // Parse transactionDate string to LocalDateTime
+                        java.time.LocalDateTime txDateTime = java.time.LocalDateTime.now();
+                        try {
+                            // Casso usually sends yyyy-MM-dd HH:mm:ss
+                            txDateTime = java.time.LocalDateTime.parse(transactionDate, 
+                                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                        } catch (Exception e) {
+                            log.warn("Failed to parse transaction date '{}', using current time.", transactionDate);
+                        }
+
+                        Map<String, Object> request = Map.of(
+                            "campaignId", transaction.getCampaignId(),
+                            "cassoTransactionId", transaction.getTid(),
+                            "amount", transaction.getAmount(),
+                            "description", transaction.getDescription(),
+                            "transactionDate", txDateTime
+                        );
+                        log.info("➔ [DEBUG] Calling Campaign Service Internal API: {}", url);
+                        restTemplate.postForObject(url, request, Void.class);
+                        log.info("✅ [AUTO-EXPENDITURE] Evidence requirement triggered successfully.");
+                    } catch (Exception e) {
+                        log.error("❌ [AUTO-EXPENDITURE] Failed to trigger evidence requirement: {}", e.getMessage(), e);
+                    }
+                }
+            } else {
+                log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping evidence trigger.", tid);
             }
 
             // 4. Match with Campaign/Donation
