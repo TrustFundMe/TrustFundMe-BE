@@ -24,10 +24,16 @@ public class AuditResultResponse {
         private String itemName;
         private Double declaredPrice;
         private Double marketPrice;
+        private Double priceRangeMin;
+        private Double priceRangeMax;
         private Double priceDifferencePercentage;
         private boolean isSuspicious;
+        private boolean productExists;
+        private boolean productExistsByBrand;
         private List<String> evidenceUrls;
         private Integer quantity;
         private String statusMessage;
+        private Boolean isLinkMatched;
+        private String linkType;
     }
 }
