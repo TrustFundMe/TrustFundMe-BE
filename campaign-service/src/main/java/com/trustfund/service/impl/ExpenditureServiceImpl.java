@@ -281,6 +281,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .expectedBrand(item.getExpectedBrand())
                 .actualBrand(item.getActualBrand())
                 .expectedUnit(item.getExpectedUnit())
+                .actualUnit(item.getActualUnit())
                 .catologyId(item.getCatologyId())
                 .catologyName(item.getCatology() != null ? item.getCatology().getName() : null)
                 .createdAt(item.getCreatedAt())
@@ -388,15 +389,23 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             expenditure.setRejectReason(request.getReasonReject());
         } else if ("APPROVED".equalsIgnoreCase(status)) {
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+            expenditure.setStatus("APPROVED");
             if ("AUTHORIZED".equalsIgnoreCase(campaign.getType())) {
-                expenditure.setStatus("WITHDRAWAL_REQUESTED");
                 expenditure.setIsWithdrawalRequested(true);
             } else {
-                expenditure.setStatus("APPROVED");
                 expenditure.setIsWithdrawalRequested(false);
             }
         } else if ("DISBURSED".equalsIgnoreCase(status)) {
             expenditure.setStatus("DISBURSED");
+        } else if ("COMPLETED".equalsIgnoreCase(status)) {
+            expenditure.setStatus("COMPLETED");
+            // Automatically create an EVIDENCE approval task for staff to review
+            try {
+                approvalTaskService.createAndAssignTask("EVIDENCE", id);
+                log.info("Created EVIDENCE approval task for expenditure {}", id);
+            } catch (Exception e) {
+                log.warn("Could not create EVIDENCE approval task for expenditure {}: {}", id, e.getMessage());
+            }
         } else {
             expenditure.setStatus(status);
         }
@@ -702,6 +711,12 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if (updateItem.getActualPurchaseLink() != null) {
                 item.setActualPurchaseLink(updateItem.getActualPurchaseLink());
             }
+            if (updateItem.getActualBrand() != null) {
+                item.setActualBrand(updateItem.getActualBrand());
+            }
+            if (updateItem.getActualUnit() != null) {
+                item.setActualUnit(updateItem.getActualUnit());
+            }
             expenditureItemRepository.save(item);
         }
 
@@ -749,15 +764,18 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .name(itemReq.getName())
                         .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                         .expectedQuantity(itemReq.getExpectedQuantity())
-                        .actualQuantity(0)
+                        .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
                         .quantityLeft(itemReq.getExpectedQuantity())
-                        .actualPrice(BigDecimal.ZERO)
+                        .actualPrice(itemReq.getActualPrice() != null ? itemReq.getActualPrice() : BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
                         .expectedNote(itemReq.getExpectedNote())
                         .expectedBrand(itemReq.getExpectedBrand())
                         .actualBrand(itemReq.getActualBrand())
                         .expectedUnit(itemReq.getExpectedUnit())
                         .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
+                        .actualPurchaseLink(itemReq.getActualPurchaseLink())
+                        .actualUnit(itemReq.getActualUnit())
+                        .catologyId(itemReq.getCatologyId())
                         .build())
                 .collect(Collectors.toList());
 
@@ -1235,5 +1253,24 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .name(cat.getName())
                 .description(cat.getDescription())
                 .build();
+    }
+
+    @Override
+    @Transactional
+    public void deleteCategory(Long categoryId) {
+        ExpenditureCatology cat = catologyRepository.findById(categoryId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Category not found: " + categoryId));
+        
+        Long expenditureId = cat.getExpenditure().getId();
+        
+        // Delete all items in this category
+        expenditureItemRepository.deleteByCatologyId(categoryId);
+        
+        // Delete the category itself
+        catologyRepository.delete(cat);
+        
+        // Recalculate totals for the expenditure
+        recalculateExpenditureTotals(expenditureId);
+        log.info("✅ Deleted category {} and its items from expenditure {}", categoryId, expenditureId);
     }
 }

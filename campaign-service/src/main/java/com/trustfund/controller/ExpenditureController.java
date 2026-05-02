@@ -73,7 +73,7 @@ public class ExpenditureController {
 
     @PutMapping("/{id}/status")
     @Operation(summary = "Cập nhật trạng thái chi tiêu", description = "Cập nhật trạng thái duyệt của khoản chi tiêu (Yêu cầu quyền Staff hoặc Admin).")
-    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    @PreAuthorize("hasAnyRole('STAFF', 'ADMIN', 'FUND_OWNER')")
     public ResponseEntity<ExpenditureResponse> updateStatus(@PathVariable("id") Long id,
             @Valid @RequestBody com.trustfund.model.request.ReviewExpenditureRequest request) {
         return ResponseEntity.ok(expenditureService.updateExpenditureStatus(id, request));
@@ -271,5 +271,12 @@ public class ExpenditureController {
     public ResponseEntity<Void> assignEvidence(@PathVariable("evidenceId") Long evidenceId, @RequestParam("expenditureId") Long expenditureId) {
         expenditureService.assignEvidenceToPhase(evidenceId, expenditureId);
         return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/categories/{id}")
+    @Operation(summary = "Xóa danh mục chi tiêu", description = "Xóa một danh mục cụ thể và tất cả các hạng mục bên trong nó.")
+    public ResponseEntity<Void> deleteCategory(@PathVariable("id") Long id) {
+        expenditureService.deleteCategory(id);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -28,6 +28,7 @@ public class ExpenditureItemResponse {
     private String expectedBrand;
     private String actualBrand;
     private String expectedUnit;
+    private String actualUnit;
     private Long catologyId;
     private String catologyName;
     private LocalDateTime createdAt;

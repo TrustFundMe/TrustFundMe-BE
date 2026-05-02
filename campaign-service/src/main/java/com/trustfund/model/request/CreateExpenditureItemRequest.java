@@ -41,4 +41,8 @@ public class CreateExpenditureItemRequest {
     private String actualBrand;
     private Long catologyId;
     private String expectedUnit;
+
+    private Integer actualQuantity;
+    private String actualPurchaseLink;
+    private String actualUnit;
 }

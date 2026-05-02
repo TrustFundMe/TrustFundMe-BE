@@ -77,4 +77,6 @@ public interface ExpenditureService {
         void assignEvidenceToPhase(Long evidenceId, Long expenditureId);
         
         ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description);
+
+        void deleteCategory(Long categoryId);
 }
