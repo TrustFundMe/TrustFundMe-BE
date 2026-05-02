@@ -7,13 +7,16 @@ import com.trustfund.model.response.ExpenditureCatologyResponse;
 import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
+import jakarta.validation.Valid;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 
 public interface ExpenditureService {
-        ExpenditureResponse createExpenditure(CreateExpenditureRequest request);
+        ExpenditureResponse createExpenditure(@Valid CreateExpenditureRequest request);
+
+        ExpenditureResponse updateExpenditure(Long id, @Valid CreateExpenditureRequest request);
 
         List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId);
 
@@ -75,6 +78,6 @@ public interface ExpenditureService {
         List<com.trustfund.model.response.ExpenditureEvidenceResponse> getPendingEvidenceByUser(Long userId);
 
         void assignEvidenceToPhase(Long evidenceId, Long expenditureId);
-        
+
         ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description);
 }
