@@ -31,6 +31,6 @@ public class UpdateExpenditureActualsRequest {
 
         private String actualBrand;
 
-        private String unit;
+        private String actualUnit;
     }
 }

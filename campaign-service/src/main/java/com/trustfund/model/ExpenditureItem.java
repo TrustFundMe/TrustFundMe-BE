@@ -77,6 +77,9 @@ public class ExpenditureItem {
     @Column(name = "expected_unit", length = 50)
     private String expectedUnit;
 
+    @Column(name = "actual_unit", length = 50)
+    private String actualUnit;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -20,4 +20,6 @@ public interface ExpenditureItemRepository extends JpaRepository<ExpenditureItem
         @Modifying
         @Query("DELETE FROM ExpenditureItem ei WHERE ei.expenditure.id = :expenditureId")
         void deleteByExpenditureId(@Param("expenditureId") Long expenditureId);
+
+        void deleteByCatologyId(Long catologyId);
 }
