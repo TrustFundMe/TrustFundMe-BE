@@ -1,0 +1,115 @@
+{
+    "type": "json_schema",
+    "json_schema": {
+        "name": "audit_result",
+        "schema": {
+            "type": "object",
+            "properties": {
+                "riskScore": {
+                    "type": "number"
+                },
+                "riskLevel": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "recommendation": {
+                    "type": "string"
+                },
+                "redFlags": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": []
+                },
+                "spendingAnalysis": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "default": []
+                },
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "itemName": {
+                                "type": "string"
+                            },
+                            "plannedCategory": {
+                                "type": "string"
+                            },
+                            "quantity": {
+                                "type": "number"
+                            },
+                            "declaredPrice": {
+                                "type": "number"
+                            },
+                            "marketPrice": {
+                                "type": "number"
+                            },
+                            "total": {
+                                "type": "number"
+                            },
+                            "priceStatus": {
+                                "type": "string"
+                            },
+                            "deviationPercentage": {
+                                "type": "number"
+                            },
+                            "evidenceUrls": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "default": []
+                            },
+                            "geographicEvidenceUrl": {
+                                "type": "string"
+                            },
+                            "logisticsScore": {
+                                "type": "number"
+                            },
+                            "vendorTrustScore": {
+                                "type": "number"
+                            },
+                            "geographicContextSummary": {
+                                "type": "string"
+                            },
+                            "statusMessage": {
+                                "type": "string"
+                            },
+                            "isSuspicious": {
+                                "type": "boolean"
+                            },
+                            "linkType": {
+                                "type": "string"
+                            },
+                            "isLinkMatched": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": [
+                            "itemName",
+                            "declaredPrice",
+                            "marketPrice",
+                            "isSuspicious",
+                            "isLinkMatched",
+                            "evidenceUrls"
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "riskScore",
+                "riskLevel",
+                "summary",
+                "recommendation",
+                "items"
+            ]
+        }
+    }
+}

@@ -12,7 +12,6 @@ import com.trustfund.model.response.ExpenditureResponse;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.model.response.ExpenditureItemResponse;
 import com.trustfund.model.response.ExpenditureEvidenceResponse;
-import com.trustfund.model.ExpenditureEvidence;
 import com.trustfund.model.request.CreateExpenditureCatologyRequest;
 import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.CreateExpenditureItemRequest;
@@ -525,8 +524,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 expenditure.setTotalReceivedAmount(disbursementAmount);
                 expenditureRepository.save(expenditure);
 
-                // Ghi chú: Không trừ số dư ở đây nữa vì Webhook Casso sẽ tự động trừ khi thấy giao dịch ngân hàng âm
-                // campaignService.updateBalance(campaign.getId(), transaction.getAmount().negate());
+                // Ghi chú: Không trừ số dư ở đây nữa vì Webhook Casso sẽ tự động trừ khi thấy
+                // giao dịch ngân hàng âm
+                // campaignService.updateBalance(campaign.getId(),
+                // transaction.getAmount().negate());
 
                 log.info("✅ SUCCESS: Completed PAYOUT transaction for expenditure {} — amount={}, campaignId={}", id,
                         disbursementAmount, campaign.getId());
@@ -1076,6 +1077,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             map.put("note", item.getExpectedNote());
             map.put("declaredPrice", item.getExpectedPrice());
             map.put("quantity", item.getExpectedQuantity());
+            map.put("expectedPurchaseLink", item.getExpectedPurchaseLink());
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
@@ -1107,21 +1109,24 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Override
     @Transactional
     public void createEvidenceRequirement(com.trustfund.model.request.CreateEvidenceRequirementRequest request) {
-        log.info("➔ [AUTO-EXPENDITURE] Creating evidence requirement for campaign {}: amount={}, date={}, description={}",
+        log.info(
+                "➔ [AUTO-EXPENDITURE] Creating evidence requirement for campaign {}: amount={}, date={}, description={}",
                 request.getCampaignId(), request.getAmount(), request.getTransactionDate(), request.getDescription());
 
-        java.time.LocalDateTime txDate = request.getTransactionDate() != null ? request.getTransactionDate() : java.time.LocalDateTime.now();
+        java.time.LocalDateTime txDate = request.getTransactionDate() != null ? request.getTransactionDate()
+                : java.time.LocalDateTime.now();
 
         java.util.List<Expenditure> candidates = expenditureRepository.findByCampaignId(request.getCampaignId());
 
         Expenditure expenditure = candidates.stream()
                 .filter(e -> e.getStartDate() != null && e.getEndDate() != null &&
-                            !txDate.isBefore(e.getStartDate()) && !txDate.isAfter(e.getEndDate()))
+                        !txDate.isBefore(e.getStartDate()) && !txDate.isAfter(e.getEndDate()))
                 .findFirst()
                 .orElse(null);
 
         if (expenditure == null) {
-            log.info("➔ [AUTO-EXPENDITURE] No matching expenditure phase found for campaign {} on date {}. Evidence will be unassigned.",
+            log.info(
+                    "➔ [AUTO-EXPENDITURE] No matching expenditure phase found for campaign {} on date {}. Evidence will be unassigned.",
                     request.getCampaignId(), txDate);
         }
 
@@ -1155,7 +1160,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .title("Yêu cầu nộp minh chứng chi tiêu")
                     .content(String.format(
                             "Hệ thống ghi nhận giao dịch chi %sđ cho chiến dịch '%s'. Vui lòng nộp minh chứng trước %tF %tT.",
-                            request.getAmount().abs().toString(), campaign.getTitle(), 
+                            request.getAmount().abs().toString(), campaign.getTitle(),
                             evidence.getDueAt(), evidence.getDueAt()))
                     .build();
             notificationServiceClient.sendNotification(notiReq);
@@ -1185,10 +1190,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             return java.util.Collections.emptyList();
         }
 
-        // Tìm tất cả minh chứng của các chiến dịch này mà có status là PENDING hoặc OVERDUE
+        // Tìm tất cả minh chứng của các chiến dịch này mà có status là PENDING hoặc
+        // OVERDUE
         return evidenceRepository.findAll().stream()
-                .filter(ev -> campaignIds.contains(ev.getCampaignId()) && 
-                             ("PENDING".equals(ev.getStatus()) || "OVERDUE".equals(ev.getStatus())))
+                .filter(ev -> campaignIds.contains(ev.getCampaignId()) &&
+                        ("PENDING".equals(ev.getStatus()) || "OVERDUE".equals(ev.getStatus())))
                 .map(this::mapToEvidenceResponse)
                 .collect(Collectors.toList());
     }
@@ -1198,10 +1204,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     public void assignEvidenceToPhase(Long evidenceId, Long expenditureId) {
         com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(evidenceId)
                 .orElseThrow(() -> new RuntimeException("Evidence not found"));
-        
+
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
                 .orElseThrow(() -> new RuntimeException("Expenditure phase not found"));
-        
+
         if (!evidence.getCampaignId().equals(expenditure.getCampaignId())) {
             throw new RuntimeException("Evidence and Phase must belong to the same campaign");
         }

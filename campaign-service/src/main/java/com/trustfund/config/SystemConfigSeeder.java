@@ -25,24 +25,26 @@ public class SystemConfigSeeder implements CommandLineRunner {
         public void run(String... args) throws Exception {
                 log.info("Checking SystemConfig Seeder...");
 
-                // 1. Market Price Analysis (Perplexity)
-                saveConfig("ai_market_analysis_prompt", loadPrompt("ai_market_analysis_prompt.txt"),
+                // 1. Market Price Analysis (Perplexity) — prompt + schema JSON in metadata
+                saveConfig("ai_market_analysis_prompt",
+                                loadPrompt("ai_market_analysis_prompt.txt"),
+                                loadPrompt("ai_market_analysis_schema.json"),
                                 "Prompt cho Perplexity để check giá thị trường.");
 
                 // 2. Bill Analysis (Vision)
-                saveConfig("ai_bill_analysis_prompt", loadPrompt("ai_bill_analysis_prompt.txt"),
+                saveConfig("ai_bill_analysis_prompt", loadPrompt("ai_bill_analysis_prompt.txt"), null,
                                 "Prompt đối soát minh chứng hóa đơn.");
 
                 // 3. Flag Analysis
-                saveConfig("ai_flag_analysis_prompt", loadPrompt("ai_flag_analysis_prompt.txt"),
+                saveConfig("ai_flag_analysis_prompt", loadPrompt("ai_flag_analysis_prompt.txt"), null,
                                 "Prompt phân tích báo cáo vi phạm.");
 
                 // 4. OCR Config (JSON)
-                saveConfig("ai_ocr_prompt", loadPrompt("ai_ocr_prompt.json"),
+                saveConfig("ai_ocr_prompt", loadPrompt("ai_ocr_prompt.json"), null,
                                 "Cấu hình prompt OCR mặt trước và mặt sau (JSON).");
 
                 // 5. Campaign Description
-                saveConfig("ai_campaign_description_prompt", loadPrompt("ai_campaign_description_prompt.txt"),
+                saveConfig("ai_campaign_description_prompt", loadPrompt("ai_campaign_description_prompt.txt"), null,
                                 "Prompt tạo mô tả chiến dịch.");
         }
 
@@ -56,22 +58,38 @@ public class SystemConfigSeeder implements CommandLineRunner {
                 }
         }
 
-        private void saveConfig(String key, String value, String description) {
+        private void saveConfig(String key, String value, String metadata, String description) {
                 if (value == null || value.isEmpty())
                         return;
 
-                if (systemConfigRepository.findByConfigKey(key).isEmpty()) {
+                var existing = systemConfigRepository.findByConfigKey(key);
+                if (existing.isEmpty()) {
+                        // Insert new
                         SystemConfig config = SystemConfig.builder()
                                         .configKey(key)
                                         .configValue(value)
+                                        .metadata(metadata)
                                         .configGroup("AI")
                                         .description(description)
                                         .updatedBy("SYSTEM_SEEDER")
                                         .build();
                         systemConfigRepository.save(config);
-                        log.info("Seeded Initial SystemConfig: {}", key);
+                        log.info("Seeded new SystemConfig: {}", key);
                 } else {
-                        log.info("Config already exists, skipping seed for: {}", key);
+                        // Upsert: only overwrite if it was last set by the seeder (not manually edited
+                        // by admin)
+                        SystemConfig config = existing.get();
+                        if ("SYSTEM_SEEDER".equals(config.getUpdatedBy())) {
+                                config.setConfigValue(value);
+                                if (metadata != null)
+                                        config.setMetadata(metadata);
+                                config.setUpdatedBy("SYSTEM_SEEDER");
+                                systemConfigRepository.save(config);
+                                log.info("Updated SystemConfig from file: {}", key);
+                        } else {
+                                log.info("Config '{}' was manually edited by '{}', skipping auto-update.", key,
+                                                config.getUpdatedBy());
+                        }
                 }
         }
 }
