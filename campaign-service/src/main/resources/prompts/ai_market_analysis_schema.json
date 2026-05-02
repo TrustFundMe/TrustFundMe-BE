@@ -1,6 +1,7 @@
 {
     "type": "json_schema",
     "json_schema": {
+        "name": "audit_result",
         "schema": {
             "type": "object",
             "properties": {
@@ -16,44 +17,26 @@
                 "recommendation": {
                     "type": "string"
                 },
-                "confidence": {
-                    "type": "string"
-                },
-                "requiresAttention": {
-                    "type": "boolean"
-                },
                 "redFlags": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "default": []
                 },
                 "spendingAnalysis": {
                     "type": "array",
                     "items": {
                         "type": "string"
-                    }
+                    },
+                    "default": []
                 },
-                "vendorInfo": {
-                    "type": "object",
-                    "properties": {
-                        "name": {
-                            "type": "string"
-                        },
-                        "address": {
-                            "type": "string"
-                        },
-                        "phone": {
-                            "type": "string"
-                        }
-                    }
-                },
-                "detectedItems": {
+                "items": {
                     "type": "array",
                     "items": {
                         "type": "object",
                         "properties": {
-                            "name": {
+                            "itemName": {
                                 "type": "string"
                             },
                             "plannedCategory": {
@@ -62,69 +45,59 @@
                             "quantity": {
                                 "type": "number"
                             },
-                            "unitPrice": {
+                            "declaredPrice": {
+                                "type": "number"
+                            },
+                            "marketPrice": {
                                 "type": "number"
                             },
                             "total": {
                                 "type": "number"
                             },
-                            "matchStatus": {
+                            "priceStatus": {
                                 "type": "string"
+                            },
+                            "deviationPercentage": {
+                                "type": "number"
+                            },
+                            "evidenceUrls": {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                },
+                                "default": []
+                            },
+                            "geographicEvidenceUrl": {
+                                "type": "string"
+                            },
+                            "logisticsScore": {
+                                "type": "number"
+                            },
+                            "vendorTrustScore": {
+                                "type": "number"
+                            },
+                            "geographicContextSummary": {
+                                "type": "string"
+                            },
+                            "statusMessage": {
+                                "type": "string"
+                            },
+                            "isSuspicious": {
+                                "type": "boolean"
                             },
                             "linkType": {
                                 "type": "string"
                             },
                             "isLinkMatched": {
                                 "type": "boolean"
-                            },
-                            "productExists": {
-                                "type": "boolean"
-                            },
-                            "productExistsByBrand": {
-                                "type": "boolean"
-                            },
-                            "priceRangeMin": {
-                                "type": "number"
-                            },
-                            "priceRangeMax": {
-                                "type": "number"
-                            },
-                            "marketUnitPrice": {
-                                "type": "number"
-                            },
-                            "marketPriceRange": {
-                                "type": "string"
-                            },
-                            "unit": {
-                                "type": "string"
-                            },
-                            "differenceAmount": {
-                                "type": "number"
-                            },
-                            "statusMessage": {
-                                "type": "string"
-                            },
-                            "evidenceUrls": {
-                                "type": "array",
-                                "items": {
-                                    "type": "string"
-                                }
                             }
                         },
                         "required": [
-                            "name",
-                            "quantity",
-                            "unitPrice",
-                            "total",
-                            "matchStatus",
-                            "linkType",
+                            "itemName",
+                            "declaredPrice",
+                            "marketPrice",
+                            "isSuspicious",
                             "isLinkMatched",
-                            "productExists",
-                            "productExistsByBrand",
-                            "priceRangeMin",
-                            "priceRangeMax",
-                            "marketUnitPrice",
-                            "statusMessage",
                             "evidenceUrls"
                         ]
                     }
@@ -135,8 +108,7 @@
                 "riskLevel",
                 "summary",
                 "recommendation",
-                "confidence",
-                "detectedItems"
+                "items"
             ]
         }
     }

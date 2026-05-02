@@ -62,7 +62,9 @@ public class SystemConfigSeeder implements CommandLineRunner {
                 if (value == null || value.isEmpty())
                         return;
 
-                if (systemConfigRepository.findByConfigKey(key).isEmpty()) {
+                var existing = systemConfigRepository.findByConfigKey(key);
+                if (existing.isEmpty()) {
+                        // Insert new
                         SystemConfig config = SystemConfig.builder()
                                         .configKey(key)
                                         .configValue(value)
@@ -72,9 +74,22 @@ public class SystemConfigSeeder implements CommandLineRunner {
                                         .updatedBy("SYSTEM_SEEDER")
                                         .build();
                         systemConfigRepository.save(config);
-                        log.info("Seeded Initial SystemConfig: {}", key);
+                        log.info("Seeded new SystemConfig: {}", key);
                 } else {
-                        log.info("Config already exists, skipping seed for: {}", key);
+                        // Upsert: only overwrite if it was last set by the seeder (not manually edited
+                        // by admin)
+                        SystemConfig config = existing.get();
+                        if ("SYSTEM_SEEDER".equals(config.getUpdatedBy())) {
+                                config.setConfigValue(value);
+                                if (metadata != null)
+                                        config.setMetadata(metadata);
+                                config.setUpdatedBy("SYSTEM_SEEDER");
+                                systemConfigRepository.save(config);
+                                log.info("Updated SystemConfig from file: {}", key);
+                        } else {
+                                log.info("Config '{}' was manually edited by '{}', skipping auto-update.", key,
+                                                config.getUpdatedBy());
+                        }
                 }
         }
 }

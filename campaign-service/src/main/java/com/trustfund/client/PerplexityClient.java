@@ -17,6 +17,8 @@ import org.springframework.util.StreamUtils;
 import org.springframework.web.client.RestTemplate;
 
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -51,15 +53,16 @@ public class PerplexityClient {
         String promptInstruction = null;
         if (config != null && config.getConfigValue() != null && !config.getConfigValue().isBlank()) {
             promptInstruction = config.getConfigValue();
-            log.debug("Loaded prompt from DB key: {}", CONFIG_KEY);
+            log.info("[Perplexity] Prompt loaded from DB ({} chars): key={}", promptInstruction.length(), CONFIG_KEY);
         }
         if (promptInstruction == null) {
             promptInstruction = loadFile(PROMPT_FILE);
-            log.warn("DB prompt empty — loaded from file: {}", PROMPT_FILE);
+            log.warn("[Perplexity] DB prompt empty — loaded from file: {} ({} chars)", PROMPT_FILE,
+                    promptInstruction != null ? promptInstruction.length() : 0);
         }
         if (promptInstruction == null) {
             promptInstruction = "You are an independent expense auditor. Analyze items and return structured JSON.";
-            log.error("Both DB and file prompt unavailable — using minimal fallback");
+            log.error("[Perplexity] Both DB and file prompt unavailable — using minimal fallback");
         }
 
         // ── 2. Lấy response_format schema từ DB metadata, fallback về file ──
@@ -69,38 +72,43 @@ public class PerplexityClient {
                 : loadFile(SCHEMA_FILE);
 
         if (schemaJson != null) {
+            log.info("[Perplexity] Schema source: {} ({} chars)",
+                    (config != null && config.getMetadata() != null && !config.getMetadata().isBlank())
+                            ? "DB metadata"
+                            : "file: " + SCHEMA_FILE,
+                    schemaJson.length());
             try {
                 schema = objectMapper.readValue(schemaJson, Map.class);
-                log.debug("Loaded response_format schema successfully");
+                log.info("[Perplexity] response_format schema parsed OK. Type: {}, name: {}",
+                        schema.get("type"),
+                        schema.get("json_schema") != null ? ((Map<?, ?>) schema.get("json_schema")).get("name")
+                                : "N/A");
             } catch (Exception e) {
-                log.error("Failed to parse schema JSON — will call without response_format", e);
+                log.error("[Perplexity] Failed to parse schema JSON — will call without response_format", e);
             }
         } else {
-            log.warn("No schema found in DB or file — calling Perplexity without response_format");
+            log.warn("[Perplexity] No schema found in DB or file — calling Perplexity WITHOUT response_format");
         }
 
         // ── 3. Gọi Perplexity API ─────────────────────────────────────────────
         try {
             String content = objectMapper.writeValueAsString(itemsToAudit);
+            String dateContext = String.format(
+                    "\nHôm nay là ngày %s. Hãy tìm giá thị trường có hiệu lực tại thời điểm này.",
+                    LocalDate.now().toString());
+            String fullSystemPrompt = promptInstruction + dateContext;
 
-            Map<String, Object> payload;
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("model", "sonar-pro");
+            payload.put("messages", List.of(
+                    Map.of("role", "system", "content", fullSystemPrompt),
+                    Map.of("role", "user", "content",
+                            "Verify the following expenditure items against current market prices: " + content)));
+            payload.put("temperature", 0.0);
+            payload.put("top_p", 1.0);
+
             if (schema != null) {
-                payload = Map.of(
-                        "model", "sonar-pro",
-                        "messages", List.of(
-                                Map.of("role", "system", "content", promptInstruction),
-                                Map.of("role", "user", "content",
-                                        "Verify the following expenditure items against current market prices: "
-                                                + content)),
-                        "response_format", schema);
-            } else {
-                payload = Map.of(
-                        "model", "sonar-pro",
-                        "messages", List.of(
-                                Map.of("role", "system", "content", promptInstruction),
-                                Map.of("role", "user", "content",
-                                        "Verify the following expenditure items against current market prices: "
-                                                + content)));
+                payload.put("response_format", schema);
             }
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
@@ -111,7 +119,16 @@ public class PerplexityClient {
                 if (choices != null && !choices.isEmpty()) {
                     Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
                     String responseContent = (String) message.get("content");
-                    return objectMapper.readValue(responseContent, AuditResultResponse.class);
+                    log.info("[Perplexity] Raw response (first 500 chars): {}",
+                            responseContent != null && responseContent.length() > 500
+                                    ? responseContent.substring(0, 500) + "..."
+                                    : responseContent);
+                    AuditResultResponse result = objectMapper.readValue(responseContent, AuditResultResponse.class);
+                    if (result != null && (result.getDetectedItems() == null || result.getDetectedItems().isEmpty())) {
+                        log.warn("[Perplexity] detectedItems is NULL or EMPTY in the parsed response! Raw: {}",
+                                responseContent);
+                    }
+                    return result;
                 }
             }
         } catch (Exception e) {
