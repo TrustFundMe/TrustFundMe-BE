@@ -188,7 +188,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .expectedPrice(itemReq.getExpectedPrice())
                                     .note(itemReq.getNote())
                                     .purchaseLocation(itemReq.getPurchaseLocation())
-                                    .brand(itemReq.getBrand())
+                                    .expectedBrand(itemReq.getExpectedBrand())
+                                    .actualBrand(itemReq.getActualBrand())
                                     .unit(itemReq.getUnit())
                                     .build())
                             .collect(Collectors.toList());
@@ -208,7 +209,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                             .expectedPrice(itemReq.getExpectedPrice())
                             .note(itemReq.getNote())
                             .purchaseLocation(itemReq.getPurchaseLocation())
-                            .brand(itemReq.getBrand())
+                            .expectedBrand(itemReq.getExpectedBrand())
+                            .actualBrand(itemReq.getActualBrand())
                             .unit(itemReq.getUnit())
                             .build())
                     .collect(Collectors.toList());
@@ -276,7 +278,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .expectedPrice(item.getExpectedPrice())
                 .note(item.getNote())
                 .purchaseLocation(item.getPurchaseLocation())
-                .brand(item.getBrand())
+                .expectedBrand(item.getExpectedBrand())
+                .actualBrand(item.getActualBrand())
                 .unit(item.getUnit())
                 .catologyId(item.getCatologyId())
                 .catologyName(item.getCatology() != null ? item.getCatology().getName() : null)
@@ -336,6 +339,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .rejectReason(expenditure.getRejectReason())
                     .createdAt(expenditure.getCreatedAt())
                     .updatedAt(expenditure.getUpdatedAt())
+                    .proofUrl(expenditure.getProofUrl())
                     .transactions(txResponses)
                     .disbursementProofUrl(proofUrl)
                     .isSystemGenerated(expenditure.getIsSystemGenerated())
@@ -701,6 +705,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             expenditureItemRepository.save(item);
         }
 
+        if (request.getProofUrl() != null) {
+            expenditure.setProofUrl(request.getProofUrl());
+            expenditureRepository.save(expenditure);
+        }
+
         // Recalculate totals
         return mapToResponse(recalculateExpenditureTotals(id));
     }
@@ -745,7 +754,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .actualPrice(BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
                         .note(itemReq.getNote())
-                        .brand(itemReq.getBrand())
+                        .expectedBrand(itemReq.getExpectedBrand())
+                        .actualBrand(itemReq.getActualBrand())
                         .unit(itemReq.getUnit())
                         .purchaseLocation(itemReq.getPurchaseLocation())
                         .build())
@@ -1061,7 +1071,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         List<java.util.Map<String, Object>> itemsToAudit = items.stream().map(item -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("itemName", item.getName());
-            map.put("brand", item.getBrand());
+            map.put("brand", item.getExpectedBrand());
             map.put("unit", item.getUnit());
             map.put("purchaseLocation", item.getPurchaseLocation());
             map.put("note", item.getNote());
@@ -1205,5 +1215,25 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         evidence.setExpenditure(expenditure);
         evidenceRepository.save(evidence);
         log.info("✅ Bound evidence {} to expenditure phase {}", evidenceId, expenditureId);
+    }
+
+    @Override
+    @Transactional
+    public ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description) {
+        Expenditure expenditure = expenditureRepository.findById(expenditureId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
+        
+        com.trustfund.model.ExpenditureCatology cat = com.trustfund.model.ExpenditureCatology.builder()
+                .expenditure(expenditure)
+                .name(name)
+                .description(description)
+                .build();
+        cat = java.util.Optional.ofNullable(cat).map(c -> catologyRepository.save(c)).orElseThrow();
+        
+        return ExpenditureCatologyResponse.builder()
+                .id(cat.getId())
+                .name(cat.getName())
+                .description(cat.getDescription())
+                .build();
     }
 }

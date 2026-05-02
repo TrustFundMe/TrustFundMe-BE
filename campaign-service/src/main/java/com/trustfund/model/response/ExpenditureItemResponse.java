@@ -25,7 +25,8 @@ public class ExpenditureItemResponse {
     private BigDecimal expectedPrice;
     private String note;
     private String purchaseLocation;
-    private String brand;
+    private String expectedBrand;
+    private String actualBrand;
     private String unit;
     private Long catologyId;
     private String catologyName;

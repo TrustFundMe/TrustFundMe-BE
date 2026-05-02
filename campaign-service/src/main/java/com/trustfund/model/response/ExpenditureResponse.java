@@ -36,6 +36,7 @@ public class ExpenditureResponse {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String disbursementProofUrl;
+    private String proofUrl;
     private List<ExpenditureTransactionResponse> transactions;
     private List<ExpenditureEvidenceResponse> evidences;
 }

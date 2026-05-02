@@ -38,7 +38,9 @@ public class CreateExpenditureItemRequest {
 
     private String purchaseLocation;
 
-    private String brand;
+    private String expectedBrand;
 
+    private String actualBrand;
+    private Long catologyId;
     private String unit;
 }

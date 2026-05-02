@@ -68,8 +68,11 @@ public class ExpenditureItem {
     @Column(name = "purchase_location", length = 500)
     private String purchaseLocation;
 
-    @Column(name = "brand", length = 255)
-    private String brand;
+    @Column(name = "expected_brand", length = 255)
+    private String expectedBrand;
+
+    @Column(name = "actual_brand", length = 255)
+    private String actualBrand;
 
     @Column(name = "unit", length = 50)
     private String unit;

@@ -75,4 +75,6 @@ public interface ExpenditureService {
         List<com.trustfund.model.response.ExpenditureEvidenceResponse> getPendingEvidenceByUser(Long userId);
 
         void assignEvidenceToPhase(Long evidenceId, Long expenditureId);
+        
+        ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description);
 }

@@ -74,7 +74,7 @@ public class ExpenditureExcelHelper {
                 row.createCell(0).setCellValue(stt++);
                 row.createCell(1).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
                 row.createCell(2).setCellValue(item.getName() != null ? item.getName() : "");
-                row.createCell(3).setCellValue(item.getBrand() != null ? item.getBrand() : "");
+                row.createCell(3).setCellValue(item.getExpectedBrand() != null ? item.getExpectedBrand() : "");
                 row.createCell(4).setCellValue(item.getPurchaseLocation() != null ? item.getPurchaseLocation() : "");
                 row.createCell(5)
                         .setCellValue(item.getExpectedPurchaseLink() != null ? item.getExpectedPurchaseLink() : "");
@@ -287,7 +287,7 @@ public class ExpenditureExcelHelper {
                         if (unitIdx != -1)
                             item.setUnit(getCellStringValue(row.getCell(unitIdx)));
                         if (brandIdx != -1)
-                            item.setBrand(getCellStringValue(row.getCell(brandIdx)));
+                            item.setExpectedBrand(getCellStringValue(row.getCell(brandIdx)));
                         if (locIdx != -1)
                             item.setPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
                         if (linkIdx != -1)
@@ -413,7 +413,7 @@ public class ExpenditureExcelHelper {
                 }
                 if (brandIdx != -1) {
                     Cell c = currentRow.getCell(brandIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setBrand(getCellStringValue(c));
+                    item.setExpectedBrand(getCellStringValue(c));
                 }
                 if (locationIdx != -1) {
                     Cell c = currentRow.getCell(locationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
