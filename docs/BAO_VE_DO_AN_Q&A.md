@@ -106,16 +106,466 @@ Mỗi service có các **Client class** (ví dụ `IdentityServiceClient`, `Paym
 
 ## Q1.5: Hệ thống có sử dụng Design Pattern nào không?
 
-**Trả lời:** Có, hệ thống áp dụng nhiều pattern:
+**Trả lời:** Có, hệ thống áp dụng **20 Design Pattern** thực tế (có evidence trong code):
 
-1. **Service Layer Pattern:** Tách Controller -> Service Interface -> Service Implementation -> Repository. Ví dụ: `CampaignService` (interface) -> `CampaignServiceImpl` (implementation).
-2. **Repository Pattern:** Sử dụng Spring Data JPA Repository để truy xuất dữ liệu.
-3. **Builder Pattern:** Tất cả entity và DTO đều dùng `@Builder` (Lombok) để tạo object.
-4. **DTO Pattern:** Request/Response DTO tách biệt với entity. Ví dụ: `CreateCampaignRequest`, `CampaignResponse`.
-5. **Gateway Pattern:** API Gateway là implementation của Gateway pattern trong Microservices.
-6. **Observer Pattern (pub/sub):** Casso Webhook lắng nghe sự kiện từ ngân hàng, Pusher push event real-time.
-7. **Soft Delete Pattern:** Campaign dùng `status = "DELETED"` thay vì xóa thực sự.
-8. **Seeder Pattern:** `GeneralFundSeeder`, `SystemConfigSeeder` tự động tạo dữ liệu mặc định khi ứng dụng khởi động.
+### A. Microservices Patterns (Kiến trúc phân tán)
+
+1. **Database per Service Pattern:** Mỗi service có database riêng biệt — `trustfundme_identity_db`, `trustfundme_campaign_db`, `trustfundme_payment_db`, `trustfundme_chat_db`, `trustfundme_notification_db`, `trustfundme_media_db`. Đảm bảo loose coupling, mỗi service độc lập schema. *(Evidence: `docker-compose.yml` — 6 JDBC URL khác nhau)*
+
+2. **API Gateway Pattern:** Spring Cloud Gateway là điểm vào duy nhất, định tuyến 21 routes đến các service qua `lb://service-name`. *(Evidence: `api-gateway/src/main/resources/application.properties` — 21 route definitions)*
+
+3. **Service Registry / Service Discovery Pattern:** Netflix Eureka — 1 server (`@EnableEurekaServer`) + 6 client (`@EnableDiscoveryClient`). Service tự đăng ký khi start, Gateway tự tìm service qua Eureka thay vì hardcode IP. *(Evidence: `discovery-server/DiscoveryServerApplication.java`, 6 service application class)*
+
+4. **Anti-Corruption Layer (ACL):** 10 Client class wrap các HTTP call giữa service, cách ly domain khỏi giao thức bên ngoài, xử lý error/fallback. Đặc biệt `PerplexityClient.java` wrap Perplexity AI API, chuyển đổi response JSON thành domain object. *(Evidence: `campaign-service/client/IdentityServiceClient.java`, `PerplexityClient.java`,...)*
+
+### B. GoF Design Patterns (Gang of Four)
+
+5. **Singleton Pattern:** Tất cả Spring Bean (`@Service`, `@Component`, `@Repository`, `@RestController`) mặc định là Singleton scope — chỉ 1 instance trong IoC container. Tổng cộng **150+ Singleton beans**. *(Evidence: 31 `@Service`, 30 `@Component`, 36 `@Repository`, 37 `@RestController`)*
+
+6. **Observer Pattern (Pub/Sub):** Webhook Forwarder publish event lên Pusher channel, Payment Service subscribe và lắng nghe:
+   - **Publisher:** `webhook-forwarder/api/webhook.js` → `pusher.trigger('payos-webhook', 'payment', payload)`
+   - **Subscriber:** `PusherWebhookListener.java` → `channel.bind("payment", new SubscriptionEventListener())`
+   - Tương tự cho Casso webhook qua `PusherCassoListener.java`.
+   *(Evidence: `payment-service/config/PusherWebhookListener.java`, `PusherCassoListener.java`)*
+
+7. **Builder Pattern:** 131 class dùng `@Builder` (Lombok) — tất cả entity, DTO, response class. Hỗ trợ `@Builder.Default` cho giá trị mặc định (ví dụ: `Campaign.balance = BigDecimal.ZERO`). *(Evidence: `Campaign.java`, `Donation.java`, `ApiResponse.java`,...)*
+
+8. **Template Method Pattern:** 
+   - 6 class extends `OncePerRequestFilter` — Spring định nghĩa skeleton `doFilter()`, mỗi service override `doFilterInternal()` để xử lý JWT.
+   - 2 class implements `CommandLineRunner` — Spring gọi `run()` khi app khởi động, `GeneralFundSeeder` và `SystemConfigSeeder` override để seed dữ liệu.
+   *(Evidence: `JwtAuthenticationFilter.java` trong 6 service, `GeneralFundSeeder.java`)*
+
+9. **Chain of Responsibility Pattern:**
+   - **Gateway:** `JwtAuthenticationFilter implements GlobalFilter` → xử lý JWT rồi gọi `chain.filter(exchange)` chuyển tiếp.
+   - **Mỗi service:** `SecurityFilterChain` → chuỗi filter xử lý tuần tự (CORS → JWT → Authorization).
+   *(Evidence: `JwtAuthenticationFilter.java` line 30: `return chain.filter(exchange)`)*
+
+10. **Adapter Pattern:** 10 Client class đóng vai trò Adapter — chuyển đổi HTTP response từ service khác thành object phù hợp với domain hiện tại. Ví dụ: `IdentityServiceClient.getUserInfo()` gọi REST và trả về `UserInfoResponse`. *(Evidence: `campaign-service/client/IdentityServiceClient.java` — 10 methods gọi 10 endpoint khác nhau)*
+
+11. **Facade Pattern:** Các Client class cũng đóng vai trò Facade — gom nhiều endpoint của 1 service bên ngoài vào 1 class duy nhất. Ví dụ: `IdentityServiceClient` gom 10 method: `validateUserExists()`, `getUserInfo()`, `getVerificationStatus()`, `upgradeUserRole()`, `updateTrustScore()`, `getLeaderboard()`,... *(Evidence: `IdentityServiceClient.java`)*
+
+12. **Proxy Pattern:** `webhook-forwarder/` là serverless proxy trên Vercel — nhận webhook từ PayOS/Casso rồi chuyển tiếp qua Pusher đến Payment Service. Không xử lý logic, chỉ forward. *(Evidence: `webhook-forwarder/api/webhook.js`, `webhook-forwarder/api/casso.js`)*
+
+### C. Enterprise / Application Patterns
+
+13. **MVC Pattern (Model-View-Controller):** Spring MVC cho tất cả service (trừ Gateway dùng WebFlux):
+    - **Model:** 131 entity class (`@Entity`) với JPA annotations.
+    - **Controller:** 37 class `@RestController` xử lý HTTP request.
+    - **Service:** 31 class `@Service` xử lý business logic.
+    - (Không có View vì là REST API — trả về JSON).
+    *(Evidence: toàn bộ cấu trúc package `model/`, `controller/`, `service/`)*
+
+14. **Service Layer Pattern:** Tách Controller → Service Interface → Service Implementation → Repository. Ví dụ: `CampaignService` (interface) → `CampaignServiceImpl` (implementation). Tổng cộng **27 interface + 25 implementation**. *(Evidence: `campaign-service/service/CampaignService.java` → `service/impl/CampaignServiceImpl.java`)*
+
+15. **Repository Pattern:** 36 Repository interface extends `JpaRepository` (Spring Data JPA). Spring tự động generate implementation tại runtime. *(Evidence: `CampaignRepository.java`, `UserRepository.java`, `DonationRepository.java`,...)*
+
+16. **DTO Pattern (Data Transfer Object):** 56 Request DTO + 53 Response DTO tách biệt với entity. Ví dụ: `CreateCampaignRequest` (client gửi lên) → `CampaignResponse` (server trả về). Có `ApiResponse<T>` là generic wrapper cho tất cả response. *(Evidence: package `model/request/`, `model/response/`)*
+
+17. **Dependency Injection:** 2 hình thức:
+    - **Constructor Injection:** `@RequiredArgsConstructor` (Lombok) trong **94 file** — cách được khuyến khích.
+    - **Bean Method Injection:** 22 class `@Configuration` với 25+ `@Bean` methods tạo `RestTemplate`, `SecurityFilterChain`, `PasswordEncoder`,...
+    *(Evidence: hầu hết tất cả service/client/config class)*
+
+18. **Soft Delete Pattern:** Campaign dùng `status = "DELETED"` thay vì xóa thực sự khỏi database. Media Service cũng filter `statusNot("DELETED")`. Giữ lại dữ liệu để audit/truy vết. *(Evidence: `Campaign.java` line 69: `STATUS_DELETED = "DELETED"`, `CampaignServiceImpl.markAsDeleted()`)*
+
+19. **Data Seeder Pattern:** 2 class tự động seed dữ liệu mặc định khi ứng dụng khởi động:
+    - `GeneralFundSeeder` (`@Order(1)`): Tạo Quỹ Chung (ID=1), cấu hình `EXPENDITURE_EVIDENCE_DEADLINE_HOURS`.
+    - `SystemConfigSeeder` (`@Order(2)`): Load AI prompts từ file `.txt` vào `system_config` table.
+    - Dùng `INSERT IGNORE` / `findByConfigKey().isEmpty()` để đảm bảo **idempotent** (chạy nhiều lần không duplicate).
+    *(Evidence: `campaign-service/config/GeneralFundSeeder.java`, `SystemConfigSeeder.java`)*
+
+20. **Scheduler Pattern:** 2 Scheduled Task chạy định kỳ:
+    - `PaymentCleanupTask` (`@Scheduled(cron = "0 * * * * *")`): Mỗi phút đánh dấu donation PENDING quá 10 phút thành FAILED, rollback quantity.
+    - `ExpenditureEnforcementScheduler` (`@Scheduled(fixedDelay = 60000)`): Mỗi phút kiểm tra evidence quá hạn, đóng quỹ vi phạm, trừ Trust Score.
+    *(Evidence: `payment-service/PaymentCleanupTask.java`, `campaign-service/scheduler/ExpenditureEnforcementScheduler.java`)*
+
+**Bonus — Mapper Pattern:** `ModuleGroupMapper.java`, `ModuleMapper.java` trong identity-service chuyển đổi entity sang response DTO.
+
+## Q1.6: Nếu Identity Service bị chết/crash, các service khác sẽ hoạt động ra sao?
+
+**Trả lời:** Đây là câu hỏi rất hay. Identity Service là service **được gọi nhiều nhất** (lấy thông tin user, kiểm tra KYC, bank account...). Khi nó chết:
+
+**Ảnh hưởng cụ thể:**
+- **Campaign Service:** Vẫn hoạt động nhưng **dữ liệu bị thiếu**. Các Client class dùng pattern `try-catch` và trả về `null` khi không gọi được:
+  ```java
+  // IdentityServiceClient.java
+  try {
+      return restTemplate.getForObject(url, Map.class);
+  } catch (Exception e) {
+      log.error("Failed to fetch user info: {}", e.getMessage());
+      return null; // Trả về null, campaign vẫn hiển thị nhưng thiếu tên chủ quỹ
+  }
+  ```
+  - `toCampaignResponse()` sẽ trả về campaign với `ownerName = null`, `coverImageUrl = null`.
+  - `reviewCampaign()` sẽ **không thể duyệt** vì không kiểm tra được KYC → throw exception.
+  - `createCampaign()` sẽ **fail** vì `validateUserExists()` throw `ResponseStatusException(400)`.
+
+- **Payment Service:** Không lấy được thông tin bank account → **không tạo được QR code** cho donation. Nhưng Casso webhook vẫn nhận giao dịch bình thường (không phụ thuộc Identity Service ở bước nhận webhook).
+
+- **Notification Service:** Vẫn hoạt động độc lập (chỉ nhận request gửi notification).
+
+**Cách xử lý hiện tại (Graceful Degradation):**
+- Hệ thống áp dụng **fail-soft**: các Client class bắt exception và trả về giá trị mặc định (null/empty) thay vì crash toàn bộ.
+- Các tính năng đọc (xem danh sách chiến dịch) vẫn hoạt động nhưng thiếu thông tin bổ sung.
+- Các tính năng ghi (tạo chiến dịch, duyệt KYC) sẽ fail rõ ràng với error message.
+
+**Hướng cải thiện:**
+1. **Circuit Breaker (Resilience4j):** Khi Identity Service fail liên tục, tự động "mở mạch" và trả về fallback data thay vì gọi liên tục.
+2. **Cache user info:** Lưu thông tin user vào Redis/Caffeine cache, khi Identity Service chết vẫn có dữ liệu cũ để hiển thị.
+3. **Message Queue:** Các event không cần response ngay (notification, trust score) gửi qua queue, retry tự động khi service phục hồi.
+
+## Q1.7: Nếu Payment Service bị chết giữa lúc đang xử lý giao dịch, tiền có bị mất không?
+
+**Trả lời:** Đây là tình huống **nghiêm trọng nhất** trong hệ thống tài chính. Phân tích chi tiết:
+
+**Kịch bản 1: Payment Service chết TRƯỚC khi lưu CassoTransaction**
+- Casso webhook gửi request nhưng Payment Service không phản hồi.
+- Casso sẽ **retry webhook** (cơ chế retry của Casso).
+- Khi Payment Service phục hồi, nhận lại webhook → xử lý bình thường.
+- **Kết luận:** Tiền KHÔNG mất, chỉ bị trễ xử lý.
+
+**Kịch bản 2: Payment Service chết SAU khi lưu CassoTransaction nhưng TRƯỚC khi cập nhật balance**
+- `CassoTransaction` đã lưu vào DB (an toàn).
+- Nhưng `updateBalanceOnlyInCampaignService()` chưa được gọi → campaign balance chưa tăng.
+- **Đây là trạng thái inconsistent:** Tiền đã vào tài khoản ngân hàng, giao dịch đã ghi nhận, nhưng số dư trên hệ thống chưa cập nhật.
+
+**Cách xử lý hiện tại:**
+- Dữ liệu `CassoTransaction` còn trong DB → có thể **đối soát thủ công**.
+- Frontend có nút "Sync Balance" để staff đồng bộ lại.
+- `isBalanceSynchronized` flag trên `Donation` giúp biết donation nào chưa sync.
+
+**Hướng cải thiện:**
+1. **Outbox Pattern:** Lưu event "cần cập nhật balance" vào bảng `outbox` trong cùng transaction với `CassoTransaction`. Một scheduler đọc outbox và retry cho đến khi thành công.
+2. **Saga Pattern:** Chia quy trình thanh toán thành các bước có compensation (rollback) nếu bước sau fail.
+3. **Idempotency Key:** Đảm bảo mỗi lần gọi `updateBalance` với cùng transaction ID chỉ cộng tiền 1 lần.
+
+## Q1.8: Nếu MySQL database bị chết, toàn bộ hệ thống sẽ ra sao?
+
+**Trả lời:** MySQL là **Single Point of Failure lớn nhất** của hệ thống:
+
+**Hiện trạng:**
+- Tất cả 7 service (trừ Discovery Server) đều kết nối đến **cùng 1 MySQL instance** (dù mỗi service dùng database riêng).
+- Docker Compose chỉ chạy **1 container MySQL**, không có replication.
+- Không có cơ chế **failover** hay **backup** tự động trong config.
+
+**Khi MySQL chết:**
+- **TẤT CẢ service ngừng hoạt động** vì không thể đọc/ghi dữ liệu.
+- Gateway vẫn chạy nhưng mọi request đều trả về lỗi 500.
+- Eureka vẫn hoạt động (dùng in-memory registry) nhưng không còn ý nghĩa.
+- **Mất dữ liệu** nếu MySQL data volume bị hỏng.
+
+**Cách xử lý hiện tại:**
+- Docker volume `mysql_data` giữ dữ liệu khi restart container.
+- `restart: always` trong Docker Compose tự động restart MySQL nếu bị crash.
+- Có thể backup thủ công bằng `mysqldump`.
+
+**Hướng cải thiện cho production:**
+1. **MySQL Replication (Master-Slave):** 1 master ghi, nhiều slave đọc. Slave có thể lên thay master nếu master chết.
+2. **MySQL Cluster/InnoDB Cluster:** Multi-master replication với automatic failover.
+3. **Automated Backup:** Cron job backup database hàng ngày lên cloud storage (S3, GCS).
+4. **Connection Pool Tuning:** Tăng `HikariCP.maximumPoolSize` từ mặc định 10 lên 30-50 cho production.
+5. **Health Check trong Docker:** Thêm `healthcheck` cho MySQL container, các service chỉ start khi MySQL sẵn sàng (`depends_on.condition: service_healthy`).
+
+## Q1.9: Nếu API Gateway bị chết, client có thể kết nối được không? Có giải pháp nào không?
+
+**Trả lời:** **Không.** Gateway là **điểm vào duy nhất** (Single Entry Point) của hệ thống:
+
+**Khi Gateway chết:**
+- Frontend không thể gọi bất kỳ API nào.
+- Toàn bộ hệ thống **mất kết nối với client**.
+- Casso webhook cũng không gửi được → giao dịch thanh toán bị trễ (nhưng Casso sẽ retry).
+
+**Đây là Single Point of Failure theo thiết kế** — đánh đổi (trade-off) của Gateway Pattern:
+- **Lợi ích:** Tập trung xác thực, routing, CORS → đơn giản hóa các service phía sau.
+- **Rủi ro:** Gateway chết = toàn bộ hệ thống không thể truy cập.
+
+**Giải pháp cho production:**
+1. **Chạy nhiều instance Gateway** (2-3 instance) + Load Balancer phía trước (Nginx, HAProxy, AWS ALB).
+2. **Kubernetes:** K8s tự động restart pod Gateway nếu bị crash (liveness probe) và chạy nhiều replica.
+3. **Docker Compose hiện tại:** Có `restart: always` → Gateway tự restart nếu crash, nhưng downtime vài giây.
+4. **Health Check:** Frontend có thể detect Gateway down và hiển thị "Hệ thống đang bảo trì" thay vì lỗi trắng.
+
+## Q1.10: Nếu Eureka (Discovery Server) bị chết, các service có giao tiếp được với nhau không?
+
+**Trả lời:** **Có, trong thời gian ngắn.** Phân tích chi tiết:
+
+**Cơ chế cache:**
+- Mỗi service và Gateway đều cache **bản sao registry** từ Eureka.
+- Khi Eureka chết, service dùng **cached registry** để resolve địa chỉ các service khác.
+- Tuy nhiên, Gateway có config `spring.cloud.loadbalancer.cache.enabled=false` → **tắt loadbalancer cache** → Gateway sẽ **không thể resolve service** khi Eureka chết.
+
+**Tác động:**
+- **Các service có RestTemplate hardcode URL** (payment-service dùng `app.campaign-service.url`) → **vẫn hoạt động** vì không phụ thuộc Eureka.
+- **Gateway** → sẽ **fail** sau khi cached registry hết hạn vì loadbalancer cache bị tắt.
+- **Không thể đăng ký service mới** hay phát hiện service chết.
+
+**Hướng cải thiện:**
+1. **Bật loadbalancer cache:** `spring.cloud.loadbalancer.cache.enabled=true` ở Gateway.
+2. **Eureka Cluster:** Chạy 2-3 Eureka instance (peer-to-peer replication). Khi 1 chết, các instance còn lại vẫn hoạt động.
+3. **Fallback DNS/IP:** Cấu hình service có thể fallback về IP cố định khi Eureka không khả dụng.
+
+## Q1.11: Distributed Transaction — Khi donor donate thành công nhưng cập nhật balance chiến dịch thất bại, xử lý thế nào?
+
+**Trả lời:** Đây là **vấn đề kinh điển** của microservices — Distributed Transaction.
+
+**Hiện trạng:** Hệ thống **KHÔNG có Distributed Transaction**, **KHÔNG có Saga Pattern**, **KHÔNG có compensation logic**.
+
+**Flow nguy hiểm cụ thể:**
+```
+1. Casso webhook → Payment Service lưu CassoTransaction ✅
+2. Payment Service cập nhật Donation status = "PAID" ✅
+3. Payment Service gọi Campaign Service: updateBalance() ❌ FAIL
+```
+
+Nếu bước 3 fail: **tiền đã vào tài khoản ngân hàng, donation đã là PAID, nhưng campaign.balance KHÔNG tăng**.
+
+**Cách xử lý hiện tại:**
+- `@Transactional` chỉ hoạt động **trong 1 service** (local transaction), không bảo vệ được cross-service.
+- Code `updateBalanceOnlyInCampaignService()` sẽ **throw exception** nếu fail, nhưng `CassoTransaction` đã được lưu ở bước trước (khác transaction).
+- `isBalanceSynchronized` flag giúp nhận biết donation nào chưa đồng bộ balance.
+- Staff có thể **đối soát thủ công** dựa trên `CassoTransaction` trong DB.
+
+**Vấn đề thêm với ITEMIZED campaign:**
+- `processQuantityUpdate()` chạy **loop từng item**, gọi REST riêng cho mỗi item:
+  ```java
+  for (DonationItem item : donation.getItems()) {
+      // Gọi Campaign Service trừ quantityLeft cho từng item
+      processQuantityUpdate(item.getExpenditureItemId(), item.getQuantity());
+  }
+  ```
+- Nếu item thứ 3/5 fail → 2 item đầu đã bị trừ quantity, item 3,4,5 chưa → **partial update không có rollback**.
+
+**Hướng cải thiện:**
+1. **Outbox Pattern:** Lưu event vào bảng `outbox` trong cùng local transaction. Scheduler poll outbox và gửi đến service đích. Retry cho đến khi thành công.
+2. **Saga Pattern (Choreography):** Mỗi service publish event khi hoàn thành, service tiếp theo lắng nghe và xử lý. Nếu fail → publish compensation event.
+3. **Two-Phase Commit (2PC):** Ít được khuyến khích trong microservices vì chậm và phức tạp.
+4. **Reconciliation Job:** Cron job chạy định kỳ, so sánh `CassoTransaction` với `Donation` và `Campaign.balance`, tự động sửa inconsistency.
+
+## Q1.12: Hệ thống có Circuit Breaker không? Khi 1 service chậm, có gây ảnh hưởng dây chuyền (cascading failure) không?
+
+**Trả lời:** **Không có Circuit Breaker.** Hệ thống hiện tại **hoàn toàn không dùng Resilience4j** hay bất kỳ thư viện circuit breaker nào.
+
+**Cascading failure có thể xảy ra:**
+```
+Identity Service chậm (10s/request)
+→ Campaign Service gọi Identity Service, bị block 10s mỗi request
+→ Thread pool Campaign Service (200 threads) cạn kiệt
+→ Campaign Service không phản hồi được request mới
+→ Gateway timeout → Frontend hiển thị lỗi cho TẤT CẢ chức năng
+```
+
+**Vấn đề timeout:**
+- Campaign Service tạo `RestTemplate` **KHÔNG có timeout config** → mặc định là **vô hạn** (infinite timeout của JDK).
+- Nghĩa là: nếu Identity Service bị treo (hang), Campaign Service sẽ **chờ mãi mãi**, chiếm thread cho đến khi hết thread pool.
+- Payment Service có timeout tốt hơn: `connect=5s, read=5s`.
+
+**Cách xử lý hiện tại:**
+- Gateway có retry 3 lần: `spring.cloud.gateway.default-filters[0]=Retry=3` — nhưng điều này có thể **làm tệ hơn** vì retry 3 lần vào service đang chậm = 3x tải.
+- Các Client class dùng `catch(Exception)` và trả về null — giảm thiểu crash nhưng **không ngăn thread bị block**.
+
+**Hướng cải thiện:**
+1. **Resilience4j Circuit Breaker:**
+   ```java
+   @CircuitBreaker(name = "identityService", fallbackMethod = "fallbackGetUser")
+   public UserInfo getUser(Long userId) { ... }
+   
+   public UserInfo fallbackGetUser(Long userId, Exception e) {
+       return UserInfo.builder().fullName("Đang cập nhật...").build();
+   }
+   ```
+2. **Timeout config cho tất cả RestTemplate:** Connect timeout 3s, Read timeout 5s.
+3. **Bulkhead Pattern:** Giới hạn số thread cho mỗi downstream service, không để 1 service chậm chiếm hết thread pool.
+4. **Async call với CompletableFuture:** Các call không cần response ngay (notification, trust score) xử lý bất đồng bộ.
+
+## Q1.13: Hệ thống hiện tại có thể scale lên bao nhiêu người dùng? Bottleneck nằm ở đâu?
+
+**Trả lời:** Với cấu hình hiện tại (1 instance mỗi service, chưa tối ưu), ước tính **100-300 người dùng đồng thời**.
+
+**Phân tích bottleneck chi tiết:**
+
+| Tầng | Config hiện tại | Bottleneck | Giải pháp |
+|------|----------------|------------|-----------|
+| **Gateway** | WebFlux (non-blocking) | Ít bottleneck, xử lý hàng ngàn req/s | Chạy 2-3 instance |
+| **Service** | Tomcat 200 threads (default) | 200 request đồng thời / service | Tăng thread pool hoặc dùng WebFlux |
+| **Database** | HikariCP 10 connections (default) | **BOTTLENECK LỚN NHẤT** — chỉ 10 query đồng thời | Tăng lên 30-50 connections |
+| **Inter-service** | Sync REST, không timeout | 1 service chậm → block tất cả | Circuit Breaker + timeout |
+| **N+1 Query** | Gọi REST per-item trong loop | 100 campaigns → 200 HTTP calls | Batch API + cache |
+| **Cache** | Caffeine in-memory (1 JVM) | Mất khi restart, không chia sẻ giữa instances | Redis distributed cache |
+
+**Kế hoạch scale theo giai đoạn:**
+
+**Giai đoạn 1 (500 users):** Tăng connection pool (30-50), thêm timeout (3-5s), thêm Redis cache cho user info + campaign list.
+
+**Giai đoạn 2 (2,000 users):** Chạy 2-3 instance mỗi service, MySQL read replica, Message Queue cho notification/email/trust-score.
+
+**Giai đoạn 3 (10,000+ users):** Chuyển sang Kubernetes, auto-scaling, distributed tracing (Jaeger), centralized logging (ELK), MySQL cluster.
+
+## Q1.14: Hệ thống có cơ chế monitoring/giám sát không? Làm sao biết service nào đang gặp vấn đề?
+
+**Trả lời:** Hiện tại monitoring ở mức **cơ bản:**
+
+**Có:**
+- **Spring Boot Actuator** được tích hợp trong **tất cả 8 services**:
+  ```properties
+  management.endpoints.web.exposure.include=health,info
+  management.endpoint.health.show-details=always
+  ```
+- Endpoint `/actuator/health` trả về trạng thái service (UP/DOWN), bao gồm:
+  - Database connection status (MySQL)
+  - Disk space
+  - Eureka registration status
+- Gateway expose thêm endpoint `/actuator/gateway` để xem routing table.
+- **Logging:** Mỗi service dùng SLF4J/Logback, log ra console và file.
+
+**Chưa có:**
+- **Không có Prometheus/Grafana** → không có dashboard metrics (CPU, memory, request rate, error rate).
+- **Không có Distributed Tracing** (Zipkin/Jaeger) → không thể trace 1 request đi qua nhiều service.
+- **Không có Centralized Logging** (ELK Stack/Loki) → phải vào từng container đọc log riêng.
+- **Không có Alerting** → không tự động cảnh báo khi service down hay error rate tăng.
+- Docker Compose **không có health check** cho các service (chỉ dùng `depends_on` đơn giản).
+
+**Hướng cải thiện:**
+1. **Prometheus + Grafana:** Thêm `micrometer-registry-prometheus` dependency, expose `/actuator/prometheus` endpoint.
+2. **Jaeger/Zipkin:** Thêm `micrometer-tracing-bridge-brave` để trace request across services.
+3. **ELK Stack:** Filebeat thu log → Logstash xử lý → Elasticsearch lưu → Kibana hiển thị.
+4. **Docker health check:**
+   ```yaml
+   healthcheck:
+     test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+     interval: 30s
+     timeout: 10s
+     retries: 3
+   ```
+
+## Q1.15: Tại sao không dùng Message Queue (RabbitMQ/Kafka) mà dùng hoàn toàn REST đồng bộ?
+
+**Trả lời:** Hệ thống hiện tại **100% synchronous REST** — không có Message Queue.
+
+**Lý do chọn REST đồng bộ:**
+- **Đơn giản:** REST call dễ implement, dễ debug, dễ hiểu. Phù hợp với scope đồ án sinh viên.
+- **Không cần infrastructure thêm:** Không phải setup RabbitMQ/Kafka server, giảm độ phức tạp deployment.
+- **Đủ cho quy mô nhỏ:** Với lượng user dưới 500, synchronous REST hoàn toàn đáp ứng được.
+
+**Hạn chế và tác động:**
+- **Notification gửi đồng bộ:** Khi duyệt chiến dịch, hệ thống gọi REST tới Notification Service → nếu Notification chậm, Campaign Service cũng bị chậm. Code đã xử lý bằng cách `catch(Exception)` và bỏ qua nếu fail:
+  ```java
+  // NotificationServiceClient - tất cả 3 service đều có pattern này
+  try {
+      restTemplate.postForObject(url, request, Void.class);
+  } catch (Exception e) {
+      log.error("Failed to send notification: {}", e.getMessage());
+      // Không throw → không ảnh hưởng flow chính
+  }
+  ```
+- **Trust Score cập nhật đồng bộ:** Nếu Identity Service chậm khi sync trust score, Campaign Service bị ảnh hưởng.
+- **Không có retry queue:** Nếu notification fail, nó **mất luôn** — không có dead letter queue để retry.
+
+**Nếu dùng Message Queue (hướng cải thiện):**
+```
+Campaign Service → [RabbitMQ Queue] → Notification Service
+                                    → Trust Score Update
+                                    → Email Service
+```
+- **Decouple:** Campaign Service publish event và return ngay, không cần chờ.
+- **Retry tự động:** Message ở trong queue, nếu consumer fail thì retry.
+- **Dead Letter Queue:** Message fail quá nhiều lần → chuyển sang DLQ để xử lý thủ công.
+- **Back-pressure:** Queue đầy thì producer chậm lại, không overload consumer.
+
+## Q1.16: Rate Limiting — Nếu ai đó spam hàng triệu request vào API, hệ thống có chịu được không?
+
+**Trả lời:** **Không.** Hệ thống hiện tại **không có rate limiting** ở bất kỳ tầng nào.
+
+**Các endpoint nguy hiểm nhất khi bị spam:**
+- `POST /api/auth/register` (public) → tạo hàng triệu tài khoản giả.
+- `POST /api/auth/send-otp` (public) → spam email OTP (tốn tiền SMTP).
+- `POST /api/payments/create` (public) → tạo hàng triệu donation giả.
+- `POST /api/payments/webhook` (public) → giả lập webhook.
+- `GET /api/campaigns/**` (public) → overload database.
+
+**Hướng cải thiện:**
+1. **Gateway Rate Limiter (Spring Cloud Gateway + Redis):**
+   ```yaml
+   filters:
+     - name: RequestRateLimiter
+       args:
+         redis-rate-limiter.replenishRate: 10    # 10 req/s
+         redis-rate-limiter.burstCapacity: 20    # burst tối đa 20
+         key-resolver: "#{@ipKeyResolver}"       # rate limit theo IP
+   ```
+2. **Rate limit theo user:** Mỗi user tối đa X request/phút (dùng userId từ JWT).
+3. **CAPTCHA:** Thêm reCAPTCHA cho form đăng ký, gửi OTP.
+4. **WAF (Production):** Cloudflare/AWS WAF chặn DDoS ở tầng network.
+
+## Q1.17: Graceful Shutdown — Khi deploy bản mới, request đang xử lý giữa chừng có bị mất không?
+
+**Trả lời:** **Có thể bị mất.** Hệ thống hiện tại **không cấu hình graceful shutdown**.
+
+**Vấn đề:**
+- Không có `server.shutdown=graceful` trong bất kỳ service nào.
+- Không có `spring.lifecycle.timeout-per-shutdown-phase` để chờ request đang chạy hoàn thành.
+- Docker Compose dùng `restart: always` nhưng **không có `stop_grace_period`**.
+
+**Khi service bị stop/restart:**
+- Các request đang xử lý sẽ **bị cắt ngang**.
+- Transaction đang chạy có thể **bị rollback** (tốt) hoặc **bị corrupt** (xấu, nếu chỉ commit 1 phần).
+- Đặc biệt nguy hiểm cho Payment Service: nếu đang xử lý webhook giữa chừng → mất giao dịch.
+
+**Hướng cải thiện:**
+```properties
+# Thêm vào application.properties của mỗi service
+server.shutdown=graceful
+spring.lifecycle.timeout-per-shutdown-phase=30s
+```
+- Khi nhận signal shutdown, service sẽ **từ chối request mới** nhưng **chờ request đang chạy hoàn thành** (tối đa 30s).
+- Docker Compose thêm `stop_grace_period: 40s` cho mỗi service.
+
+## Q1.18: Hệ thống có đảm bảo data consistency giữa các service không? Nếu trust score trong Campaign Service và Identity Service bị lệch nhau thì sao?
+
+**Trả lời:** Hệ thống dùng mô hình **best-effort consistency** — KHÔNG đảm bảo strong consistency giữa các service.
+
+**Các điểm có thể bị lệch (inconsistent):**
+
+| Dữ liệu | Service A | Service B | Khi nào lệch |
+|----------|-----------|-----------|--------------|
+| Trust Score | `TrustScoreLog` (Campaign) | `User.trustScore` (Identity) | `IdentityServiceClient.updateTrustScore()` fail |
+| Campaign Balance | `Donation` (Payment) | `Campaign.balance` (Campaign) | `updateBalance()` fail |
+| Item Quantity | `DonationItem.quantity` (Payment) | `ExpenditureItem.quantityLeft` (Campaign) | `processQuantityUpdate()` fail |
+| User Role | Upgrade FUND_OWNER (Campaign) | `User.role` (Identity) | `upgradeUserRole()` fail |
+
+**Cách xử lý hiện tại:**
+- Tất cả các cross-service update đều dùng `try-catch` → fail thì chỉ **log error**, không retry.
+- Không có **reconciliation job** (job đối soát) để phát hiện và sửa inconsistency.
+- Staff có thể phát hiện bất thường qua dashboard (so sánh số liệu giữa các service).
+
+**Hướng cải thiện:**
+1. **Event Sourcing:** Lưu tất cả event (DONATION_CREATED, BALANCE_UPDATED, TRUST_SCORE_CHANGED) vào event store. Có thể replay event để rebuild state.
+2. **Reconciliation Scheduler:** Cron job chạy hàng đêm, so sánh dữ liệu giữa các service, phát hiện và tự động sửa inconsistency.
+3. **Saga with compensation:** Nếu bước 2 fail → gọi compensation (rollback bước 1).
+
+## Q1.19: Endpoint `/api/campaigns/*/update-balance` cho phép bất kỳ ai gọi được — đây có phải lỗ hổng bảo mật không?
+
+**Trả lời:** **Đúng, đây là lỗ hổng bảo mật nghiêm trọng.** Phân tích:
+
+**Vấn đề trong SecurityConfig của Campaign Service:**
+```java
+// SecurityConfig.java
+.requestMatchers(HttpMethod.PUT, "/api/campaigns/*/update-balance").permitAll()
+```
+- Endpoint này cho phép **bất kỳ ai** (không cần JWT) gửi request cập nhật balance của campaign.
+- Attacker có thể gửi: `PUT /api/campaigns/5/update-balance?amount=999999999` → cộng tiền giả.
+
+**Lý do tồn tại:** Endpoint này được thiết kế cho **inter-service communication** — Payment Service gọi Campaign Service để cập nhật balance. Vì Payment Service không gửi JWT user token, endpoint phải để public.
+
+**Cách khắc phục:**
+1. **Internal API Key:** Thêm header `X-Internal-Api-Key` cho inter-service call, verify ở Campaign Service.
+2. **Network-level isolation:** Chỉ cho phép traffic từ Docker internal network đến endpoint này (không expose ra ngoài Gateway).
+3. **Gateway chặn:** Thêm rule ở Gateway: chặn tất cả request từ client đến `/api/campaigns/*/update-balance` — chỉ cho phép từ internal service.
+4. **Mutual TLS (mTLS):** Service gọi nhau phải có certificate riêng để xác thực.
+
+**Các endpoint internal khác cũng có vấn đề tương tự:**
+- `/api/internal/**` → tất cả đều public ở Gateway.
+- `/api/emails/**` → có thể spam email.
+- `POST /api/users/*/trust-score` → thay đổi trust score bất kỳ user nào.
 
 ---
 
@@ -1222,3 +1672,4 @@ Với scaling (nhiều instance + connection pool lớn hơn + cache): có thể
 *Tài liệu này được tạo tự động dựa trên phân tích toàn bộ source code của TrustFundMe-BE và danbox (web frontend).*
 *Tổng số: 10 microservices, 200+ Java files, 150+ TypeScript/React files.*
 *Cập nhật: 2026-05-02*
+*Phiên bản 2.0: Bổ sung 14 câu hỏi khó về fault tolerance, scaling, distributed transaction, security vulnerability*
