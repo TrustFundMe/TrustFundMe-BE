@@ -25,11 +25,11 @@ public class ExpenditureExcelHelper {
     static String SHEET_ITEMS = "HẠNG MỤC CHI TIẾT";
 
     static String[] HEADERS_PLAN = {
-            "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Mô tả"
+            "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Hạn nộp minh chứng (dd/mm/yyyy)", "Mô tả"
     };
 
     static String[] HEADERS_ITEMS = {
-            "STT", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
+            "STT", "Đợt / Mốc giải ngân", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
             "Link mua dự kiến", "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
             "Thành tiền dự kiến (VNĐ)", "Ghi chú"
     };
@@ -75,16 +75,16 @@ public class ExpenditureExcelHelper {
                 row.createCell(1).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
                 row.createCell(2).setCellValue(item.getName() != null ? item.getName() : "");
                 row.createCell(3).setCellValue(item.getExpectedBrand() != null ? item.getExpectedBrand() : "");
-                row.createCell(4).setCellValue(item.getPurchaseLocation() != null ? item.getPurchaseLocation() : "");
+                row.createCell(4).setCellValue(item.getExpectedPurchaseLocation() != null ? item.getExpectedPurchaseLocation() : "");
                 row.createCell(5)
                         .setCellValue(item.getExpectedPurchaseLink() != null ? item.getExpectedPurchaseLink() : "");
                 row.createCell(6).setCellValue(item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0);
-                row.createCell(7).setCellValue(item.getUnit() != null ? item.getUnit() : "");
+                row.createCell(7).setCellValue(item.getExpectedUnit() != null ? item.getExpectedUnit() : "");
                 double expectedPrice = toDouble(item.getExpectedPrice());
                 row.createCell(8).setCellValue(expectedPrice);
                 int qty = item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0;
                 row.createCell(9).setCellValue(expectedPrice * qty);
-                row.createCell(10).setCellValue(item.getNote() != null ? item.getNote() : "");
+                row.createCell(10).setCellValue(item.getExpectedNote() != null ? item.getExpectedNote() : "");
             }
 
             for (int col = 0; col < HEADERS_ITEMS.length; col++) {
@@ -120,9 +120,9 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] planSamples = {
-                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026",
-                            "Móc giải ngân đầu tiên để mua nhu yếu phẩm" },
-                    { "2", "Đợt 2: Phục hồi sinh kế", "16/05/2026", "30/06/2026",
+                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026", "20/05/2026",
+                            "Giải ngân đầu tiên để mua nhu yếu phẩm" },
+                    { "2", "Đợt 2: Phục hồi sinh kế", "21/05/2026", "30/06/2026", "05/07/2026",
                             "Hỗ trợ hạt giống và công cụ sản xuất" }
             };
 
@@ -145,11 +145,11 @@ public class ExpenditureExcelHelper {
             }
 
             String[][] itemSamples = {
-                    { "1", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart",
+                    { "1", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart",
                             "https://maps.app.goo.gl/xxx", "100", "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
-                    { "2", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý",
+                    { "2", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý",
                             "https://shopee.vn/xxx", "50", "Chai", "18000", "900000", "" },
-                    { "3", "Nông nghiệp", "Hạt giống rau", "Trang nông",
+                    { "3", "Đợt 2: Phục hồi sinh kế", "Nông nghiệp", "Hạt giống rau", "Trang nông",
                             "Cửa hàng vật tư", "", "50", "Gói", "25000", "1250000", "" }
             };
 
@@ -180,24 +180,35 @@ public class ExpenditureExcelHelper {
             Iterator<Row> planRows = planSheet.iterator();
             if (planRows.hasNext()) {
                 Row header = planRows.next();
-                int titleIdx = -1, startIdx = -1, endIdx = -1, descIdx = -1;
+                int titleIdx = -1, startIdx = -1, endIdx = -1, dueIdx = -1, descIdx = -1;
                 for (Cell cell : header) {
                     String h = getCellStringValue(cell).toLowerCase();
                     int col = cell.getColumnIndex();
-                    if (h.contains("tên") || h.contains("mốc"))
+                    if (h.contains("tên") || h.contains("mốc") || h.contains("giải ngân"))
                         titleIdx = col;
                     else if (h.contains("bắt đầu"))
                         startIdx = col;
-                    else if (h.contains("kết thúc") || h.contains("dự kiến"))
+                    else if (h.contains("kết thúc"))
                         endIdx = col;
+                    else if (h.contains("minh chứng") || h.contains("hạn nộp"))
+                        dueIdx = col;
                     else if (h.contains("mô tả"))
                         descIdx = col;
                 }
+
+                // Fallbacks if headers not found strictly
+                if (titleIdx == -1) titleIdx = 1;
+                if (startIdx == -1) startIdx = 2;
+                if (endIdx == -1) endIdx = 3;
+                if (dueIdx == -1) dueIdx = 4;
+                if (descIdx == -1) descIdx = 5;
                 while (planRows.hasNext()) {
                     Row row = planRows.next();
                     if (isEmptyRow(row))
                         continue;
-                    String title = getCellStringValue(row.getCell(titleIdx)).trim();
+                    
+                    Cell titleCell = titleIdx != -1 ? row.getCell(titleIdx) : null;
+                    String title = getCellStringValue(titleCell).trim();
                     if (title.isEmpty())
                         continue;
 
@@ -206,8 +217,8 @@ public class ExpenditureExcelHelper {
                             .milestoneTitle(title)
                             .startDate(startIdx != -1 ? getCellStringValue(row.getCell(startIdx)) : "")
                             .endDate(endIdx != -1 ? getCellStringValue(row.getCell(endIdx)) : "")
+                            .evidenceDueAt(dueIdx != -1 ? getCellStringValue(row.getCell(dueIdx)) : "")
                             .description(descIdx != -1 ? getCellStringValue(row.getCell(descIdx)) : "")
-                            .releaseCondition("")
                             .categories(new ArrayList<>())
                             .build();
                     milestones.add(milestone);
@@ -227,11 +238,11 @@ public class ExpenditureExcelHelper {
                     for (Cell cell : header) {
                         String h = getCellStringValue(cell).toLowerCase();
                         int col = cell.getColumnIndex();
-                        if (h.contains("đợt"))
+                        if (h.contains("đợt") || h.contains("mốc"))
                             milIdx = col;
                         else if (h.contains("hạng mục"))
                             catIdx = col;
-                        else if (h.contains("tên hàng") || h.contains("vật phẩm"))
+                        else if (h.contains("tên hàng") || h.contains("vật phẩm") || h.contains("dịch vụ"))
                             nameIdx = col;
                         else if (h.contains("số lượng"))
                             qtyIdx = col;
@@ -249,13 +260,27 @@ public class ExpenditureExcelHelper {
                             noteIdx = col;
                     }
 
+                    // Fallbacks for Sheet 1
+                    if (milIdx == -1) milIdx = 1;
+                    if (catIdx == -1) catIdx = 2;
+                    if (nameIdx == -1) nameIdx = 3;
+                    if (brandIdx == -1) brandIdx = 4; 
+                    if (locIdx == -1) locIdx = 5;
+                    if (linkIdx == -1) linkIdx = 6;
+                    if (qtyIdx == -1) qtyIdx = 7;
+                    if (unitIdx == -1) unitIdx = 8;
+                    if (priceIdx == -1) priceIdx = 9;
+                    if (noteIdx == -1) noteIdx = 11;
+
                     while (itemRows.hasNext()) {
                         Row row = itemRows.next();
                         if (isEmptyRow(row))
                             continue;
-                        String milTitle = getCellStringValue(row.getCell(milIdx)).trim();
-                        String catName = getCellStringValue(row.getCell(catIdx)).trim();
-                        String itemName = getCellStringValue(row.getCell(nameIdx)).trim();
+                        
+                        String milTitle = milIdx != -1 ? getCellStringValue(row.getCell(milIdx)).trim() : "";
+                        String catName = catIdx != -1 ? getCellStringValue(row.getCell(catIdx)).trim() : "";
+                        String itemName = nameIdx != -1 ? getCellStringValue(row.getCell(nameIdx)).trim() : "";
+                        
                         if (milTitle.isEmpty() || catName.isEmpty() || itemName.isEmpty())
                             continue;
 
@@ -285,15 +310,15 @@ public class ExpenditureExcelHelper {
                         item.setExpectedQuantity(getCellIntValue(row.getCell(qtyIdx)));
                         item.setExpectedPrice(getCellBigDecimalValue(row.getCell(priceIdx)));
                         if (unitIdx != -1)
-                            item.setUnit(getCellStringValue(row.getCell(unitIdx)));
+                            item.setExpectedUnit(getCellStringValue(row.getCell(unitIdx)));
                         if (brandIdx != -1)
                             item.setExpectedBrand(getCellStringValue(row.getCell(brandIdx)));
                         if (locIdx != -1)
-                            item.setPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
+                            item.setExpectedPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
                         if (linkIdx != -1)
                             item.setExpectedPurchaseLink(getCellStringValue(row.getCell(linkIdx)));
                         if (noteIdx != -1)
-                            item.setNote(getCellStringValue(row.getCell(noteIdx)));
+                            item.setExpectedNote(getCellStringValue(row.getCell(noteIdx)));
                         item.setActualPrice(BigDecimal.ZERO);
                         category.getItems().add(item);
                     }
@@ -405,11 +430,11 @@ public class ExpenditureExcelHelper {
                 }
                 if (noteIdx != -1) {
                     Cell c = currentRow.getCell(noteIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setNote(getCellStringValue(c));
+                    item.setExpectedNote(getCellStringValue(c));
                 }
                 if (unitIdx != -1) {
                     Cell c = currentRow.getCell(unitIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setUnit(getCellStringValue(c));
+                    item.setExpectedUnit(getCellStringValue(c));
                 }
                 if (brandIdx != -1) {
                     Cell c = currentRow.getCell(brandIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
@@ -417,7 +442,7 @@ public class ExpenditureExcelHelper {
                 }
                 if (locationIdx != -1) {
                     Cell c = currentRow.getCell(locationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setPurchaseLocation(getCellStringValue(c));
+                    item.setExpectedPurchaseLocation(getCellStringValue(c));
                 }
                 if (linkIdx != -1) {
                     Cell c = currentRow.getCell(linkIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
@@ -455,7 +480,11 @@ public class ExpenditureExcelHelper {
                 if (DateUtil.isCellDateFormatted(cell)) {
                     return DATE_FORMAT.format(cell.getDateCellValue());
                 }
-                return String.valueOf((long) cell.getNumericCellValue());
+                double numericVal = cell.getNumericCellValue();
+                if (numericVal == (long) numericVal) {
+                    return String.valueOf((long) numericVal);
+                }
+                return String.valueOf(numericVal);
             case BOOLEAN:
                 return String.valueOf(cell.getBooleanCellValue());
             case FORMULA:
@@ -474,15 +503,22 @@ public class ExpenditureExcelHelper {
             return 1;
         switch (cell.getCellType()) {
             case NUMERIC:
-                return (int) cell.getNumericCellValue();
+                return (int) Math.round(cell.getNumericCellValue());
             case STRING:
                 try {
-                    return Integer.parseInt(cell.getStringCellValue().trim());
-                } catch (NumberFormatException e) {
-                    return 1;
+                    String str = cell.getStringCellValue().trim().replaceAll("[^0-9]", "");
+                    return str.isEmpty() ? 0 : Integer.parseInt(str);
+                } catch (Exception e) {
+                    return 0;
+                }
+            case FORMULA:
+                try {
+                    return (int) Math.round(cell.getNumericCellValue());
+                } catch (Exception e) {
+                    return 0;
                 }
             default:
-                return 1;
+                return 0;
         }
     }
 
@@ -495,10 +531,27 @@ public class ExpenditureExcelHelper {
             case STRING:
                 try {
                     String val = cell.getStringCellValue().trim()
-                            .replace(".", "")
-                            .replace(",", ".");
+                            .replaceAll("[^0-9.,]", "");
+                    if (val.isEmpty()) return BigDecimal.ZERO;
+                    // Handle formats like "1.000,00" or "1000.00"
+                    if (val.contains(",") && val.contains(".")) {
+                        if (val.indexOf(".") < val.indexOf(",")) {
+                            val = val.replace(".", "").replace(",", "."); // 1.000,00 -> 1000.00
+                        } else {
+                            val = val.replace(",", ""); // 1,000.00 -> 1000.00
+                        }
+                    } else if (val.contains(",")) {
+                        // If only comma, usually it's the decimal separator in VN
+                        val = val.replace(",", "."); 
+                    }
                     return new BigDecimal(val);
-                } catch (NumberFormatException e) {
+                } catch (Exception e) {
+                    return BigDecimal.ZERO;
+                }
+            case FORMULA:
+                try {
+                    return BigDecimal.valueOf(cell.getNumericCellValue());
+                } catch (Exception e) {
                     return BigDecimal.ZERO;
                 }
             default:

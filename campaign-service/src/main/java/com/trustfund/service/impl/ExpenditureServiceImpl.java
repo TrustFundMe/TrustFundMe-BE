@@ -187,11 +187,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .quantityLeft(itemReq.getExpectedQuantity())
                                     .actualPrice(BigDecimal.ZERO)
                                     .expectedPrice(itemReq.getExpectedPrice())
-                                    .note(itemReq.getNote())
-                                    .purchaseLocation(itemReq.getPurchaseLocation())
+                                    .expectedNote(itemReq.getExpectedNote())
+                                    .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
                                     .expectedBrand(itemReq.getExpectedBrand())
                                     .actualBrand(itemReq.getActualBrand())
-                                    .unit(itemReq.getUnit())
+                                    .expectedUnit(itemReq.getExpectedUnit())
                                     .build())
                             .collect(Collectors.toList());
                     expenditureItemRepository.saveAll(items);
@@ -208,11 +208,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                             .quantityLeft(itemReq.getExpectedQuantity())
                             .actualPrice(BigDecimal.ZERO)
                             .expectedPrice(itemReq.getExpectedPrice())
-                            .note(itemReq.getNote())
-                            .purchaseLocation(itemReq.getPurchaseLocation())
+                            .expectedNote(itemReq.getExpectedNote())
+                            .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
                             .expectedBrand(itemReq.getExpectedBrand())
                             .actualBrand(itemReq.getActualBrand())
-                            .unit(itemReq.getUnit())
+                            .expectedUnit(itemReq.getExpectedUnit())
                             .build())
                     .collect(Collectors.toList());
             expenditureItemRepository.saveAll(items);
@@ -277,11 +277,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .quantityLeft(item.getQuantityLeft())
                 .actualPrice(item.getActualPrice())
                 .expectedPrice(item.getExpectedPrice())
-                .note(item.getNote())
-                .purchaseLocation(item.getPurchaseLocation())
+                .expectedNote(item.getExpectedNote())
+                .expectedPurchaseLocation(item.getExpectedPurchaseLocation())
                 .expectedBrand(item.getExpectedBrand())
                 .actualBrand(item.getActualBrand())
-                .unit(item.getUnit())
+                .expectedUnit(item.getExpectedUnit())
                 .catologyId(item.getCatologyId())
                 .catologyName(item.getCatology() != null ? item.getCatology().getName() : null)
                 .createdAt(item.getCreatedAt())
@@ -752,11 +752,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
-                        .note(itemReq.getNote())
+                        .expectedNote(itemReq.getExpectedNote())
                         .expectedBrand(itemReq.getExpectedBrand())
                         .actualBrand(itemReq.getActualBrand())
-                        .unit(itemReq.getUnit())
-                        .purchaseLocation(itemReq.getPurchaseLocation())
+                        .expectedUnit(itemReq.getExpectedUnit())
+                        .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
                         .build())
                 .collect(Collectors.toList());
 
@@ -1071,9 +1071,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("itemName", item.getName());
             map.put("brand", item.getExpectedBrand());
-            map.put("unit", item.getUnit());
-            map.put("purchaseLocation", item.getPurchaseLocation());
-            map.put("note", item.getNote());
+            map.put("unit", item.getExpectedUnit());
+            map.put("purchaseLocation", item.getExpectedPurchaseLocation());
+            map.put("note", item.getExpectedNote());
             map.put("declaredPrice", item.getExpectedPrice());
             map.put("quantity", item.getExpectedQuantity());
             return map;

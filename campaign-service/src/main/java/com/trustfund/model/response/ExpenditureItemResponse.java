@@ -23,11 +23,11 @@ public class ExpenditureItemResponse {
     private Integer quantityLeft;
     private BigDecimal actualPrice;
     private BigDecimal expectedPrice;
-    private String note;
-    private String purchaseLocation;
+    private String expectedNote;
+    private String expectedPurchaseLocation;
     private String expectedBrand;
     private String actualBrand;
-    private String unit;
+    private String expectedUnit;
     private Long catologyId;
     private String catologyName;
     private LocalDateTime createdAt;

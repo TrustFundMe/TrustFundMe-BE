@@ -16,6 +16,6 @@ public class BulkMilestoneImportRequest {
     private String description;
     private String startDate;
     private String endDate;
-    private String releaseCondition;
+    private String evidenceDueAt;
     private List<CreateExpenditureCatologyRequest> categories;
 }

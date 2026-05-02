@@ -62,11 +62,11 @@ public class ExpenditureItem {
     @Column(name = "expected_price", precision = 19, scale = 4)
     private BigDecimal expectedPrice;
 
-    @Column(name = "note", length = 1000)
-    private String note;
+    @Column(name = "expected_note", length = 1000)
+    private String expectedNote;
 
-    @Column(name = "purchase_location", length = 500)
-    private String purchaseLocation;
+    @Column(name = "expected_purchase_location", length = 500)
+    private String expectedPurchaseLocation;
 
     @Column(name = "expected_brand", length = 255)
     private String expectedBrand;
@@ -74,8 +74,8 @@ public class ExpenditureItem {
     @Column(name = "actual_brand", length = 255)
     private String actualBrand;
 
-    @Column(name = "unit", length = 50)
-    private String unit;
+    @Column(name = "expected_unit", length = 50)
+    private String expectedUnit;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
