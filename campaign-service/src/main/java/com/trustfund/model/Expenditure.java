@@ -81,6 +81,9 @@ public class Expenditure {
     @Column(name = "reject_reason", length = 1000)
     private String rejectReason;
 
+    @Column(name = "proof_url", length = 500)
+    private String proofUrl;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -14,6 +14,8 @@ public class UpdateExpenditureActualsRequest {
     @NotNull(message = "Danh sách hạng mục không được để trống")
     private List<UpdateItem> items;
 
+    private String proofUrl;
+
     @Data
     public static class UpdateItem {
         @NotNull(message = "ID hạng mục không được để trống")
@@ -26,5 +28,9 @@ public class UpdateExpenditureActualsRequest {
         private BigDecimal actualPrice; // Actual Price
 
         private String actualPurchaseLink;
+
+        private String actualBrand;
+
+        private String unit;
     }
 }

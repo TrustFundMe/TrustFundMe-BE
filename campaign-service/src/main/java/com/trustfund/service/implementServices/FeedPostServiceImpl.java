@@ -536,8 +536,22 @@ public class FeedPostServiceImpl implements FeedPostService {
         // Fetch media attachments for this post from media-service
         java.util.List<java.util.Map<String, Object>> attachments = java.util.Collections.emptyList();
         try {
-            attachments = mediaServiceClient.getMediaByPostId(entity.getId());
-            if (attachments == null) attachments = java.util.Collections.emptyList();
+            java.util.List<java.util.Map<String, Object>> rawAttachments = mediaServiceClient.getMediaByPostId(entity.getId());
+            if (rawAttachments != null && !rawAttachments.isEmpty()) {
+                attachments = rawAttachments.stream().map(m -> {
+                    java.util.Map<String, Object> mapped = new java.util.HashMap<>(m);
+                    Object mediaTypeObj = m.get("mediaType");
+                    if (mediaTypeObj != null) {
+                        String mType = mediaTypeObj.toString();
+                        if ("PHOTO".equals(mType) || "VIDEO".equals(mType)) {
+                            mapped.put("type", "image");
+                        } else {
+                            mapped.put("type", "file");
+                        }
+                    }
+                    return mapped;
+                }).collect(java.util.stream.Collectors.toList());
+            }
         } catch (Exception e) {
             // Log warning and continue with empty attachments
         }

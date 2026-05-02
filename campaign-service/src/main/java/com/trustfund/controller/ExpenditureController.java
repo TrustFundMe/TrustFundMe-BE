@@ -107,6 +107,14 @@ public class ExpenditureController {
         return ResponseEntity.ok(expenditureService.getExpenditureCategories(id));
     }
 
+    @PostMapping("/{id}/categories")
+    @Operation(summary = "Tạo danh mục chi tiêu mới", description = "Tạo một danh mục (ExpenditureCatology) mới cho khoản chi tiêu.")
+    public ResponseEntity<ExpenditureCatologyResponse> createCategory(@PathVariable("id") Long id,
+            @RequestParam("name") String name,
+            @RequestParam(name = "description", required = false) String description) {
+        return ResponseEntity.ok(expenditureService.createCategory(id, name, description));
+    }
+
     @PutMapping("/{id}/disbursement-proof")
     @Operation(summary = "Cập nhật minh chứng giải ngân", description = "Cập nhật URL ảnh minh chứng chuyển khoản (Screenshot) và chuyển trạng thái minh chứng sang COMPLETED.")
     public ResponseEntity<ExpenditureResponse> updateDisbursementProof(@PathVariable("id") Long id,
