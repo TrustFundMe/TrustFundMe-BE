@@ -1,871 +1,871 @@
-# TrustFundMe - TI LE TAI LIEU BAO VE DO AN
-## Toan bo cau hoi & tra loi chi tiet cho he thong Quy Thien Nguyen TrustFundMe
+# TrustFundMe - TÀI LIỆU BẢO VỆ ĐỒ ÁN
+## Toàn bộ câu hỏi & trả lời chi tiết cho hệ thống Quỹ Thiện Nguyện TrustFundMe
 
-> Tai lieu nay bao gom tat ca cau hoi co the bi hoi khi bao ve do an, kem tra loi chi tiet dua tren code thuc te.
-> Moi phan duoc sap xep theo chu de: Kien truc, Nghiep vu, Bao mat, Database, Payment, KYC, AI, va cac tinh huong bad-case.
+> Tài liệu này bao gồm tất cả câu hỏi có thể bị hỏi khi bảo vệ đồ án, kèm trả lời chi tiết dựa trên code thực tế.
+> Mỗi phần được sắp xếp theo chủ đề: Kiến trúc, Nghiệp vụ, Bảo mật, Database, Payment, KYC, AI, và các tình huống bad-case.
 
 ---
 
-# MUC LUC
+# MỤC LỤC
 
-1. [KIEN TRUC HE THONG (Architecture)](#1-kien-truc-he-thong)
+1. [KIẾN TRÚC HỆ THỐNG (Architecture)](#1-kiến-trúc-hệ-thống)
 2. [AUTHENTICATION & AUTHORIZATION](#2-authentication--authorization)
-3. [CAMPAIGN - NGHIEP VU QUY THIEN NGUYEN](#3-campaign---nghiep-vu-quy-thien-nguyen)
-4. [THANH TOAN & DONG TIEN (Payment Flow)](#4-thanh-toan--dong-tien)
-5. [KYC - XAC MINH DANH TINH](#5-kyc---xac-minh-danh-tinh)
-6. [CHI TIEU & GIAI NGAN (Expenditure & Disbursement)](#6-chi-tieu--giai-ngan)
-7. [TRUST SCORE - DIEM UY TIN](#7-trust-score---diem-uy-tin)
-8. [FLAG & TO CAO](#8-flag--to-cao)
-9. [FEED POST & CONG DONG](#9-feed-post--cong-dong)
+3. [CAMPAIGN - NGHIỆP VỤ QUỸ THIỆN NGUYỆN](#3-campaign---nghiệp-vụ-quỹ-thiện-nguyện)
+4. [THANH TOÁN & DÒNG TIỀN (Payment Flow)](#4-thanh-toán--dòng-tiền)
+5. [KYC - XÁC MINH DANH TÍNH](#5-kyc---xác-minh-danh-tính)
+6. [CHI TIÊU & GIẢI NGÂN (Expenditure & Disbursement)](#6-chi-tiêu--giải-ngân)
+7. [TRUST SCORE - ĐIỂM UY TÍN](#7-trust-score---điểm-uy-tín)
+8. [FLAG & TỐ CÁO](#8-flag--tố-cáo)
+9. [FEED POST & CỘNG ĐỒNG](#9-feed-post--cộng-đồng)
 10. [NOTIFICATION & REAL-TIME](#10-notification--real-time)
 11. [CHAT SERVICE](#11-chat-service)
 12. [MEDIA SERVICE](#12-media-service)
 13. [AI INTEGRATION](#13-ai-integration)
-14. [QUY CHUNG (General Fund)](#14-quy-chung-general-fund)
-15. [BAO MAT & VULNERABILITY](#15-bao-mat--vulnerability)
+14. [QUỸ CHUNG (General Fund)](#14-quỹ-chung-general-fund)
+15. [BẢO MẬT & VULNERABILITY](#15-bảo-mật--vulnerability)
 16. [FRONTEND (DANBOX - NEXT.JS)](#16-frontend-danbox---nextjs)
 17. [DEPLOYMENT & DEVOPS](#17-deployment--devops)
 18. [DATABASE DESIGN](#18-database-design)
 19. [TESTING](#19-testing)
-20. [BAD CASE & TINH HUONG XAU](#20-bad-case--tinh-huong-xau)
-21. [TAI SAO CHON CONG NGHE NAY](#21-tai-sao-chon-cong-nghe-nay)
-22. [SO SANH VOI CAC HE THONG KHAC](#22-so-sanh-voi-cac-he-thong-khac)
-23. [SCABILITY & PERFORMANCE](#23-scalability--performance)
+20. [BAD CASE & TÌNH HUỐNG XẤU](#20-bad-case--tình-huống-xấu)
+21. [TẠI SAO CHỌN CÔNG NGHỆ NÀY](#21-tại-sao-chọn-công-nghệ-này)
+22. [SO SÁNH VỚI CÁC HỆ THỐNG KHÁC](#22-so-sánh-với-các-hệ-thống-khác)
+23. [SCALABILITY & PERFORMANCE](#23-scalability--performance)
 
 ---
 
-# 1. KIEN TRUC HE THONG
+# 1. KIẾN TRÚC HỆ THỐNG
 
-## Q1.1: He thong cua ban duoc thiet ke theo kien truc gi? Tai sao chon kien truc do?
+## Q1.1: Hệ thống của bạn được thiết kế theo kiến trúc gì? Tại sao chọn kiến trúc đó?
 
-**Tra loi:** He thong TrustFundMe duoc xay dung theo kien truc **Microservices** voi **10 service rieng biet**:
+**Trả lời:** Hệ thống TrustFundMe được xây dựng theo kiến trúc **Microservices** với **10 service riêng biệt**:
 
-| Service | Port | Chuc nang |
+| Service | Port | Chức năng |
 |---------|------|-----------|
-| **API Gateway** | 8080 | Dinh tuyen, xac thuc JWT, CORS, load balancing |
+| **API Gateway** | 8080 | Định tuyến, xác thực JWT, CORS, load balancing |
 | **Discovery Server** | 8761 | Service registry (Eureka) |
-| **Identity Service** | 8081 | Dang ky, dang nhap, KYC, quan ly user, bank account |
-| **Campaign Service** | 8082 | Chien dich, chi tieu, trust score, feed post, flag |
-| **Media Service** | 8083 | Upload/quang ly file anh/video (Supabase Storage) |
-| **Chat Service** | 8086 | Nhan tin, lich hen (WebSocket) |
-| **Payment Service** | 8087 | Thanh toan, donate, Casso webhook |
-| **Notification Service** | 8088 | Thong bao real-time (Pusher), email |
-| **Feed Service** | (trong campaign-service) | Bai viet, binh luan, like |
-| **Flag Service** | (trong campaign-service) | Bao cao vi pham |
+| **Identity Service** | 8081 | Đăng ký, đăng nhập, KYC, quản lý user, bank account |
+| **Campaign Service** | 8082 | Chiến dịch, chi tiêu, trust score, feed post, flag |
+| **Media Service** | 8083 | Upload/quản lý file ảnh/video (Supabase Storage) |
+| **Chat Service** | 8086 | Nhắn tin, lịch hẹn (WebSocket) |
+| **Payment Service** | 8087 | Thanh toán, donate, Casso webhook |
+| **Notification Service** | 8088 | Thông báo real-time (Pusher), email |
+| **Feed Service** | (trong campaign-service) | Bài viết, bình luận, like |
+| **Flag Service** | (trong campaign-service) | Báo cáo vi phạm |
 
-**Tai sao chon Microservices thay vi Monolith?**
-- **Tach biet nghiep vu:** Moi service phu trach 1 domain rieng (Single Responsibility). Payment xu ly tien tach biet voi Campaign xu ly chien dich.
-- **Doc lap deploy:** Co the deploy rieng tung service ma khong anh huong cac service khac.
-- **Scalability:** Co the scale rieng service chiu tai cao (Payment, Campaign) ma khong can scale toan bo he thong.
-- **Cach ly loi (Fault Isolation):** Neu Payment bi loi, Campaign van hoat dong binh thuong.
-- **Phu hop voi nhom:** Cac thanh vien co the phat trien song song tren cac service khac nhau.
+**Tại sao chọn Microservices thay vì Monolith?**
+- **Tách biệt nghiệp vụ:** Mỗi service phụ trách 1 domain riêng (Single Responsibility). Payment xử lý tiền tách biệt với Campaign xử lý chiến dịch.
+- **Độc lập deploy:** Có thể deploy riêng từng service mà không ảnh hưởng các service khác.
+- **Scalability:** Có thể scale riêng service chịu tải cao (Payment, Campaign) mà không cần scale toàn bộ hệ thống.
+- **Cách ly lỗi (Fault Isolation):** Nếu Payment bị lỗi, Campaign vẫn hoạt động bình thường.
+- **Phù hợp với nhóm:** Các thành viên có thể phát triển song song trên các service khác nhau.
 
-## Q1.2: API Gateway hoat dong nhu the nao? Tai sao can Gateway?
+## Q1.2: API Gateway hoạt động như thế nào? Tại sao cần Gateway?
 
-**Tra loi:** API Gateway su dung **Spring Cloud Gateway** (Reactive/WebFlux), la diem vao duy nhat cua he thong:
+**Trả lời:** API Gateway sử dụng **Spring Cloud Gateway** (Reactive/WebFlux), là điểm vào duy nhất của hệ thống:
 
-1. **Routing:** Dinh tuyen request den dung service dua tren URL path. Vi du `/api/campaigns/**` -> campaign-service, `/api/payments/**` -> payment-service.
-2. **JWT Authentication:** Global filter kiem tra JWT token truoc khi cho request di qua. Token hop le thi inject header `X-User-Id`, `X-User-Email`, `X-User-Role` vao request.
-3. **Load Balancing:** Su dung prefix `lb://` ket hop voi Eureka de tu dong load balance giua cac instance cua cung 1 service.
-4. **CORS:** Cau hinh global CORS cho phep frontend (localhost:3000) goi API.
-5. **Retry:** Tu dong retry 3 lan khi service tra ve 503 (Service Unavailable).
-6. **Public endpoints:** Mot so endpoint khong can token (GET campaigns, tao donation, webhook PayOS...).
+1. **Routing:** Định tuyến request đến đúng service dựa trên URL path. Ví dụ `/api/campaigns/**` -> campaign-service, `/api/payments/**` -> payment-service.
+2. **JWT Authentication:** Global filter kiểm tra JWT token trước khi cho request đi qua. Token hợp lệ thì inject header `X-User-Id`, `X-User-Email`, `X-User-Role` vào request.
+3. **Load Balancing:** Sử dụng prefix `lb://` kết hợp với Eureka để tự động load balance giữa các instance của cùng 1 service.
+4. **CORS:** Cấu hình global CORS cho phép frontend (localhost:3000) gọi API.
+5. **Retry:** Tự động retry 3 lần khi service trả về 503 (Service Unavailable).
+6. **Public endpoints:** Một số endpoint không cần token (GET campaigns, tạo donation, webhook PayOS...).
 
-**Tai sao can Gateway ma khong goi truc tiep tung service?**
-- Frontend chi can biet 1 URL (port 8080), khong can biet tung service chay port nao.
-- Tap trung logic xac thuc tai 1 diem, tranh viec moi service phai tu verify JWT.
-- De dang them rate limiting, logging, monitoring tai gateway.
+**Tại sao cần Gateway mà không gọi trực tiếp từng service?**
+- Frontend chỉ cần biết 1 URL (port 8080), không cần biết từng service chạy port nào.
+- Tập trung logic xác thực tại 1 điểm, tránh việc mỗi service phải tự verify JWT.
+- Dễ dàng thêm rate limiting, logging, monitoring tại gateway.
 
-## Q1.3: Service Discovery (Eureka) hoat dong ra sao? Tai sao khong dung IP co dinh?
+## Q1.3: Service Discovery (Eureka) hoạt động ra sao? Tại sao không dùng IP cố định?
 
-**Tra loi:** He thong su dung **Netflix Eureka** lam Service Registry:
-- Moi service khi start se tu **dang ky** voi Eureka (ten service, IP, port).
-- Gateway va cac service khi can goi service khac se **tim kiem** (lookup) tren Eureka thay vi hardcode IP.
-- Eureka heartbeat moi 5s (`lease-renewal-interval-in-seconds=5`), neu service khong gui heartbeat trong 15s thi bi xoa khoi registry.
-- Gateway fetch registry moi 5s (`registry-fetch-interval-seconds=5`) de cap nhat nhanh.
+**Trả lời:** Hệ thống sử dụng **Netflix Eureka** làm Service Registry:
+- Mỗi service khi start sẽ tự **đăng ký** với Eureka (tên service, IP, port).
+- Gateway và các service khi cần gọi service khác sẽ **tìm kiếm** (lookup) trên Eureka thay vì hardcode IP.
+- Eureka heartbeat mỗi 5s (`lease-renewal-interval-in-seconds=5`), nếu service không gửi heartbeat trong 15s thì bị xóa khỏi registry.
+- Gateway fetch registry mỗi 5s (`registry-fetch-interval-seconds=5`) để cập nhật nhanh.
 
-**Tai sao khong dung IP co dinh?**
-- Khi deploy len cloud (Docker, K8s), IP cua container thay doi lien tuc.
-- Khi scale them instance, IP moi khong ai biet truoc.
-- Eureka cho phep tu dong phat hien service moi va xoa service chet.
+**Tại sao không dùng IP cố định?**
+- Khi deploy lên cloud (Docker, K8s), IP của container thay đổi liên tục.
+- Khi scale thêm instance, IP mới không ai biết trước.
+- Eureka cho phép tự động phát hiện service mới và xóa service chết.
 
-## Q1.4: Cac service giao tiep voi nhau nhu the nao?
+## Q1.4: Các service giao tiếp với nhau như thế nào?
 
-**Tra loi:** Cac service giao tiep qua **REST API (HTTP)** su dung `RestTemplate`:
-- Campaign Service goi Identity Service de lay thong tin user, kiem tra KYC.
-- Payment Service goi Campaign Service de cap nhat balance.
-- Campaign Service goi Notification Service de gui thong bao.
-- Payment Service goi Identity Service de lay thong tin bank account.
+**Trả lời:** Các service giao tiếp qua **REST API (HTTP)** sử dụng `RestTemplate`:
+- Campaign Service gọi Identity Service để lấy thông tin user, kiểm tra KYC.
+- Payment Service gọi Campaign Service để cập nhật balance.
+- Campaign Service gọi Notification Service để gửi thông báo.
+- Payment Service gọi Identity Service để lấy thông tin bank account.
 
-Moi service co cac **Client class** (vi du `IdentityServiceClient`, `PaymentServiceClient`, `NotificationServiceClient`) de wrap cac HTTP call. Cac client nay xu ly exception va fallback khi service khong kha dung.
+Mỗi service có các **Client class** (ví dụ `IdentityServiceClient`, `PaymentServiceClient`, `NotificationServiceClient`) để wrap các HTTP call. Các client này xử lý exception và fallback khi service không khả dụng.
 
-**Han che va huong cai thien:**
-- Hien tai dung **synchronous REST call** (dong bo). Neu 1 service cham, service goi cung bi cham (coupling).
-- Co the cai thien bang **Message Queue** (RabbitMQ/Kafka) cho cac event khong can response ngay (send notification, update trust score).
-- Hien tai chua co **Circuit Breaker** (Resilience4j), co the them de tranh cascading failure.
+**Hạn chế và hướng cải thiện:**
+- Hiện tại dùng **synchronous REST call** (đồng bộ). Nếu 1 service chậm, service gọi cũng bị chậm (coupling).
+- Có thể cải thiện bằng **Message Queue** (RabbitMQ/Kafka) cho các event không cần response ngay (send notification, update trust score).
+- Hiện tại chưa có **Circuit Breaker** (Resilience4j), có thể thêm để tránh cascading failure.
 
-## Q1.5: He thong co su dung Design Pattern nao khong?
+## Q1.5: Hệ thống có sử dụng Design Pattern nào không?
 
-**Tra loi:** Co, he thong ap dung nhieu pattern:
+**Trả lời:** Có, hệ thống áp dụng nhiều pattern:
 
-1. **Service Layer Pattern:** Tach Controller -> Service Interface -> Service Implementation -> Repository. Vi du: `CampaignService` (interface) -> `CampaignServiceImpl` (implementation).
-2. **Repository Pattern:** Su dung Spring Data JPA Repository de truy xuat du lieu.
-3. **Builder Pattern:** Tat ca entity va DTO deu dung `@Builder` (Lombok) de tao object.
-4. **DTO Pattern:** Request/Response DTO tach biet voi entity. Vi du: `CreateCampaignRequest`, `CampaignResponse`.
-5. **Gateway Pattern:** API Gateway la implementation cua Gateway pattern trong Microservices.
-6. **Observer Pattern (pub/sub):** Casso Webhook lang nghe su kien tu ngan hang, Pusher push event real-time.
-7. **Soft Delete Pattern:** Campaign dung `status = "DELETED"` thay vi xoa thuc su.
-8. **Seeder Pattern:** `GeneralFundSeeder`, `SystemConfigSeeder` tu dong tao du lieu mac dinh khi ung dung khoi dong.
+1. **Service Layer Pattern:** Tách Controller -> Service Interface -> Service Implementation -> Repository. Ví dụ: `CampaignService` (interface) -> `CampaignServiceImpl` (implementation).
+2. **Repository Pattern:** Sử dụng Spring Data JPA Repository để truy xuất dữ liệu.
+3. **Builder Pattern:** Tất cả entity và DTO đều dùng `@Builder` (Lombok) để tạo object.
+4. **DTO Pattern:** Request/Response DTO tách biệt với entity. Ví dụ: `CreateCampaignRequest`, `CampaignResponse`.
+5. **Gateway Pattern:** API Gateway là implementation của Gateway pattern trong Microservices.
+6. **Observer Pattern (pub/sub):** Casso Webhook lắng nghe sự kiện từ ngân hàng, Pusher push event real-time.
+7. **Soft Delete Pattern:** Campaign dùng `status = "DELETED"` thay vì xóa thực sự.
+8. **Seeder Pattern:** `GeneralFundSeeder`, `SystemConfigSeeder` tự động tạo dữ liệu mặc định khi ứng dụng khởi động.
 
 ---
 
 # 2. AUTHENTICATION & AUTHORIZATION
 
-## Q2.1: He thong xac thuc nguoi dung nhu the nao?
+## Q2.1: Hệ thống xác thực người dùng như thế nào?
 
-**Tra loi:** He thong su dung **JWT (JSON Web Token)** voi HMAC-SHA:
+**Trả lời:** Hệ thống sử dụng **JWT (JSON Web Token)** với HMAC-SHA:
 
-1. **Dang ky (`/api/auth/register`):** User gui email + password + fullName. Password duoc hash bang `BCryptPasswordEncoder`. He thong tra ve accessToken + refreshToken.
-2. **Dang nhap (`/api/auth/login`):** User gui email + password. He thong verify password voi hash trong DB, neu dung thi generate JWT.
-3. **Google OAuth2 (`/api/auth/google`):** User gui Google ID Token. He thong dung `GoogleIdTokenVerifier` de verify voi Google, neu user chua co thi tu dong tao tai khoan.
-4. **JWT Token:** Chua `sub` (userId), `email`, `role`. Token duoc ky bang HMAC-SHA voi `JWT_SECRET` (64+ ky tu).
-5. **Refresh Token:** Khi access token het han, frontend gui refresh token de lay cap token moi ma khong can dang nhap lai.
+1. **Đăng ký (`/api/auth/register`):** User gửi email + password + fullName. Password được hash bằng `BCryptPasswordEncoder`. Hệ thống trả về accessToken + refreshToken.
+2. **Đăng nhập (`/api/auth/login`):** User gửi email + password. Hệ thống verify password với hash trong DB, nếu đúng thì generate JWT.
+3. **Google OAuth2 (`/api/auth/google`):** User gửi Google ID Token. Hệ thống dùng `GoogleIdTokenVerifier` để verify với Google, nếu user chưa có thì tự động tạo tài khoản.
+4. **JWT Token:** Chứa `sub` (userId), `email`, `role`. Token được ký bằng HMAC-SHA với `JWT_SECRET` (64+ ký tự).
+5. **Refresh Token:** Khi access token hết hạn, frontend gửi refresh token để lấy cặp token mới mà không cần đăng nhập lại.
 
-## Q2.2: Phan quyen (Authorization) hoat dong nhu the nao?
+## Q2.2: Phân quyền (Authorization) hoạt động như thế nào?
 
-**Tra loi:** He thong co **5 role**:
+**Trả lời:** Hệ thống có **5 role**:
 
-| Role | Quyen |
+| Role | Quyền |
 |------|-------|
-| `USER` | Xem chien dich, donate, viet bai, binh luan, flag |
-| `FUND_OWNER` | Tat ca cua USER + tao chien dich, quan ly chi tieu |
-| `FUND_DONOR` | (Du phong, hien tai tuong duong USER) |
-| `STAFF` | Duyet chien dich, KYC, chi tieu, flag, quan ly feed post |
-| `ADMIN` | Toan quyen, quan ly user, ban, cau hinh he thong |
+| `USER` | Xem chiến dịch, donate, viết bài, bình luận, flag |
+| `FUND_OWNER` | Tất cả của USER + tạo chiến dịch, quản lý chi tiêu |
+| `FUND_DONOR` | (Dự phòng, hiện tại tương đương USER) |
+| `STAFF` | Duyệt chiến dịch, KYC, chi tiêu, flag, quản lý feed post |
+| `ADMIN` | Toàn quyền, quản lý user, ban, cấu hình hệ thống |
 
-**Co che phan quyen:**
-1. **Gateway level:** JWT filter inject `X-User-Role` header vao moi request.
-2. **Service level:** Dung `@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")` tren cac endpoint can bao ve. Vi du: chi STAFF/ADMIN moi duoc duyet chien dich (`PUT /api/campaigns/{id}/review`).
-3. **Spring Security:** Moi service co `SecurityConfig` rieng, cau hinh endpoint nao public, endpoint nao can role cu the.
-4. **Frontend:** Component `<RequireRole>` kiem tra role truoc khi render UI admin/staff.
+**Cơ chế phân quyền:**
+1. **Gateway level:** JWT filter inject `X-User-Role` header vào mỗi request.
+2. **Service level:** Dùng `@PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")` trên các endpoint cần bảo vệ. Ví dụ: chỉ STAFF/ADMIN mới được duyệt chiến dịch (`PUT /api/campaigns/{id}/review`).
+3. **Spring Security:** Mỗi service có `SecurityConfig` riêng, cấu hình endpoint nào public, endpoint nào cần role cụ thể.
+4. **Frontend:** Component `<RequireRole>` kiểm tra role trước khi render UI admin/staff.
 
-## Q2.3: Lam sao de chong gia mao token?
+## Q2.3: Làm sao để chống giả mạo token?
 
-**Tra loi:**
-- JWT duoc ky bang **HMAC-SHA** voi secret key dai 64 ky tu, duoc luu trong bien moi truong (`JWT_SECRET`), khong hardcode trong code.
-- Moi request, Gateway verify chu ky cua token. Neu token bi sua doi (payload hoac signature), `Jwts.parser().verifyWith(key)` se throw exception va tra ve 401.
-- Token co thoi gian het han (`expiration`), sau do token khong con hop le.
-- **Refresh token** cung duoc ky cung secret, co thoi gian song dai hon access token.
+**Trả lời:**
+- JWT được ký bằng **HMAC-SHA** với secret key dài 64 ký tự, được lưu trong biến môi trường (`JWT_SECRET`), không hardcode trong code.
+- Mỗi request, Gateway verify chữ ký của token. Nếu token bị sửa đổi (payload hoặc signature), `Jwts.parser().verifyWith(key)` sẽ throw exception và trả về 401.
+- Token có thời gian hết hạn (`expiration`), sau đó token không còn hợp lệ.
+- **Refresh token** cũng được ký cùng secret, có thời gian sống dài hơn access token.
 
-## Q2.4: Neu ai do danh cap JWT token thi sao?
+## Q2.4: Nếu ai đó đánh cắp JWT token thì sao?
 
-**Tra loi:** Day la rui ro chung cua JWT-based authentication. Bien phap giam thieu:
-- Token co **thoi gian het han ngan** (configurable qua `jwt.expiration`).
-- **Refresh Token Rotation:** Moi lan refresh thi cap cu bi voidify, cap moi duoc tao.
-- **HTTPS (SSL):** Trong production, tat ca traffic qua HTTPS de chong man-in-the-middle.
-- **HttpOnly Cookie:** Frontend co the luu token trong HttpOnly cookie de chong XSS (tuong lai cai thien).
-- **Logout:** Frontend xoa token khoi localStorage/cookie.
+**Trả lời:** Đây là rủi ro chung của JWT-based authentication. Biện pháp giảm thiểu:
+- Token có **thời gian hết hạn ngắn** (configurable qua `jwt.expiration`).
+- **Refresh Token Rotation:** Mỗi lần refresh thì cặp cũ bị voidify, cặp mới được tạo.
+- **HTTPS (SSL):** Trong production, tất cả traffic qua HTTPS để chống man-in-the-middle.
+- **HttpOnly Cookie:** Frontend có thể lưu token trong HttpOnly cookie để chống XSS (tương lai cải thiện).
+- **Logout:** Frontend xóa token khỏi localStorage/cookie.
 
-**Han che hien tai:** Chua co blacklist/revoke token mechanism tren server. Neu can cai thien, co the dung Redis de luu blacklist cac token da bi revoke.
+**Hạn chế hiện tại:** Chưa có blacklist/revoke token mechanism trên server. Nếu cần cải thiện, có thể dùng Redis để lưu blacklist các token đã bị revoke.
 
-## Q2.5: OTP va Reset Password hoat dong ra sao?
+## Q2.5: OTP và Reset Password hoạt động ra sao?
 
-**Tra loi:**
-1. User gui email, he thong tao **OTP 6 so** bang `SecureRandom` (100000-999999).
-2. OTP duoc luu vao bang `otp_tokens` voi `expiresAt` (mac dinh 10 phut).
-3. He thong gui OTP qua **email** (Gmail SMTP).
-4. User gui OTP de verify, he thong check: OTP dung + chua het han + chua used.
-5. Neu verify thanh cong, he thong tao **Password Reset Token** (JWT voi type="password_reset", het han 30 phut).
-6. User gui token + newPassword de doi mat khau.
+**Trả lời:**
+1. User gửi email, hệ thống tạo **OTP 6 số** bằng `SecureRandom` (100000-999999).
+2. OTP được lưu vào bảng `otp_tokens` với `expiresAt` (mặc định 10 phút).
+3. Hệ thống gửi OTP qua **email** (Gmail SMTP).
+4. User gửi OTP để verify, hệ thống check: OTP đúng + chưa hết hạn + chưa used.
+5. Nếu verify thành công, hệ thống tạo **Password Reset Token** (JWT với type="password_reset", hết hạn 30 phút).
+6. User gửi token + newPassword để đổi mật khẩu.
 
-**Anti-abuse:** OTP chi dung 1 lan (`markAsUsed`). Neu ai do brute-force OTP, he thong van bao ve vi chi co 900000 gia tri va het han sau 10 phut.
+**Anti-abuse:** OTP chỉ dùng 1 lần (`markAsUsed`). Nếu ai đó brute-force OTP, hệ thống vẫn bảo vệ vì chỉ có 900000 giá trị và hết hạn sau 10 phút.
 
-## Q2.6: Tai sao cho phep user bi ban/deactivated van dang nhap duoc?
+## Q2.6: Tại sao cho phép user bị ban/deactivated vẫn đăng nhập được?
 
-**Tra loi:** Day la **thiet ke co y**. Code comment ghi ro:
+**Trả lời:** Đây là **thiết kế có ý**. Code comment ghi rõ:
 ```
 // Allow login even if account is deactivated - the frontend will handle showing the restricted view
 ```
-- Muc dich: Khi user bi ban, ho van co the dang nhap de **xem ly do bi ban** (`banReason`) va lien he admin.
-- Frontend se kiem tra `isActive` va hien thi **restricted view** thay vi dashboard binh thuong (component `BannedAccountWrapper`).
-- Dieu nay nhan van hon viec hoan toan khoa tai khoan ma khong giai thich.
+- Mục đích: Khi user bị ban, họ vẫn có thể đăng nhập để **xem lý do bị ban** (`banReason`) và liên hệ admin.
+- Frontend sẽ kiểm tra `isActive` và hiển thị **restricted view** thay vì dashboard bình thường (component `BannedAccountWrapper`).
+- Điều này nhân văn hơn việc hoàn toàn khóa tài khoản mà không giải thích.
 
 ---
 
-# 3. CAMPAIGN - NGHIEP VU QUY THIEN NGUYEN
+# 3. CAMPAIGN - NGHIỆP VỤ QUỸ THIỆN NGUYỆN
 
-## Q3.1: Quy trinh tao va duyet chien dich nhu the nao?
+## Q3.1: Quy trình tạo và duyệt chiến dịch như thế nào?
 
-**Tra loi:** Quy trinh gom **5 buoc**:
+**Trả lời:** Quy trình gồm **5 bước**:
 
 ```
-USER tao chien dich -> PENDING_APPROVAL -> Staff duyet -> APPROVED (hoac REJECTED)
-                                                        -> Chien dich hoat dong
+USER tạo chiến dịch -> PENDING_APPROVAL -> Staff duyệt -> APPROVED (hoặc REJECTED)
+                                                        -> Chiến dịch hoạt động
 ```
 
-**Chi tiet:**
-1. User dien thong tin (title, description, category, coverImage, startDate, endDate).
-2. He thong validate: category ton tai, fundOwnerId ton tai trong Identity Service.
-3. Chien dich duoc tao voi `status = "PENDING_APPROVAL"`.
-4. He thong tu dong **nang cap role** user len `FUND_OWNER` (goi `identityServiceClient.upgradeUserRole()`).
-5. He thong tao **ApprovalTask** va **random assign cho 1 staff** de duyet.
-6. Staff xem task tren dashboard, review chien dich:
-   - **Neu APPROVED:** Kiem tra user da KYC chua (`kycVerified`). Neu chua KYC thi khong cho approve. Gui notification "Chien dich da duoc duyet".
-   - **Neu REJECTED:** Bat buoc nhap `rejectionReason`. Gui notification "Chien dich bi tu choi".
-7. **Trust Score:** Duyet thanh cong +diem, bi tu choi -diem.
+**Chi tiết:**
+1. User điền thông tin (title, description, category, coverImage, startDate, endDate).
+2. Hệ thống validate: category tồn tại, fundOwnerId tồn tại trong Identity Service.
+3. Chiến dịch được tạo với `status = "PENDING_APPROVAL"`.
+4. Hệ thống tự động **nâng cấp role** user lên `FUND_OWNER` (gọi `identityServiceClient.upgradeUserRole()`).
+5. Hệ thống tạo **ApprovalTask** và **random assign cho 1 staff** để duyệt.
+6. Staff xem task trên dashboard, review chiến dịch:
+   - **Nếu APPROVED:** Kiểm tra user đã KYC chưa (`kycVerified`). Nếu chưa KYC thì không cho approve. Gửi notification "Chiến dịch đã được duyệt".
+   - **Nếu REJECTED:** Bắt buộc nhập `rejectionReason`. Gửi notification "Chiến dịch bị từ chối".
+7. **Trust Score:** Duyệt thành công +điểm, bị từ chối -điểm.
 
-## Q3.2: He thong co bao nhieu loai chien dich? Khac nhau nhu the nao?
+## Q3.2: Hệ thống có bao nhiêu loại chiến dịch? Khác nhau như thế nào?
 
-**Tra loi:** Co **3 loai chien dich**:
+**Trả lời:** Có **3 loại chiến dịch**:
 
-| Loai | Giai thich | Flow chi tieu |
+| Loại | Giải thích | Flow chi tiêu |
 |------|-----------|--------------|
-| **ITEMIZED** | Quyen gop vat pham cu the (gao, sua, sach...). Donor chon vat pham va so luong. | Balance = tong so tien donate. Fund Owner yeu cau rut tien de mua hang. |
-| **AUTHORIZED** | Quyen gop tien truc tiep cho muc dich cu the. | Staff duyet chi tieu -> Tu dong chuyen sang WITHDRAWAL_REQUESTED -> Staff giai ngan. |
-| **GENERAL_FUND** | Quy chung cua he thong, khong hien thi trong danh sach. Chi admin thao tac. | Admin dieu chuyen tien tu quy chung den cac chien dich. |
+| **ITEMIZED** | Quyên góp vật phẩm cụ thể (gạo, sữa, sách...). Donor chọn vật phẩm và số lượng. | Balance = tổng số tiền donate. Fund Owner yêu cầu rút tiền để mua hàng. |
+| **AUTHORIZED** | Quyên góp tiền trực tiếp cho mục đích cụ thể. | Staff duyệt chi tiêu -> Tự động chuyển sang WITHDRAWAL_REQUESTED -> Staff giải ngân. |
+| **GENERAL_FUND** | Quỹ chung của hệ thống, không hiển thị trong danh sách. Chỉ admin thao tác. | Admin điều chuyển tiền từ quỹ chung đến các chiến dịch. |
 
-**Su khac biet quan trong:**
-- **ITEMIZED:** Donor thay tung vat pham (ten, gia, so luong), donate theo vat pham. `quantityLeft` giam khi co nguoi donate.
-- **AUTHORIZED:** Donor donate tien truc tiep, khong chon vat pham. Fund Owner len ke hoach chi tieu, staff duyet roi giai ngan.
+**Sự khác biệt quan trọng:**
+- **ITEMIZED:** Donor thấy từng vật phẩm (tên, giá, số lượng), donate theo vật phẩm. `quantityLeft` giảm khi có người donate.
+- **AUTHORIZED:** Donor donate tiền trực tiếp, không chọn vật phẩm. Fund Owner lên kế hoạch chi tiêu, staff duyệt rồi giải ngân.
 
-## Q3.3: Campaign co nhung trang thai (status) nao?
+## Q3.3: Campaign có những trạng thái (status) nào?
 
-**Tra loi:**
+**Trả lời:**
 
-| Status | Mo ta |
+| Status | Mô tả |
 |--------|-------|
-| `PENDING_APPROVAL` | Vua tao, cho staff duyet |
-| `APPROVED` | Da duoc duyet, dang hoat dong, nhan donate |
-| `REJECTED` | Bi staff tu choi |
-| `PAUSED` | Bi tam dung boi staff/admin |
-| `CLOSED` | Da dong, so du duoc thu hoi ve Quy chung |
-| `DISABLED` | Bi vo hieu hoa do vi pham (overdue evidence) |
-| `DELETED` | Xoa mem (soft delete) |
+| `PENDING_APPROVAL` | Vừa tạo, chờ staff duyệt |
+| `APPROVED` | Đã được duyệt, đang hoạt động, nhận donate |
+| `REJECTED` | Bị staff từ chối |
+| `PAUSED` | Bị tạm dừng bởi staff/admin |
+| `CLOSED` | Đã đóng, số dư được thu hồi về Quỹ chung |
+| `DISABLED` | Bị vô hiệu hóa do vi phạm (overdue evidence) |
+| `DELETED` | Xóa mềm (soft delete) |
 
-## Q3.4: Khi dong chien dich (CLOSED), so du xu ly nhu the nao?
+## Q3.4: Khi đóng chiến dịch (CLOSED), số dư xử lý như thế nào?
 
-**Tra loi:** Khi staff/admin dong chien dich (`closeCampaign`):
-1. Kiem tra `balance > 0`.
-2. Neu con du, tao giao dich **RECOVERY** tu campaign ve General Fund (ID=1).
+**Trả lời:** Khi staff/admin đóng chiến dịch (`closeCampaign`):
+1. Kiểm tra `balance > 0`.
+2. Nếu còn dư, tạo giao dịch **RECOVERY** từ campaign về General Fund (ID=1).
 3. Set `balance = 0`.
 4. Set `status = "CLOSED"`.
 
-Dieu nay dam bao **khong co tien bi mat** khi dong chien dich. Toan bo so du duoc chuyen ve quy chung de tai su dung.
+Điều này đảm bảo **không có tiền bị mất** khi đóng chiến dịch. Toàn bộ số dư được chuyển về quỹ chung để tái sử dụng.
 
-## Q3.5: Fund Owner co the tu y thay doi thong tin chien dich khong?
+## Q3.5: Fund Owner có thể tự ý thay đổi thông tin chiến dịch không?
 
-**Tra loi:** **Co gioi han:**
-- Chi duoc sua khi `status != "DISABLED"` va `status != "APPROVED"`.
-- Nghia la: chi sua duoc khi dang `PENDING_APPROVAL` hoac `REJECTED` (de sua va nop lai).
-- Khi da `APPROVED` (dang hoat dong), **khong** duoc sua de dam bao thong tin minh bach voi donor.
+**Trả lời:** **Có giới hạn:**
+- Chỉ được sửa khi `status != "DISABLED"` và `status != "APPROVED"`.
+- Nghĩa là: chỉ sửa được khi đang `PENDING_APPROVAL` hoặc `REJECTED` (để sửa và nộp lại).
+- Khi đã `APPROVED` (đang hoạt động), **không** được sửa để đảm bảo thông tin minh bạch với donor.
 
-## Q3.6: CampaignFollower la gi? Co tac dung gi?
+## Q3.6: CampaignFollower là gì? Có tác dụng gì?
 
-**Tra loi:** Nguoi dung co the **follow** mot chien dich:
-- Khi chien dich bi flag (to cao), he thong gui **notification den tat ca follower** de canh bao.
-- Follower co the theo doi tien do, bai viet cua chien dich.
-- Thong ke `followerCount` cung la chi so do luong muc do quan tam cua cong dong.
+**Trả lời:** Người dùng có thể **follow** một chiến dịch:
+- Khi chiến dịch bị flag (tố cáo), hệ thống gửi **notification đến tất cả follower** để cảnh báo.
+- Follower có thể theo dõi tiến độ, bài viết của chiến dịch.
+- Thống kê `followerCount` cũng là chỉ số đo lường mức độ quan tâm của cộng đồng.
 
 ---
 
-# 4. THANH TOAN & DONG TIEN
+# 4. THANH TOÁN & DÒNG TIỀN
 
-## Q4.1: He thong thanh toan hoat dong nhu the nao?
+## Q4.1: Hệ thống thanh toán hoạt động như thế nào?
 
-**Tra loi:** TrustFundMe tich hop **VietQR** ket hop **Casso Webhook** de xu ly thanh toan:
+**Trả lời:** TrustFundMe tích hợp **VietQR** kết hợp **Casso Webhook** để xử lý thanh toán:
 
 ```
-Donor tao donation -> He thong tao QR Code (VietQR) -> Donor quet QR chuyen khoan
-    -> Ngan hang gui thong bao ve Casso -> Casso gui webhook den he thong
-    -> He thong match transaction voi donation -> Cap nhat balance chien dich
+Donor tạo donation -> Hệ thống tạo QR Code (VietQR) -> Donor quét QR chuyển khoản
+    -> Ngân hàng gửi thông báo về Casso -> Casso gửi webhook đến hệ thống
+    -> Hệ thống match transaction với donation -> Cập nhật balance chiến dịch
 ```
 
-**Chi tiet tung buoc:**
-1. **Tao donation:** Donor chon chien dich, nhap so tien (va tip tuy chon). He thong tao ban ghi `Donation` voi `status = "PENDING"`.
-2. **Tao QR Code:** He thong goi Identity Service lay thong tin bank account cua chien dich, tao URL VietQR voi format: `TF {donationId}` trong noi dung chuyen khoan.
-3. **Donor thanh toan:** Quet QR hoac chuyen khoan thu cong voi noi dung `TF {donationId}`.
-4. **Casso Webhook:** Khi ngan hang ghi nhan giao dich, Casso gui webhook den `/api/payments/webhook`. He thong:
-   - Luu `CassoTransaction` (chong trung `tid`).
-   - Tim `Donation` bang regex `TF {id}` trong description.
-   - Neu match: cap nhat `status = "PAID"`, dong bo balance.
-   - Neu khong match: tao `Anonymous Donation` (nguoi chuyen truc tiep vao tai khoan quy).
-5. **Cap nhat balance:** Goi Campaign Service API `PUT /api/campaigns/{id}/update-balance`.
+**Chi tiết từng bước:**
+1. **Tạo donation:** Donor chọn chiến dịch, nhập số tiền (và tip tùy chọn). Hệ thống tạo bản ghi `Donation` với `status = "PENDING"`.
+2. **Tạo QR Code:** Hệ thống gọi Identity Service lấy thông tin bank account của chiến dịch, tạo URL VietQR với format: `TF {donationId}` trong nội dung chuyển khoản.
+3. **Donor thanh toán:** Quét QR hoặc chuyển khoản thủ công với nội dung `TF {donationId}`.
+4. **Casso Webhook:** Khi ngân hàng ghi nhận giao dịch, Casso gửi webhook đến `/api/payments/webhook`. Hệ thống:
+   - Lưu `CassoTransaction` (chống trùng `tid`).
+   - Tìm `Donation` bằng regex `TF {id}` trong description.
+   - Nếu match: cập nhật `status = "PAID"`, đồng bộ balance.
+   - Nếu không match: tạo `Anonymous Donation` (người chuyển trực tiếp vào tài khoản quỹ).
+5. **Cập nhật balance:** Gọi Campaign Service API `PUT /api/campaigns/{id}/update-balance`.
 
-## Q4.2: Tai sao chon VietQR + Casso thay vi tich hop PayOS truc tiep?
+## Q4.2: Tại sao chọn VietQR + Casso thay vì tích hợp PayOS trực tiếp?
 
-**Tra loi:**
-- **VietQR** la chuan quoc gia, ho tro **moi ngan hang** tai Viet Nam, mien phi tao QR.
-- **Casso** la dich vu **theo doi giao dich ngan hang tu dong**, mien phi cho luong nho.
-- **PayOS** duoc tich hop de **tao payment link** nhung thuc te he thong chuyen sang dung **VietQR + Casso** vi:
-  - PayOS tinh phi giao dich, Casso + VietQR mien phi cho quy thien nguyen.
-  - VietQR ho tro truc tiep chuyen khoan vao tai khoan ngan hang cua **chinh chu quy** thay vi qua trung gian.
-  - Phu hop voi muc dich minh bach: tien vao thang tai khoan duoc lien ket voi chien dich.
+**Trả lời:**
+- **VietQR** là chuẩn quốc gia, hỗ trợ **mọi ngân hàng** tại Việt Nam, miễn phí tạo QR.
+- **Casso** là dịch vụ **theo dõi giao dịch ngân hàng tự động**, miễn phí cho lượng nhỏ.
+- **PayOS** được tích hợp để **tạo payment link** nhưng thực tế hệ thống chuyển sang dùng **VietQR + Casso** vì:
+  - PayOS tính phí giao dịch, Casso + VietQR miễn phí cho quỹ thiện nguyện.
+  - VietQR hỗ trợ trực tiếp chuyển khoản vào tài khoản ngân hàng của **chính chủ quỹ** thay vì qua trung gian.
+  - Phù hợp với mục đích minh bạch: tiền vào thẳng tài khoản được liên kết với chiến dịch.
 
-## Q4.3: Lam sao dam bao khong bi trung (duplicate payment)?
+## Q4.3: Làm sao đảm bảo không bị trùng (duplicate payment)?
 
-**Tra loi:** He thong co nhieu lop chong trung:
-1. **Casso Transaction ID (tid):** Truoc khi xu ly, kiem tra `cassoTransactionRepository.existsByTid(tid)`. Neu da xu ly thi skip.
-2. **Database Unique Constraint:** Field `tid` trong `CassoTransaction` co unique constraint. Neu 2 thread ghi cung luc, `DataIntegrityViolationException` se xay ra va thread sau bi skip.
-3. **Balance Sync Flag:** Moi `Donation` co flag `isBalanceSynchronized`. Chi cap nhat balance 1 lan, cac lan goi sau se bi skip (`Balance already synchronized`).
+**Trả lời:** Hệ thống có nhiều lớp chống trùng:
+1. **Casso Transaction ID (tid):** Trước khi xử lý, kiểm tra `cassoTransactionRepository.existsByTid(tid)`. Nếu đã xử lý thì skip.
+2. **Database Unique Constraint:** Field `tid` trong `CassoTransaction` có unique constraint. Nếu 2 thread ghi cùng lúc, `DataIntegrityViolationException` sẽ xảy ra và thread sau bị skip.
+3. **Balance Sync Flag:** Mỗi `Donation` có flag `isBalanceSynchronized`. Chỉ cập nhật balance 1 lần, các lần gọi sau sẽ bị skip (`Balance already synchronized`).
 
-## Q4.4: Donor co the donate ma khong can dang nhap khong?
+## Q4.4: Donor có thể donate mà không cần đăng nhập không?
 
-**Tra loi:** **Co.** He thong ho tro **Guest Donation**:
-- Endpoint `POST /api/payments/create` duoc de la **public** trong Gateway filter.
-- `donorId` co the null. Khi do `isAnonymous = true` (mac dinh).
-- Guest chi can nhap so tien, quet QR, chuyen khoan. Khong can tai khoan.
+**Trả lời:** **Có.** Hệ thống hỗ trợ **Guest Donation**:
+- Endpoint `POST /api/payments/create` được để là **public** trong Gateway filter.
+- `donorId` có thể null. Khi đó `isAnonymous = true` (mặc định).
+- Guest chỉ cần nhập số tiền, quét QR, chuyển khoản. Không cần tài khoản.
 
-## Q4.5: Tip (tien ung ho he thong) xu ly nhu the nao?
+## Q4.5: Tip (tiền ủng hộ hệ thống) xử lý như thế nào?
 
-**Tra loi:** Donation co 3 truong tien:
-- `donationAmount`: So tien ung ho cho chien dich.
-- `tipAmount`: So tien ung ho cho he thong (tuy chon, mac dinh 0).
+**Trả lời:** Donation có 3 trường tiền:
+- `donationAmount`: Số tiền ủng hộ cho chiến dịch.
+- `tipAmount`: Số tiền ủng hộ cho hệ thống (tùy chọn, mặc định 0).
 - `totalAmount = donationAmount + tipAmount`.
 
-Chi co `donationAmount` duoc cong vao balance cua chien dich. `tipAmount` giup he thong duy tri hoat dong ma khong thu phi bat buoc.
+Chỉ có `donationAmount` được cộng vào balance của chiến dịch. `tipAmount` giúp hệ thống duy trì hoạt động mà không thu phí bắt buộc.
 
-## Q4.6: Voi chien dich ITEMIZED, khi donor chon vat pham, so luong duoc xu ly nhu the nao?
+## Q4.6: Với chiến dịch ITEMIZED, khi donor chọn vật phẩm, số lượng được xử lý như thế nào?
 
-**Tra loi:**
-1. Truoc khi tao donation, frontend goi `GET /api/payments/check-item-limit?expenditureItemId=X&quantity=Y` de kiem tra `quantityLeft`.
-2. Khi tao donation, he thong **tru ngay `quantityLeft`** (immediate deduction) de chong tran (2 nguoi donate cung luc).
-3. Neu donation bi FAILED/CANCELLED, he thong **hoan lai so luong** (rollback).
+**Trả lời:**
+1. Trước khi tạo donation, frontend gọi `GET /api/payments/check-item-limit?expenditureItemId=X&quantity=Y` để kiểm tra `quantityLeft`.
+2. Khi tạo donation, hệ thống **trừ ngay `quantityLeft`** (immediate deduction) để chống tràn (2 người donate cùng lúc).
+3. Nếu donation bị FAILED/CANCELLED, hệ thống **hoàn lại số lượng** (rollback).
 4. Logic:
-   - `processQuantityUpdate()`: Goi Campaign Service `PUT /api/expenditures/items/{id}/update-quantity?amount=N` de tru `quantityLeft`.
-   - `processQuantityRollback()`: Gui `amount = -N` de cong lai.
+   - `processQuantityUpdate()`: Gọi Campaign Service `PUT /api/expenditures/items/{id}/update-quantity?amount=N` để trừ `quantityLeft`.
+   - `processQuantityRollback()`: Gửi `amount = -N` để cộng lại.
 
-## Q4.7: Casso Webhook bi replay attack thi sao?
+## Q4.7: Casso Webhook bị replay attack thì sao?
 
-**Tra loi:**
-- **Dedup bang tid:** Moi transaction co `tid` duy nhat tu Casso. He thong kiem tra `existsByTid(tid)` truoc khi xu ly.
-- **Webhook Key Verification:** He thong verify `Secure-Token` header voi `webhookKey` da luu trong Identity Service. Neu khong khop thi reject.
-- **HMAC Signature:** Ho tro verify Casso V2 signature format `t=timestamp,v1=hmac_sha256`.
+**Trả lời:**
+- **Dedup bằng tid:** Mỗi transaction có `tid` duy nhất từ Casso. Hệ thống kiểm tra `existsByTid(tid)` trước khi xử lý.
+- **Webhook Key Verification:** Hệ thống verify `Secure-Token` header với `webhookKey` đã lưu trong Identity Service. Nếu không khớp thì reject.
+- **HMAC Signature:** Hỗ trợ verify Casso V2 signature format `t=timestamp,v1=hmac_sha256`.
 
-**Luu y:** Code hien tai co bypass verification cho testing (`REMOVED BYPASS FOR TESTING`). Trong production phai bat lai verification.
+**Lưu ý:** Code hiện tại có bypass verification cho testing (`REMOVED BYPASS FOR TESTING`). Trong production phải bật lại verification.
 
-## Q4.8: Cleanup Donation: neu donor tao donation ma khong thanh toan thi sao?
+## Q4.8: Cleanup Donation: nếu donor tạo donation mà không thanh toán thì sao?
 
-**Tra loi:** Co `PaymentCleanupTask` (Scheduled Task) chay dinh ky:
-- Tim cac `Donation` co `status = "PENDING"` va da tao qua X phut.
-- Tu dong chuyen sang `FAILED`.
-- Rollback `quantityLeft` (neu la ITEMIZED donation).
+**Trả lời:** Có `PaymentCleanupTask` (Scheduled Task) chạy định kỳ:
+- Tìm các `Donation` có `status = "PENDING"` và đã tạo quá X phút.
+- Tự động chuyển sang `FAILED`.
+- Rollback `quantityLeft` (nếu là ITEMIZED donation).
 
 ---
 
-# 5. KYC - XAC MINH DANH TINH
+# 5. KYC - XÁC MINH DANH TÍNH
 
-## Q5.1: Quy trinh KYC nhu the nao?
+## Q5.1: Quy trình KYC như thế nào?
 
-**Tra loi:** KYC (Know Your Customer) gom **4 buoc**:
+**Trả lời:** KYC (Know Your Customer) gồm **4 bước**:
 
 ```
-User nop ho so -> PENDING -> Staff duyet -> APPROVED (hoac REJECTED)
+User nộp hồ sơ -> PENDING -> Staff duyệt -> APPROVED (hoặc REJECTED)
 ```
 
-1. **Nop ho so** (`POST /api/kyc/submit`): User gui:
-   - Loai giay to (`idType`): CCCD, ho chieu...
-   - So dinh danh (`idNumber`): So CCCD.
-   - Ngay cap, ngay het han, noi cap.
-   - **Anh mat truoc** va **anh mat sau** CCCD.
-   - **Anh selfie** (chup truc tiep).
-   - **Face Descriptor** (128-dim vector tu face-api.js).
-   - **Liveness Metadata** (du lieu chung minh nguoi that, khong phai anh chup tu man hinh).
-   - **Face Mesh Sample** (diem moc 3D khuon mat).
-2. **AI OCR:** Frontend su dung AI de doc thong tin tu anh CCCD (ten, ngay sinh, dia chi) va tu dong dien vao form.
-3. **Face Verification:** Frontend dung face-api.js de:
-   - So sanh khuon mat trong selfie voi anh tren CCCD.
-   - Thuc hien liveness detection (quay dau trai/phai, nham mat).
-4. **Staff duyet:** Staff xem ho so KYC, so sanh thong tin, duyet hoac tu choi.
+1. **Nộp hồ sơ** (`POST /api/kyc/submit`): User gửi:
+   - Loại giấy tờ (`idType`): CCCD, hộ chiếu...
+   - Số định danh (`idNumber`): Số CCCD.
+   - Ngày cấp, ngày hết hạn, nơi cấp.
+   - **Ảnh mặt trước** và **ảnh mặt sau** CCCD.
+   - **Ảnh selfie** (chụp trực tiếp).
+   - **Face Descriptor** (128-dim vector từ face-api.js).
+   - **Liveness Metadata** (dữ liệu chứng minh người thật, không phải ảnh chụp từ màn hình).
+   - **Face Mesh Sample** (điểm mốc 3D khuôn mặt).
+2. **AI OCR:** Frontend sử dụng AI để đọc thông tin từ ảnh CCCD (tên, ngày sinh, địa chỉ) và tự động điền vào form.
+3. **Face Verification:** Frontend dùng face-api.js để:
+   - So sánh khuôn mặt trong selfie với ảnh trên CCCD.
+   - Thực hiện liveness detection (quay đầu trái/phải, nhắm mắt).
+4. **Staff duyệt:** Staff xem hồ sơ KYC, so sánh thông tin, duyệt hoặc từ chối.
 
-## Q5.2: He thong chong gia mao KYC nhu the nao?
+## Q5.2: Hệ thống chống giả mạo KYC như thế nào?
 
-**Tra loi:** Nhieu tang bao ve:
+**Trả lời:** Nhiều tầng bảo vệ:
 
-1. **Chong trung CCCD:** `userKYCRepository.findFirstByIdNumber(idNumber)` kiem tra CCCD da duoc dang ky boi nguoi khac chua. Neu co -> tu choi.
-2. **Face Descriptor (128-dim vector):** Luu face embedding de co the so sanh 2 khuon mat.
-3. **Liveness Detection:** `livenessMetadata` ghi nhan cac buoc verify (quay dau, nham mat, thoi gian) chung minh nguoi that ngoi truoc camera.
-4. **Face Mesh Sample:** 3D face landmarks giup xac nhan do sau khuon mat (chong anh 2D).
-5. **Staff Manual Review:** Du AI phan tich, van can con nguoi duyet de dam bao.
+1. **Chống trùng CCCD:** `userKYCRepository.findFirstByIdNumber(idNumber)` kiểm tra CCCD đã được đăng ký bởi người khác chưa. Nếu có -> từ chối.
+2. **Face Descriptor (128-dim vector):** Lưu face embedding để có thể so sánh 2 khuôn mặt.
+3. **Liveness Detection:** `livenessMetadata` ghi nhận các bước verify (quay đầu, nhắm mắt, thời gian) chứng minh người thật ngồi trước camera.
+4. **Face Mesh Sample:** 3D face landmarks giúp xác nhận độ sâu khuôn mặt (chống ảnh 2D).
+5. **Staff Manual Review:** Dù AI phân tích, vẫn cần con người duyệt để đảm bảo.
 
-## Q5.3: Tai sao KYC la bat buoc truoc khi tao chien dich?
+## Q5.3: Tại sao KYC là bắt buộc trước khi tạo chiến dịch?
 
-**Tra loi:**
-- Trong `reviewCampaign()`: Truoc khi duyet APPROVED, he thong kiem tra `kycVerified`:
+**Trả lời:**
+- Trong `reviewCampaign()`: Trước khi duyệt APPROVED, hệ thống kiểm tra `kycVerified`:
   ```
   if (!verificationStatus.isKycVerified()) {
       throw "Cannot approve campaign. Owner's KYC is not verified.";
   }
   ```
-- Dam bao **moi chu quy deu da duoc xac minh danh tinh**, chong lua dao, gia mao.
-- Day la yeu cau phap ly voi to chuc tiep nhan quy thien nguyen tai Viet Nam.
+- Đảm bảo **mọi chủ quỹ đều đã được xác minh danh tính**, chống lừa đảo, giả mạo.
+- Đây là yêu cầu pháp lý với tổ chức tiếp nhận quỹ thiện nguyện tại Việt Nam.
 
-## Q5.4: Neu KYC bi tu choi, user lam gi?
+## Q5.4: Nếu KYC bị từ chối, user làm gì?
 
-**Tra loi:** User co the **nop lai** (`PUT /api/kyc/resubmit`):
-- Chi nop lai duoc khi `status != APPROVED` (da duyet thi khong sua duoc).
-- Kiem tra CCCD moi (neu doi so CCCD) co trung khong.
-- Reset `status = PENDING`, xoa `rejectionReason`.
+**Trả lời:** User có thể **nộp lại** (`PUT /api/kyc/resubmit`):
+- Chỉ nộp lại được khi `status != APPROVED` (đã duyệt thì không sửa được).
+- Kiểm tra CCCD mới (nếu đổi số CCCD) có trùng không.
+- Reset `status = PENDING`, xóa `rejectionReason`.
 
-## Q5.5: Du lieu KYC co bi ma hoa khong?
+## Q5.5: Dữ liệu KYC có bị mã hóa không?
 
-**Tra loi:** He thong co `EncryptionUtils.java` trong Identity Service. Tuy nhien:
-- Hien tai du lieu KYC (so CCCD, anh) **chua duoc encrypt** tat ca truong.
-- Anh KYC luu tren **Supabase Storage** (cloud).
-- De tang bao mat, nen encrypt cac truong nhay cam nhu `idNumber` truoc khi luu DB.
+**Trả lời:** Hệ thống có `EncryptionUtils.java` trong Identity Service. Tuy nhiên:
+- Hiện tại dữ liệu KYC (số CCCD, ảnh) **chưa được encrypt** tất cả trường.
+- Ảnh KYC lưu trên **Supabase Storage** (cloud).
+- Để tăng bảo mật, nên encrypt các trường nhạy cảm như `idNumber` trước khi lưu DB.
 
 ---
 
-# 6. CHI TIEU & GIAI NGAN (Expenditure & Disbursement)
+# 6. CHI TIÊU & GIẢI NGÂN (Expenditure & Disbursement)
 
-## Q6.1: Quy trinh chi tieu va giai ngan hoat dong nhu the nao?
+## Q6.1: Quy trình chi tiêu và giải ngân hoạt động như thế nào?
 
-**Tra loi:** Day la **co che minh bach cot loi** cua TrustFundMe:
+**Trả lời:** Đây là **cơ chế minh bạch cốt lõi** của TrustFundMe:
 
-### Voi chien dich ITEMIZED:
+### Với chiến dịch ITEMIZED:
 ```
-Fund Owner tao Expenditure (ke hoach chi) -> PENDING_REVIEW -> Staff duyet -> APPROVED
--> Fund Owner yeu cau rut tien -> WITHDRAWAL_REQUESTED -> Staff giai ngan (DISBURSED)
--> Fund Owner mua hang va nop minh chung (evidence)
-```
-
-### Voi chien dich AUTHORIZED:
-```
-Fund Owner tao Expenditure -> PENDING_REVIEW -> Staff duyet -> Tu dong WITHDRAWAL_REQUESTED
--> Staff giai ngan (DISBURSED) -> Fund Owner nop minh chung
+Fund Owner tạo Expenditure (kế hoạch chi) -> PENDING_REVIEW -> Staff duyệt -> APPROVED
+-> Fund Owner yêu cầu rút tiền -> WITHDRAWAL_REQUESTED -> Staff giải ngân (DISBURSED)
+-> Fund Owner mua hàng và nộp minh chứng (evidence)
 ```
 
-**Chi tiet:**
-1. **Tao Expenditure:** Fund Owner len ke hoach chi tieu voi cac hang muc (categories) va vat pham (items), moi item co `expectedPrice`, `expectedQuantity`.
-2. **Staff duyet:** Kiem tra ke hoach hop ly, so tien phu hop.
-3. **Yeu cau rut tien:** Fund Owner gui yeu cau rut tien kem thoi han nop minh chung.
-4. **Giai ngan:** Staff xac nhan chuyen tien, upload bang chung chuyen khoan (`proofUrl`).
-5. **Nop minh chung:** Fund Owner nop hoa don, anh hang hoa de chung minh da chi dung muc dich.
+### Với chiến dịch AUTHORIZED:
+```
+Fund Owner tạo Expenditure -> PENDING_REVIEW -> Staff duyệt -> Tự động WITHDRAWAL_REQUESTED
+-> Staff giải ngân (DISBURSED) -> Fund Owner nộp minh chứng
+```
 
-## Q6.2: Lam sao dam bao Fund Owner khong chi tien sai muc dich?
+**Chi tiết:**
+1. **Tạo Expenditure:** Fund Owner lên kế hoạch chi tiêu với các hạng mục (categories) và vật phẩm (items), mỗi item có `expectedPrice`, `expectedQuantity`.
+2. **Staff duyệt:** Kiểm tra kế hoạch hợp lý, số tiền phù hợp.
+3. **Yêu cầu rút tiền:** Fund Owner gửi yêu cầu rút tiền kèm thời hạn nộp minh chứng.
+4. **Giải ngân:** Staff xác nhận chuyển tiền, upload bằng chứng chuyển khoản (`proofUrl`).
+5. **Nộp minh chứng:** Fund Owner nộp hóa đơn, ảnh hàng hóa để chứng minh đã chi đúng mục đích.
 
-**Tra loi:** Nhieu lop kiem soat:
+## Q6.2: Làm sao đảm bảo Fund Owner không chi tiền sai mục đích?
 
-1. **Ke hoach chi tieu chi tiet (Expenditure Items):** Moi muc chi phai ghi ro ten hang, gia du kien, so luong, don vi, dia diem mua. Staff kiem tra truoc khi duyet.
-2. **AI Audit (Perplexity):** He thong tich hop **Perplexity AI** de kiem tra gia thi truong cua cac mat hang (`auditExpenditure`). Neu gia khai cao hon thi truong, AI se canh bao.
-3. **Minh chung chi tieu (Evidence):** Sau khi chi tien, Fund Owner **bat buoc** nop hoa don/anh chung minh. He thong tao `ExpenditureEvidence` voi deadline.
-4. **Thoi han nop minh chung:** Configurable qua `EXPENDITURE_EVIDENCE_DEADLINE_HOURS` (mac dinh 48h). Qua han thi bi phat.
-5. **Enforcement Scheduler:** Cron job chay moi phut, kiem tra evidence qua han:
-   - **Dong chien dich** (`closeCampaign`).
-   - **Tru diem uy tin** (`OVERDUE_EVIDENCE`).
-   - **Gui thong bao** canh bao vi pham.
-6. **Ghi nhan tu dong tu ngan hang:** Khi Casso phat hien giao dich **chi** (amount < 0) tu tai khoan chien dich, he thong tu dong tao **yeu cau nop minh chung** (`createEvidenceRequirement`).
+**Trả lời:** Nhiều lớp kiểm soát:
 
-## Q6.3: "Variance" la gi? Y nghia?
+1. **Kế hoạch chi tiêu chi tiết (Expenditure Items):** Mỗi mục chi phải ghi rõ tên hàng, giá dự kiến, số lượng, đơn vị, địa điểm mua. Staff kiểm tra trước khi duyệt.
+2. **AI Audit (Perplexity):** Hệ thống tích hợp **Perplexity AI** để kiểm tra giá thị trường của các mặt hàng (`auditExpenditure`). Nếu giá khai cao hơn thị trường, AI sẽ cảnh báo.
+3. **Minh chứng chi tiêu (Evidence):** Sau khi chi tiền, Fund Owner **bắt buộc** nộp hóa đơn/ảnh chứng minh. Hệ thống tạo `ExpenditureEvidence` với deadline.
+4. **Thời hạn nộp minh chứng:** Configurable qua `EXPENDITURE_EVIDENCE_DEADLINE_HOURS` (mặc định 48h). Quá hạn thì bị phạt.
+5. **Enforcement Scheduler:** Cron job chạy mỗi phút, kiểm tra evidence quá hạn:
+   - **Đóng chiến dịch** (`closeCampaign`).
+   - **Trừ điểm uy tín** (`OVERDUE_EVIDENCE`).
+   - **Gửi thông báo** cảnh báo vi phạm.
+6. **Ghi nhận tự động từ ngân hàng:** Khi Casso phát hiện giao dịch **chi** (amount < 0) từ tài khoản chiến dịch, hệ thống tự động tạo **yêu cầu nộp minh chứng** (`createEvidenceRequirement`).
 
-**Tra loi:** `variance = totalReceivedAmount - totalAmount` (thuc chi)
-- **Variance > 0:** Con du tien (chi it hon du kien).
-- **Variance < 0:** Chi vuot muc (chi nhieu hon du kien).
-- **Variance = 0:** Chi dung ke hoach.
+## Q6.3: "Variance" là gì? Ý nghĩa?
 
-He thong theo doi variance de phat hien bat thuong. Neu Fund Owner chi nhieu hon ke hoach, he thong canh bao.
+**Trả lời:** `variance = totalReceivedAmount - totalAmount` (thực chi)
+- **Variance > 0:** Còn dư tiền (chi ít hơn dự kiến).
+- **Variance < 0:** Chi vượt mức (chi nhiều hơn dự kiến).
+- **Variance = 0:** Chi đúng kế hoạch.
 
-## Q6.4: Refund (hoan tien) xu ly nhu the nao?
+Hệ thống theo dõi variance để phát hiện bất thường. Nếu Fund Owner chi nhiều hơn kế hoạch, hệ thống cảnh báo.
 
-**Tra loi:** Khi chi tieu it hon so tien nhan duoc:
-1. Fund Owner gui yeu cau hoan tien (`createRefund`) voi so tien va bang chung chuyen khoan.
-2. He thong tao `ExpenditureTransaction` voi `type = "REFUND"`, `status = "COMPLETED"`.
-3. **Cong so tien hoan lai vao balance** cua chien dich (`campaignService.updateBalance(campaign.getId(), amount)`).
-4. Tien hoan duoc ghi nhan de dam bao minh bach.
+## Q6.4: Refund (hoàn tiền) xử lý như thế nào?
 
-## Q6.5: ExpenditureCatology (Hang muc) de lam gi?
+**Trả lời:** Khi chi tiêu ít hơn số tiền nhận được:
+1. Fund Owner gửi yêu cầu hoàn tiền (`createRefund`) với số tiền và bằng chứng chuyển khoản.
+2. Hệ thống tạo `ExpenditureTransaction` với `type = "REFUND"`, `status = "COMPLETED"`.
+3. **Cộng số tiền hoàn lại vào balance** của chiến dịch (`campaignService.updateBalance(campaign.getId(), amount)`).
+4. Tiền hoàn được ghi nhận để đảm bảo minh bạch.
 
-**Tra loi:** Moi expenditure co the chia thanh nhieu **hang muc** (categories), moi hang muc co nhieu **items**:
+## Q6.5: ExpenditureCategory (Hạng mục) để làm gì?
+
+**Trả lời:** Mỗi expenditure có thể chia thành nhiều **hạng mục** (categories), mỗi hạng mục có nhiều **items**:
 ```
 Expenditure
-  ├── Hang muc "Luong thuc"
-  │     ├── Gao 5kg - 150,000 x 100
-  │     └── Mi tom - 5,000 x 200
-  ├── Hang muc "Do dung hoc tap"
-  │     ├── Vo - 10,000 x 50
-  │     └── But - 5,000 x 50
+  ├── Hạng mục "Lương thực"
+  │     ├── Gạo 5kg - 150,000 x 100
+  │     └── Mì tôm - 5,000 x 200
+  ├── Hạng mục "Đồ dùng học tập"
+  │     ├── Vở - 10,000 x 50
+  │     └── Bút - 5,000 x 50
 ```
-Moi hang muc co `expectedAmount`, `actualAmount` de theo doi chi tiet.
+Mỗi hạng mục có `expectedAmount`, `actualAmount` để theo dõi chi tiết.
 
 ---
 
-# 7. TRUST SCORE - DIEM UY TIN
+# 7. TRUST SCORE - ĐIỂM UY TÍN
 
-## Q7.1: Trust Score la gi? Hoat dong nhu the nao?
+## Q7.1: Trust Score là gì? Hoạt động như thế nào?
 
-**Tra loi:** Trust Score la **he thong cham diem uy tin** cho Fund Owner, giup cong dong danh gia muc do dang tin cay.
+**Trả lời:** Trust Score là **hệ thống chấm điểm uy tín** cho Fund Owner, giúp cộng đồng đánh giá mức độ đáng tin cậy.
 
-**Co che:**
-- Moi hanh vi tot/xau duoc **cong/tru diem** theo cau hinh (`TrustScoreConfig`).
-- Diem duoc luu trong `User.trustScore` (Identity Service) va log chi tiet trong `TrustScoreLog` (Campaign Service).
+**Cơ chế:**
+- Mỗi hành vi tốt/xấu được **cộng/trừ điểm** theo cấu hình (`TrustScoreConfig`).
+- Điểm được lưu trong `User.trustScore` (Identity Service) và log chi tiết trong `TrustScoreLog` (Campaign Service).
 
-**Cac quy tac cham diem:**
+**Các quy tắc chấm điểm:**
 
-| Rule Key | Mo ta | Diem |
+| Rule Key | Mô tả | Điểm |
 |----------|-------|------|
-| `CAMPAIGN_APPROVED` | Chien dich duoc duyet | +diem |
-| `CAMPAIGN_REJECTED` | Chien dich bi tu choi | -diem |
-| `ON_TIME_SUBMIT` | Nop minh chung dung han | +diem |
-| `LATE_SUBMIT` | Nop minh chung muon | -diem |
-| `OVERDUE_EVIDENCE` | Qua han nop minh chung | -diem (nang) |
-| `DAILY_POST` | Viet bai hang ngay | +diem |
+| `CAMPAIGN_APPROVED` | Chiến dịch được duyệt | +điểm |
+| `CAMPAIGN_REJECTED` | Chiến dịch bị từ chối | -điểm |
+| `ON_TIME_SUBMIT` | Nộp minh chứng đúng hạn | +điểm |
+| `LATE_SUBMIT` | Nộp minh chứng muộn | -điểm |
+| `OVERDUE_EVIDENCE` | Quá hạn nộp minh chứng | -điểm (nặng) |
+| `DAILY_POST` | Viết bài hàng ngày | +điểm |
 
-## Q7.2: Admin co the tuy chinh diem khong?
+## Q7.2: Admin có thể tùy chỉnh điểm không?
 
-**Tra loi:** Co, qua API `PUT /api/trust-score/config/{ruleKey}`:
-- Thay doi so diem cho moi rule.
-- Bat/tat rule (`isActive`).
-- Sua ten va mo ta rule.
-- He thong dung **cache** (`ConcurrentHashMap`) de tang performance, tu dong invalidate khi cap nhat.
+**Trả lời:** Có, qua API `PUT /api/trust-score/config/{ruleKey}`:
+- Thay đổi số điểm cho mỗi rule.
+- Bật/tắt rule (`isActive`).
+- Sửa tên và mô tả rule.
+- Hệ thống dùng **cache** (`ConcurrentHashMap`) để tăng performance, tự động invalidate khi cập nhật.
 
-## Q7.3: Chong trung Trust Score nhu the nao?
+## Q7.3: Chống trùng Trust Score như thế nào?
 
-**Tra loi:** He thong co **duplicate check** truoc khi cong diem:
-- `DAILY_POST`: Moi user chi duoc cong 1 lan/ngay. Kiem tra bang `existsByUserIdAndRuleKeyAndCreatedAtAfter(userId, ruleKey, startOfDay)`.
-- Cac rule khac: Kiem tra theo `referenceId` (campaignId/expenditureId). Neu da cham diem cho reference nay thi skip.
+**Trả lời:** Hệ thống có **duplicate check** trước khi cộng điểm:
+- `DAILY_POST`: Mỗi user chỉ được cộng 1 lần/ngày. Kiểm tra bằng `existsByUserIdAndRuleKeyAndCreatedAtAfter(userId, ruleKey, startOfDay)`.
+- Các rule khác: Kiểm tra theo `referenceId` (campaignId/expenditureId). Nếu đã chấm điểm cho reference này thì skip.
 
-## Q7.4: Trust Score co Leaderboard khong?
+## Q7.4: Trust Score có Leaderboard không?
 
-**Tra loi:** Co. API `GET /api/trust-score/leaderboard` tra ve danh sach user xep theo diem cao nhat. Frontend hien thi ranking, avatar, ten.
-
----
-
-# 8. FLAG & TO CAO
-
-## Q8.1: Co che to cao (Flag) hoat dong nhu the nao?
-
-**Tra loi:**
-1. User gui report (`POST /api/flags`) voi `campaignId` hoac `postId` va `reason`.
-2. **Chong trung:** Moi user chi duoc flag 1 lan cho moi campaign/post. Neu da flag thi throw `IllegalStateException`.
-3. He thong tao `ApprovalTask` va assign cho staff.
-4. **Gui notification cho follower:** Neu flag campaign, tat ca nguoi follow chien dich nhan duoc canh bao.
-5. Staff review flag, set status `RESOLVED` hoac giu `PENDING`.
-6. **Gui notification cho nguoi to cao:** Thong bao ket qua xu ly.
-
-## Q8.2: Khi chien dich bi to cao nhieu lan, he thong xu ly nhu the nao?
-
-**Tra loi:** Hien tai he thong **khong tu dong dong** chien dich khi dat so luong flag nhat dinh. Staff can **thu cong** review va quyet dinh:
-- Pause chien dich (`PUT /api/campaigns/{id}/pause`).
-- Dong chien dich (`PUT /api/campaigns/{id}/close`).
-
-**Goi y cai thien:** Co the them threshold tu dong (vi du: 10+ flag -> tu dong pause de review).
+**Trả lời:** Có. API `GET /api/trust-score/leaderboard` trả về danh sách user xếp theo điểm cao nhất. Frontend hiển thị ranking, avatar, tên.
 
 ---
 
-# 9. FEED POST & CONG DONG
+# 8. FLAG & TỐ CÁO
 
-## Q9.1: Feed Post la gi?
+## Q8.1: Cơ chế tố cáo (Flag) hoạt động như thế nào?
 
-**Tra loi:** He thong co tinh nang **dien dan/blog** de:
-- Fund Owner cap nhat tien do chien dich.
-- Cong dong chia se y kien, kinh nghiem.
+**Trả lời:**
+1. User gửi report (`POST /api/flags`) với `campaignId` hoặc `postId` và `reason`.
+2. **Chống trùng:** Mỗi user chỉ được flag 1 lần cho mỗi campaign/post. Nếu đã flag thì throw `IllegalStateException`.
+3. Hệ thống tạo `ApprovalTask` và assign cho staff.
+4. **Gửi notification cho follower:** Nếu flag campaign, tất cả người follow chiến dịch nhận được cảnh báo.
+5. Staff review flag, set status `RESOLVED` hoặc giữ `PENDING`.
+6. **Gửi notification cho người tố cáo:** Thông báo kết quả xử lý.
 
-**Tinh nang:**
-- CRUD bai viet voi tinh trang (draft, published, archived).
-- **Like** va **Comment** voi kiem soat trung lap.
-- **Revision History:** Moi lan sua bai, he thong luu **phien ban cu** de audit.
-- **Pin/Lock:** Admin co the ghim bai viet hoac khoa binh luan.
-- **View Count** va **User Post Seen** de theo doi luot xem.
+## Q8.2: Khi chiến dịch bị tố cáo nhiều lần, hệ thống xử lý như thế nào?
 
-## Q9.2: Tai sao can Feed Post trong he thong quy thien nguyen?
+**Trả lời:** Hiện tại hệ thống **không tự động đóng** chiến dịch khi đạt số lượng flag nhất định. Staff cần **thủ công** review và quyết định:
+- Pause chiến dịch (`PUT /api/campaigns/{id}/pause`).
+- Đóng chiến dịch (`PUT /api/campaigns/{id}/close`).
 
-**Tra loi:**
-- **Minh bach:** Fund Owner dang bai cap nhat tien do, anh chung minh viec su dung tien.
-- **Cong dong:** Donor va nguoi theo doi co the binh luan, hoi dap truc tiep.
-- **Trust:** Hoat dong thuong xuyen tren Feed tang Trust Score (`DAILY_POST`).
-- **Gia tri thuc te:** Giong cach GoFundMe, Kitabisa.com co tinh nang "Updates" de chu quy cap nhat.
+**Gợi ý cải thiện:** Có thể thêm threshold tự động (ví dụ: 10+ flag -> tự động pause để review).
+
+---
+
+# 9. FEED POST & CỘNG ĐỒNG
+
+## Q9.1: Feed Post là gì?
+
+**Trả lời:** Hệ thống có tính năng **diễn đàn/blog** để:
+- Fund Owner cập nhật tiến độ chiến dịch.
+- Cộng đồng chia sẻ ý kiến, kinh nghiệm.
+
+**Tính năng:**
+- CRUD bài viết với trạng thái (draft, published, archived).
+- **Like** và **Comment** với kiểm soát trùng lặp.
+- **Revision History:** Mỗi lần sửa bài, hệ thống lưu **phiên bản cũ** để audit.
+- **Pin/Lock:** Admin có thể ghim bài viết hoặc khóa bình luận.
+- **View Count** và **User Post Seen** để theo dõi lượt xem.
+
+## Q9.2: Tại sao cần Feed Post trong hệ thống quỹ thiện nguyện?
+
+**Trả lời:**
+- **Minh bạch:** Fund Owner đăng bài cập nhật tiến độ, ảnh chứng minh việc sử dụng tiền.
+- **Cộng đồng:** Donor và người theo dõi có thể bình luận, hỏi đáp trực tiếp.
+- **Trust:** Hoạt động thường xuyên trên Feed tăng Trust Score (`DAILY_POST`).
+- **Giá trị thực tế:** Giống cách GoFundMe, Kitabisa.com có tính năng "Updates" để chủ quỹ cập nhật.
 
 ---
 
 # 10. NOTIFICATION & REAL-TIME
 
-## Q10.1: He thong thong bao hoat dong nhu the nao?
+## Q10.1: Hệ thống thông báo hoạt động như thế nào?
 
-**Tra loi:** Notification Service xu ly 2 kenh:
+**Trả lời:** Notification Service xử lý 2 kênh:
 
-1. **Real-time (Pusher):** Push notification tuc thoi den frontend qua WebSocket (Pusher Channels).
-2. **Email (Gmail SMTP):** Gui email cho cac su kien quan trong (KYC, OTP, commitment...).
+1. **Real-time (Pusher):** Push notification tức thời đến frontend qua WebSocket (Pusher Channels).
+2. **Email (Gmail SMTP):** Gửi email cho các sự kiện quan trọng (KYC, OTP, commitment...).
 
-**Cac loai notification:**
-- `CAMPAIGN_APPROVED` / `CAMPAIGN_REJECTED`: Ket qua duyet chien dich.
-- `EXPENDITURE_APPROVED` / `EXPENDITURE_REJECTED` / `EXPENDITURE_DISBURSED`: Ket qua chi tieu.
-- `EVIDENCE_APPROVED` / `EVIDENCE_REJECTED`: Ket qua duyet minh chung.
-- `KYC_APPROVED` / `KYC_REJECTED`: Ket qua KYC.
-- `CAMPAIGN_FLAGGED`: Chien dich bi to cao.
-- `FLAG_REVIEWED`: Ket qua xu ly to cao.
-- `CAMPAIGN_LOCKED_OVERDUE`: Quy bi dong do vi pham.
-- `EXPENDITURE_EVIDENCE_REQUIRED`: Yeu cau nop minh chung (tu dong tu Casso).
+**Các loại notification:**
+- `CAMPAIGN_APPROVED` / `CAMPAIGN_REJECTED`: Kết quả duyệt chiến dịch.
+- `EXPENDITURE_APPROVED` / `EXPENDITURE_REJECTED` / `EXPENDITURE_DISBURSED`: Kết quả chi tiêu.
+- `EVIDENCE_APPROVED` / `EVIDENCE_REJECTED`: Kết quả duyệt minh chứng.
+- `KYC_APPROVED` / `KYC_REJECTED`: Kết quả KYC.
+- `CAMPAIGN_FLAGGED`: Chiến dịch bị tố cáo.
+- `FLAG_REVIEWED`: Kết quả xử lý tố cáo.
+- `CAMPAIGN_LOCKED_OVERDUE`: Quỹ bị đóng do vi phạm.
+- `EXPENDITURE_EVIDENCE_REQUIRED`: Yêu cầu nộp minh chứng (tự động từ Casso).
 
-## Q10.2: Frontend nhan notification nhu the nao?
+## Q10.2: Frontend nhận notification như thế nào?
 
-**Tra loi:** Frontend (danbox) co component `NotificationBell` va `WalletDropdown`:
-- Dang ky kenh Pusher theo `userId`.
-- Khi co notification moi, hien thi badge va danh sach notification.
-- Click vao notification de di den trang tuong ung.
+**Trả lời:** Frontend (danbox) có component `NotificationBell` và `WalletDropdown`:
+- Đăng ký kênh Pusher theo `userId`.
+- Khi có notification mới, hiển thị badge và danh sách notification.
+- Click vào notification để đi đến trang tương ứng.
 
 ---
 
 # 11. CHAT SERVICE
 
-## Q11.1: Chat Service cung cap tinh nang gi?
+## Q11.1: Chat Service cung cấp tính năng gì?
 
-**Tra loi:**
-- **Nhan tin truc tiep** giua user va staff/fund owner.
-- **Chat theo chien dich:** Moi chien dich co phong chat rieng (`/api/chat/conversations/campaign/{campaignId}`).
+**Trả lời:**
+- **Nhắn tin trực tiếp** giữa user và staff/fund owner.
+- **Chat theo chiến dịch:** Mỗi chiến dịch có phòng chat riêng (`/api/chat/conversations/campaign/{campaignId}`).
 - **WebSocket (SockJS + STOMP):** Real-time messaging qua WebSocket.
-- **Lich hen (Appointments):** Staff co the dat lich hen voi fund owner de review chien dich truc tiep.
+- **Lịch hẹn (Appointments):** Staff có thể đặt lịch hẹn với fund owner để review chiến dịch trực tiếp.
 
-## Q11.2: Tai sao can Chat trong he thong quy thien nguyen?
+## Q11.2: Tại sao cần Chat trong hệ thống quỹ thiện nguyện?
 
-**Tra loi:**
-- Staff can lien lac voi Fund Owner de hoi them thong tin khi duyet chien dich/chi tieu.
-- Donor co the hoi truc tiep Fund Owner ve tien do.
-- Lich hen giup staff to chuc review truc tiep (video call, gap mat) cho cac chien dich lon.
+**Trả lời:**
+- Staff cần liên lạc với Fund Owner để hỏi thêm thông tin khi duyệt chiến dịch/chi tiêu.
+- Donor có thể hỏi trực tiếp Fund Owner về tiến độ.
+- Lịch hẹn giúp staff tổ chức review trực tiếp (video call, gặp mặt) cho các chiến dịch lớn.
 
 ---
 
 # 12. MEDIA SERVICE
 
-## Q12.1: Media Service xu ly file nhu the nao?
+## Q12.1: Media Service xử lý file như thế nào?
 
-**Tra loi:** Media Service quan ly upload/download file:
-- **Luu tru:** Supabase Storage (Object Storage, tuong tu AWS S3).
-- **Ho tro:** Anh (JPEG, PNG, WebP), Video, PDF.
-- **Gioi han:** Max file size 50MB (cau hinh tai Gateway).
+**Trả lời:** Media Service quản lý upload/download file:
+- **Lưu trữ:** Supabase Storage (Object Storage, tương tự AWS S3).
+- **Hỗ trợ:** Ảnh (JPEG, PNG, WebP), Video, PDF.
+- **Giới hạn:** Max file size 50MB (cấu hình tại Gateway).
 - **API:** `POST /api/media/upload`, `GET /api/media/{id}`, `DELETE /api/media/{id}`.
-- **Lien ket:** File duoc lien ket voi campaign (coverImage), KYC (idImageFront/Back, selfieImage), feed post, evidence...
+- **Liên kết:** File được liên kết với campaign (coverImage), KYC (idImageFront/Back, selfieImage), feed post, evidence...
 
 ---
 
 # 13. AI INTEGRATION
 
-## Q13.1: He thong tich hop AI nhu the nao?
+## Q13.1: Hệ thống tích hợp AI như thế nào?
 
-**Tra loi:** TrustFundMe tich hop **AI Service** (tach rieng, chay tren port 7000) cho cac chuc nang:
+**Trả lời:** TrustFundMe tích hợp **AI Service** (tách riêng, chạy trên port 7000) cho các chức năng:
 
-| Endpoint | Chuc nang |
+| Endpoint | Chức năng |
 |----------|----------|
-| `/api/generate-description` | AI tao mo ta chien dich tu thong tin co ban |
-| `/api/parse-expenditure-excel` | Doc file Excel ke hoach chi tieu |
-| `/api/ocr-kyc` | Doc thong tin tu anh CCCD (OCR) |
-| `/api/analyze-flag` | Phan tich bao cao vi pham |
-| `/api/analyze-expenditure` | Audit gia thi truong cua vat pham |
-| `/api/analyze-evidence` | Phan tich minh chung chi tieu |
-| `/api/generate-suggestion-labels` | Goi y nhan cho vat pham |
-| `/api/generate-post` | Tao noi dung bai viet |
+| `/api/generate-description` | AI tạo mô tả chiến dịch từ thông tin cơ bản |
+| `/api/parse-expenditure-excel` | Đọc file Excel kế hoạch chi tiêu |
+| `/api/ocr-kyc` | Đọc thông tin từ ảnh CCCD (OCR) |
+| `/api/analyze-flag` | Phân tích báo cáo vi phạm |
+| `/api/analyze-expenditure` | Audit giá thị trường của vật phẩm |
+| `/api/analyze-evidence` | Phân tích minh chứng chi tiêu |
+| `/api/generate-suggestion-labels` | Gợi ý nhãn cho vật phẩm |
+| `/api/generate-post` | Tạo nội dung bài viết |
 
-## Q13.2: Perplexity AI dung de lam gi?
+## Q13.2: Perplexity AI dùng để làm gì?
 
-**Tra loi:** Perplexity AI duoc dung de **audit gia thi truong**:
-- Khi staff duyet ke hoach chi tieu, he thong gui danh sach vat pham (ten, gia khai bao, so luong) cho Perplexity.
-- Perplexity tra ve phan tich: gia khai bao co hop ly khong, gia thi truong la bao nhieu, co bat thuong khong.
-- Giup staff phat hien truong hop Fund Owner khai gia cao de cat bot tien.
+**Trả lời:** Perplexity AI được dùng để **audit giá thị trường**:
+- Khi staff duyệt kế hoạch chi tiêu, hệ thống gửi danh sách vật phẩm (tên, giá khai báo, số lượng) cho Perplexity.
+- Perplexity trả về phân tích: giá khai báo có hợp lý không, giá thị trường là bao nhiêu, có bất thường không.
+- Giúp staff phát hiện trường hợp Fund Owner khai giá cao để cắt bớt tiền.
 
-## Q13.3: AI Prompt duoc luu o dau?
+## Q13.3: AI Prompt được lưu ở đâu?
 
-**Tra loi:** Trong `campaign-service/src/main/resources/prompts/`:
-- `ai_bill_analysis_prompt.txt`: Phan tich hoa don.
-- `ai_campaign_description_prompt.txt`: Tao mo ta chien dich.
-- `ai_flag_analysis_prompt.txt`: Phan tich bao cao vi pham.
-- `ai_market_analysis_prompt.txt`: Phan tich gia thi truong.
+**Trả lời:** Trong `campaign-service/src/main/resources/prompts/`:
+- `ai_bill_analysis_prompt.txt`: Phân tích hóa đơn.
+- `ai_campaign_description_prompt.txt`: Tạo mô tả chiến dịch.
+- `ai_flag_analysis_prompt.txt`: Phân tích báo cáo vi phạm.
+- `ai_market_analysis_prompt.txt`: Phân tích giá thị trường.
 - `ai_ocr_prompt.json`: OCR CCCD.
 
-Admin co the **chinh sua prompt AI** tu giao dien web (`/admin/promt-AI`).
+Admin có thể **chỉnh sửa prompt AI** từ giao diện web (`/admin/promt-AI`).
 
 ---
 
-# 14. QUY CHUNG (General Fund)
+# 14. QUỸ CHUNG (General Fund)
 
-## Q14.1: General Fund la gi? Hoat dong nhu the nao?
+## Q14.1: General Fund là gì? Hoạt động như thế nào?
 
-**Tra loi:** General Fund (Quy chung) la **quy trung tam** cua he thong:
-- **ID co dinh = 1**, `type = "GENERAL_FUND"`.
-- **Khong hien thi** trong danh sach chien dich thuong (filter `typeNot(GENERAL_FUND)`).
-- **Chi admin** co quyen thao tac.
+**Trả lời:** General Fund (Quỹ chung) là **quỹ trung tâm** của hệ thống:
+- **ID cố định = 1**, `type = "GENERAL_FUND"`.
+- **Không hiển thị** trong danh sách chiến dịch thường (filter `typeNot(GENERAL_FUND)`).
+- **Chỉ admin** có quyền thao tác.
 
-**Nguon thu:**
-- **Tip:** Tien ung ho he thong tu donor.
-- **Recovery:** So du thu hoi khi dong chien dich.
-- **Dieu chuyen tu cac chien dich.**
+**Nguồn thu:**
+- **Tip:** Tiền ủng hộ hệ thống từ donor.
+- **Recovery:** Số dư thu hồi khi đóng chiến dịch.
+- **Điều chuyển từ các chiến dịch.**
 
-**Chi tieu:**
-- **Ho tro chien dich:** Chuyen tien tu quy chung den chien dich can ho tro.
-- **Chi phi van hanh:** (neu co).
+**Chi tiêu:**
+- **Hỗ trợ chiến dịch:** Chuyển tiền từ quỹ chung đến chiến dịch cần hỗ trợ.
+- **Chi phí vận hành:** (nếu có).
 
-**Giao dich noi bo (Internal Transaction):**
+**Giao dịch nội bộ (Internal Transaction):**
 ```
-Admin tao giao dich -> PENDING -> (Duyet) -> APPROVED/COMPLETED -> Chuyen tien giua cac quy
+Admin tạo giao dịch -> PENDING -> (Duyệt) -> APPROVED/COMPLETED -> Chuyển tiền giữa các quỹ
 ```
-He thong kiem tra so du truoc khi chuyen (`balance >= amount`).
+Hệ thống kiểm tra số dư trước khi chuyển (`balance >= amount`).
 
-## Q14.2: Tai sao can General Fund?
+## Q14.2: Tại sao cần General Fund?
 
-**Tra loi:**
-- Dam bao **khong co tien bi mat:** Khi dong chien dich, so du ve General Fund.
-- **Minh bach:** Moi giao dich noi bo deu duoc ghi nhan, co staff ID, evidence.
-- **Ho tro lien chien dich:** General Fund co the chuyen tien den chien dich khan cap.
+**Trả lời:**
+- Đảm bảo **không có tiền bị mất:** Khi đóng chiến dịch, số dư về General Fund.
+- **Minh bạch:** Mọi giao dịch nội bộ đều được ghi nhận, có staff ID, evidence.
+- **Hỗ trợ liên chiến dịch:** General Fund có thể chuyển tiền đến chiến dịch khẩn cấp.
 
 ---
 
-# 15. BAO MAT & VULNERABILITY
+# 15. BẢO MẬT & VULNERABILITY
 
-## Q15.1: He thong co bi SQL Injection khong?
+## Q15.1: Hệ thống có bị SQL Injection không?
 
-**Tra loi:** **Khong**, vi:
-- Su dung **Spring Data JPA** voi **Named Parameters** va **JPQL**. Spring tự dong parameterize tat ca query.
-- Khong co raw SQL nao su dung string concatenation voi input cua user.
-- Du lieu input duoc validate qua **Jakarta Validation** (`@Valid`, `@NotNull`, `@Size`...).
+**Trả lời:** **Không**, vì:
+- Sử dụng **Spring Data JPA** với **Named Parameters** và **JPQL**. Spring tự động parameterize tất cả query.
+- Không có raw SQL nào sử dụng string concatenation với input của user.
+- Dữ liệu input được validate qua **Jakarta Validation** (`@Valid`, `@NotNull`, `@Size`...).
 
-## Q15.2: He thong co bi XSS khong?
+## Q15.2: Hệ thống có bị XSS không?
 
-**Tra loi:**
-- Backend chi tra ve **JSON**, khong render HTML -> it rui ro XSS tu backend.
-- Frontend (Next.js) tu dong **escape** tat ca noi dung trong JSX.
-- Cac truong nhu `description`, `reason`, `content` duoc luu va hien thi nhu text, khong render HTML.
-- **Can luu y:** Neu co rich text editor (bai viet), can sanitize HTML truoc khi luu.
+**Trả lời:**
+- Backend chỉ trả về **JSON**, không render HTML -> ít rủi ro XSS từ backend.
+- Frontend (Next.js) tự động **escape** tất cả nội dung trong JSX.
+- Các trường như `description`, `reason`, `content` được lưu và hiển thị như text, không render HTML.
+- **Cần lưu ý:** Nếu có rich text editor (bài viết), cần sanitize HTML trước khi lưu.
 
-## Q15.3: CORS duoc cau hinh nhu the nao?
+## Q15.3: CORS được cấu hình như thế nào?
 
-**Tra loi:** CORS cau hinh tai **Gateway level**:
+**Trả lời:** CORS cấu hình tại **Gateway level**:
 ```properties
 spring.cloud.gateway.globalcors.cors-configurations[/**].allowed-origin-patterns=${ALLOWED_ORIGINS:http://localhost:3000}
 spring.cloud.gateway.globalcors.cors-configurations[/**].allowed-methods=GET,POST,PUT,DELETE,PATCH,OPTIONS
 spring.cloud.gateway.globalcors.cors-configurations[/**].allow-credentials=true
 ```
-- Chi cho phep origin tu frontend (localhost:3000 hoac domain production).
-- Chi cho phep cac HTTP methods can thiet.
-- Moi service con co `CorsConfig` rieng de them lop bao ve.
+- Chỉ cho phép origin từ frontend (localhost:3000 hoặc domain production).
+- Chỉ cho phép các HTTP methods cần thiết.
+- Mỗi service còn có `CorsConfig` riêng để thêm lớp bảo vệ.
 
-## Q15.4: API Internal (giua cac service) co bi truy cap trai phep khong?
+## Q15.4: API Internal (giữa các service) có bị truy cập trái phép không?
 
-**Tra loi:** Day la **diem yeu** hien tai:
-- Cac endpoint `/api/internal/**` duoc de **public** trong Gateway filter de cho phep service-to-service communication.
-- Dieu nay co nghia la bat ky ai biet URL cung co the goi cac API nay.
+**Trả lời:** Đây là **điểm yếu** hiện tại:
+- Các endpoint `/api/internal/**` được để **public** trong Gateway filter để cho phép service-to-service communication.
+- Điều này có nghĩa là bất kỳ ai biết URL cũng có thể gọi các API này.
 
-**Cach khac phuc (goi y):**
-1. Dung **API Key/Secret** rieng cho internal communication.
-2. Cau hinh network: chi cho phep traffic internal tu cac container trong cung Docker network.
-3. Su dung **mutual TLS (mTLS)** giua cac service.
+**Cách khắc phục (gợi ý):**
+1. Dùng **API Key/Secret** riêng cho internal communication.
+2. Cấu hình network: chỉ cho phép traffic internal từ các container trong cùng Docker network.
+3. Sử dụng **mutual TLS (mTLS)** giữa các service.
 
-## Q15.5: Password duoc luu nhu the nao?
+## Q15.5: Password được lưu như thế nào?
 
-**Tra loi:** Password duoc hash bang **BCrypt** (`PasswordEncoder`):
-- BCrypt tu dong them **salt** (khong can luu salt rieng).
-- Cost factor mac dinh = 10 (2^10 = 1024 rounds).
-- Khong the brute-force hoac rainbow table attack.
+**Trả lời:** Password được hash bằng **BCrypt** (`PasswordEncoder`):
+- BCrypt tự động thêm **salt** (không cần lưu salt riêng).
+- Cost factor mặc định = 10 (2^10 = 1024 rounds).
+- Không thể brute-force hoặc rainbow table attack.
 
-## Q15.6: JWT Secret co an toan khong?
+## Q15.6: JWT Secret có an toàn không?
 
-**Tra loi:**
-- JWT Secret duoc luu trong **bien moi truong** (`JWT_SECRET`), khong hardcode trong code.
-- File `.env` duoc them vao `.gitignore`, khong push len Git.
-- Tuy nhien, code co **fallback value**: `TrustFundME2024SecretKeyForJWTTokenGenerationSecureRandomString64Chars`. Day chi la gia tri mac dinh cho development, **production phai set bien moi truong rieng**.
-- Secret dai 64 ky tu, du manh cho HMAC-SHA.
+**Trả lời:**
+- JWT Secret được lưu trong **biến môi trường** (`JWT_SECRET`), không hardcode trong code.
+- File `.env` được thêm vào `.gitignore`, không push lên Git.
+- Tuy nhiên, code có **fallback value**: `TrustFundME2024SecretKeyForJWTTokenGenerationSecureRandomString64Chars`. Đây chỉ là giá trị mặc định cho development, **production phải set biến môi trường riêng**.
+- Secret dài 64 ký tự, đủ mạnh cho HMAC-SHA.
 
-## Q15.7: He thong co chong CSRF khong?
+## Q15.7: Hệ thống có chống CSRF không?
 
-**Tra loi:**
-- He thong dung **JWT Bearer Token** (khong dung Cookie-based session) -> **immune voi CSRF** vi browser khong tu dong gui Authorization header.
-- Spring Security cau hinh `csrf().disable()` vi da dung JWT.
+**Trả lời:**
+- Hệ thống dùng **JWT Bearer Token** (không dùng Cookie-based session) -> **immune với CSRF** vì browser không tự động gửi Authorization header.
+- Spring Security cấu hình `csrf().disable()` vì đã dùng JWT.
 
-## Q15.8: File upload co bi khai thac khong?
+## Q15.8: File upload có bị khai thác không?
 
-**Tra loi:**
-- **Gioi han kich thuoc:** Max 50MB (cau hinh tai Gateway).
-- **Luu tru:** File upload len **Supabase Storage** (khong luu local), giam rui ro path traversal.
-- **Can cai thien:** Nen validate file type (chi cho anh/PDF), chong upload file doc hai (.exe, .php).
+**Trả lời:**
+- **Giới hạn kích thước:** Max 50MB (cấu hình tại Gateway).
+- **Lưu trữ:** File upload lên **Supabase Storage** (không lưu local), giảm rủi ro path traversal.
+- **Cần cải thiện:** Nên validate file type (chỉ cho ảnh/PDF), chống upload file độc hại (.exe, .php).
 
 ---
 
 # 16. FRONTEND (DANBOX - NEXT.JS)
 
-## Q16.1: Frontend duoc xay dung bang cong nghe gi?
+## Q16.1: Frontend được xây dựng bằng công nghệ gì?
 
-**Tra loi:** Frontend la ung dung web **Next.js** (React framework) voi:
+**Trả lời:** Frontend là ứng dụng web **Next.js** (React framework) với:
 - **Next.js App Router** (folder-based routing).
 - **TypeScript** cho type safety.
 - **Tailwind CSS** cho styling.
-- **API Routes** (`/app/api/`) lam proxy giua browser va backend.
+- **API Routes** (`/app/api/`) làm proxy giữa browser và backend.
 
-## Q16.2: Tai sao frontend dung API Routes lam proxy?
+## Q16.2: Tại sao frontend dùng API Routes làm proxy?
 
-**Tra loi:** Frontend co cac **API routes** (`/app/api/auth/login/route.ts`, `/app/api/flags/route.ts`...) lam **proxy** goi backend:
-- **An URL backend:** Browser chi thay `/api/auth/login`, khong thay URL cua backend service.
-- **Xu ly session:** Luu JWT trong cookie HttpOnly qua API route (an toan hon localStorage).
-- **CORS:** Khong bi CORS issue vi browser goi cung origin (Next.js server).
+**Trả lời:** Frontend có các **API routes** (`/app/api/auth/login/route.ts`, `/app/api/flags/route.ts`...) làm **proxy** gọi backend:
+- **Ẩn URL backend:** Browser chỉ thấy `/api/auth/login`, không thấy URL của backend service.
+- **Xử lý session:** Lưu JWT trong cookie HttpOnly qua API route (an toàn hơn localStorage).
+- **CORS:** Không bị CORS issue vì browser gọi cùng origin (Next.js server).
 
-## Q16.3: Frontend co nhung trang chinh nao?
+## Q16.3: Frontend có những trang chính nào?
 
-**Tra loi:**
+**Trả lời:**
 
-| Route | Chuc nang |
+| Route | Chức năng |
 |-------|----------|
-| `/` | Trang chu, hien thi chien dich noi bat |
-| `/campaigns` | Danh sach chien dich |
-| `/campaigns-details?id=X` | Chi tiet chien dich |
-| `/campaign-creation` | Tao chien dich moi |
+| `/` | Trang chủ, hiển thị chiến dịch nổi bật |
+| `/campaigns` | Danh sách chiến dịch |
+| `/campaigns-details?id=X` | Chi tiết chiến dịch |
+| `/campaign-creation` | Tạo chiến dịch mới |
 | `/donation?campaignId=X` | Trang donate |
-| `/sign-in` | Dang nhap |
-| `/account/profile` | Quan ly tai khoan |
-| `/account/campaigns` | Cac chien dich cua toi |
-| `/account/campaigns/expenditures` | Quan ly chi tieu |
-| `/staff/*` | Dashboard staff (duyet KYC, chien dich, chi tieu, flag) |
-| `/admin/*` | Dashboard admin (quan ly user, cau hinh, quy chung) |
-| `/post/*` | Dien dan, bai viet |
+| `/sign-in` | Đăng nhập |
+| `/account/profile` | Quản lý tài khoản |
+| `/account/campaigns` | Các chiến dịch của tôi |
+| `/account/campaigns/expenditures` | Quản lý chi tiêu |
+| `/staff/*` | Dashboard staff (duyệt KYC, chiến dịch, chi tiêu, flag) |
+| `/admin/*` | Dashboard admin (quản lý user, cấu hình, quỹ chung) |
+| `/post/*` | Diễn đàn, bài viết |
 
-## Q16.4: Component nao quan trong nhat tren frontend?
+## Q16.4: Component nào quan trọng nhất trên frontend?
 
-**Tra loi:**
-- `ProtectedRoute`: Bao ve route can dang nhap.
-- `RequireRole`: Kiem tra role truoc khi render UI.
-- `BannedAccountWrapper`: Hien thi UI han che cho user bi ban.
-- `EmailVerificationBanner`: Nhac user xac thuc email.
-- `EnforcementAlertBanner`: Canh bao vi pham minh chung chi tieu.
-- `NotificationBell`: Hien thi notification real-time.
-- `Wallet` / `WalletDropdown`: Hien thi so du va lich su giao dich.
-- `CampaignCard`: Card hien thi thong tin chien dich.
+**Trả lời:**
+- `ProtectedRoute`: Bảo vệ route cần đăng nhập.
+- `RequireRole`: Kiểm tra role trước khi render UI.
+- `BannedAccountWrapper`: Hiển thị UI hạn chế cho user bị ban.
+- `EmailVerificationBanner`: Nhắc user xác thực email.
+- `EnforcementAlertBanner`: Cảnh báo vi phạm minh chứng chi tiêu.
+- `NotificationBell`: Hiển thị notification real-time.
+- `Wallet` / `WalletDropdown`: Hiển thị số dư và lịch sử giao dịch.
+- `CampaignCard`: Card hiển thị thông tin chiến dịch.
 - `CampaignDonateCard`: Form donate.
-- `OtpInput`: Nhap OTP 6 so.
+- `OtpInput`: Nhập OTP 6 số.
 
 ---
 
 # 17. DEPLOYMENT & DEVOPS
 
-## Q17.1: He thong deploy nhu the nao?
+## Q17.1: Hệ thống deploy như thế nào?
 
-**Tra loi:**
-- **Docker Compose:** File `docker-compose.yml` dinh nghia tat ca services, co the chay `docker-compose up` de start toan bo he thong.
-- **Dockerfile:** Moi service co Dockerfile rieng de build image.
-- **Database:** MySQL 8.0 chay trong Docker container, data luu tren volume `mysql_data`.
-- **CI/CD (Frontend):** Danbox co `.github/workflows/ci.yml` va `cd.yml` cho CI/CD tu dong.
+**Trả lời:**
+- **Docker Compose:** File `docker-compose.yml` định nghĩa tất cả services, có thể chạy `docker-compose up` để start toàn bộ hệ thống.
+- **Dockerfile:** Mỗi service có Dockerfile riêng để build image.
+- **Database:** MySQL 8.0 chạy trong Docker container, data lưu trên volume `mysql_data`.
+- **CI/CD (Frontend):** Danbox có `.github/workflows/ci.yml` và `cd.yml` cho CI/CD tự động.
 
-## Q17.2: Moi truong development chay nhu the nao?
+## Q17.2: Môi trường development chạy như thế nào?
 
-**Tra loi:**
-- **PowerShell scripts:** Moi service co script rieng (`run-campaign-service.ps1`, `run-identity-service.ps1`...) de chay local.
-- **`run-all-services.ps1`:** Chay tat ca services cung luc.
-- **H2 Database:** Moi truong dev co the dung H2 (in-memory DB) thay vi MySQL (`run-identity-service-h2.ps1`).
-- **Hot Reload:** Spring Boot DevTools cho phep restart nhanh khi code thay doi.
+**Trả lời:**
+- **PowerShell scripts:** Mỗi service có script riêng (`run-campaign-service.ps1`, `run-identity-service.ps1`...) để chạy local.
+- **`run-all-services.ps1`:** Chạy tất cả services cùng lúc.
+- **H2 Database:** Môi trường dev có thể dùng H2 (in-memory DB) thay vì MySQL (`run-identity-service-h2.ps1`).
+- **Hot Reload:** Spring Boot DevTools cho phép restart nhanh khi code thay đổi.
 
 ---
 
 # 18. DATABASE DESIGN
 
-## Q18.1: He thong dung co so du lieu gi? Tai sao?
+## Q18.1: Hệ thống dùng cơ sở dữ liệu gì? Tại sao?
 
-**Tra loi:** **MySQL 8.0** - Relational Database.
+**Trả lời:** **MySQL 8.0** - Relational Database.
 
-**Tai sao chon MySQL?**
-- **ACID compliance:** Giao dich tai chinh can dam bao **Atomicity, Consistency, Isolation, Durability**.
-- **Quan he phuc tap:** Cac entity co nhieu quan he (User -> Campaign -> Expenditure -> Items).
-- **JPA/Hibernate:** Spring Data JPA ho tro MySQL tot nhat.
-- **Production-ready:** MySQL la RDBMS pho bien, community lon, nhieu tai lieu.
+**Tại sao chọn MySQL?**
+- **ACID compliance:** Giao dịch tài chính cần đảm bảo **Atomicity, Consistency, Isolation, Durability**.
+- **Quan hệ phức tạp:** Các entity có nhiều quan hệ (User -> Campaign -> Expenditure -> Items).
+- **JPA/Hibernate:** Spring Data JPA hỗ trợ MySQL tốt nhất.
+- **Production-ready:** MySQL là RDBMS phổ biến, community lớn, nhiều tài liệu.
 
-**Tai sao khong dung MongoDB?**
-- He thong quy thien nguyen can **tinh nhat quan** (consistency) cao cho giao dich tai chinh. MongoDB (NoSQL) uu tien availability va partition tolerance (AP trong CAP theorem), khong phu hop cho nghiep vu tai chinh.
+**Tại sao không dùng MongoDB?**
+- Hệ thống quỹ thiện nguyện cần **tính nhất quán** (consistency) cao cho giao dịch tài chính. MongoDB (NoSQL) ưu tiên availability và partition tolerance (AP trong CAP theorem), không phù hợp cho nghiệp vụ tài chính.
 
-## Q18.2: Moi service dung database rieng hay chung?
+## Q18.2: Mỗi service dùng database riêng hay chung?
 
-**Tra loi:** **Moi service co database rieng** (Database per Service pattern):
+**Trả lời:** **Mỗi service có database riêng** (Database per Service pattern):
 - `trustfundme_identity_db`: User, KYC, BankAccount, Module.
 - `trustfundme_campaign_db`: Campaign, Expenditure, FeedPost, Flag, TrustScore.
 - `trustfundme_payment_db`: Donation, DonationItem, CassoTransaction.
@@ -873,352 +873,352 @@ spring.cloud.gateway.globalcors.cors-configurations[/**].allow-credentials=true
 - `trustfundme_notification_db`: Notification.
 - `trustfundme_media_db`: Media.
 
-**Tai sao?** Dam bao **loose coupling**: moi service doc lap, co the thay doi schema ma khong anh huong service khac.
+**Tại sao?** Đảm bảo **loose coupling**: mỗi service độc lập, có thể thay đổi schema mà không ảnh hưởng service khác.
 
-## Q18.3: Cac truong tien duoc luu nhu the nao?
+## Q18.3: Các trường tiền được lưu như thế nào?
 
-**Tra loi:** Tat ca truong tien dung **`BigDecimal`** (Java) va **`DECIMAL(19,4)`** (MySQL):
-- Tranh loi lam tron cua `float`/`double`.
-- Precision 19 cho phep luu so len den hang trieu ty.
-- Scale 4 cho phep 4 chu so thap phan.
+**Trả lời:** Tất cả trường tiền dùng **`BigDecimal`** (Java) và **`DECIMAL(19,4)`** (MySQL):
+- Tránh lỗi làm tròn của `float`/`double`.
+- Precision 19 cho phép lưu số lên đến hàng triệu tỷ.
+- Scale 4 cho phép 4 chữ số thập phân.
 
 ---
 
 # 19. TESTING
 
-## Q19.1: He thong co test khong?
+## Q19.1: Hệ thống có test không?
 
-**Tra loi:** Co, he thong co **Unit Test** va **Integration Test**:
+**Trả lời:** Có, hệ thống có **Unit Test** và **Integration Test**:
 
 **Identity Service:**
-- `AuthControllerTest`: Test dang ky, dang nhap, refresh token.
-- `AuthServiceImplTest`: Test logic xac thuc.
+- `AuthControllerTest`: Test đăng ký, đăng nhập, refresh token.
+- `AuthServiceImplTest`: Test logic xác thực.
 - `UserServiceImplTest`: Test CRUD user.
-- `UserKYCServiceImplTest`: Test quy trinh KYC.
+- `UserKYCServiceImplTest`: Test quy trình KYC.
 - `BankAccountServiceImplTest`: Test bank account CRUD.
-- `EmailServiceImplTest`: Test gui email.
+- `EmailServiceImplTest`: Test gửi email.
 - Repository tests: `UserRepositoryTest`, `OtpTokenRepositoryTest`, `BankAccountRepositoryTest`.
 
 **Campaign Service:**
 - Repository tests: `ApprovalTaskRepositoryTest`, `CampaignFollowRepositoryTest`, `ExpenditureRepositoryTest`, `FeedPostLikeRepositoryTest`.
 
 **Payment Service:**
-- `DonationServiceTest`: Test tao donation, payment flow.
+- `DonationServiceTest`: Test tạo donation, payment flow.
 - `DonationRepositoryTest`: Test query donation.
 
-## Q19.2: Test coverage nhu the nao?
+## Q19.2: Test coverage như thế nào?
 
-**Tra loi:** He thong tap trung test vao:
-- **Service layer:** Logic nghiep vu chinh (auth, KYC, donation).
+**Trả lời:** Hệ thống tập trung test vào:
+- **Service layer:** Logic nghiệp vụ chính (auth, KYC, donation).
 - **Repository layer:** Custom queries (JPA Named Queries, Native Queries).
 - **Controller layer:** Endpoint behavior (AuthControllerTest).
 
-**Can cai thien:** Them integration test cho cross-service communication (Payment -> Campaign balance update).
+**Cần cải thiện:** Thêm integration test cho cross-service communication (Payment -> Campaign balance update).
 
 ---
 
-# 20. BAD CASE & TINH HUONG XAU
+# 20. BAD CASE & TÌNH HUỐNG XẤU
 
-## Q20.1: Fund Owner lua dao - Tao chien dich gia de lay tien. Xu ly nhu the nao?
+## Q20.1: Fund Owner lừa đảo - Tạo chiến dịch giả để lấy tiền. Xử lý như thế nào?
 
-**Tra loi:** Nhieu lop bao ve:
-1. **KYC bat buoc:** Fund Owner phai xac minh CCCD/ho chieu, face verification. He thong co full thong tin ca nhan de truy cuu.
-2. **Staff duyet:** Moi chien dich phai qua staff review truoc khi duoc donate.
-3. **Ke hoach chi tieu chi tiet:** Fund Owner phai liet ke tung muc chi, gia, so luong. Staff kiem tra tinh hop ly.
-4. **AI Audit gia:** Perplexity AI kiem tra gia khai bao voi gia thi truong.
-5. **Minh chung bat buoc:** Sau khi chi tien, phai nop hoa don/anh.
-6. **Enforcement:** Qua han nop minh chung -> dong quy, thu hoi tien, tru Trust Score.
-7. **Flag cong dong:** Bat ky ai cung co the to cao chien dich. Follower nhan thong bao ngay.
-8. **Trust Score:** Lich su uy tin cong khai, Fund Owner co diem thap se kho nhan duoc donate.
+**Trả lời:** Nhiều lớp bảo vệ:
+1. **KYC bắt buộc:** Fund Owner phải xác minh CCCD/hộ chiếu, face verification. Hệ thống có full thông tin cá nhân để truy cứu.
+2. **Staff duyệt:** Mỗi chiến dịch phải qua staff review trước khi được donate.
+3. **Kế hoạch chi tiêu chi tiết:** Fund Owner phải liệt kê từng mục chi, giá, số lượng. Staff kiểm tra tính hợp lý.
+4. **AI Audit giá:** Perplexity AI kiểm tra giá khai báo với giá thị trường.
+5. **Minh chứng bắt buộc:** Sau khi chi tiền, phải nộp hóa đơn/ảnh.
+6. **Enforcement:** Quá hạn nộp minh chứng -> đóng quỹ, thu hồi tiền, trừ Trust Score.
+7. **Flag cộng đồng:** Bất kỳ ai cũng có thể tố cáo chiến dịch. Follower nhận thông báo ngay.
+8. **Trust Score:** Lịch sử uy tín công khai, Fund Owner có điểm thấp sẽ khó nhận được donate.
 
-## Q20.2: Hai Fund Owner dung chung CCCD de dang ky. He thong co phat hien?
+## Q20.2: Hai Fund Owner dùng chung CCCD để đăng ký. Hệ thống có phát hiện?
 
-**Tra loi:** **Co.** Trong `submitKYC()`:
+**Trả lời:** **Có.** Trong `submitKYC()`:
 ```java
 userKYCRepository.findFirstByIdNumber(request.getIdNumber()).ifPresent(existing -> {
     if (!existing.getUser().getId().equals(userId)) {
-        throw new BadRequestException("So dinh danh da duoc dang ky boi tai khoan khac");
+        throw new BadRequestException("Số định danh đã được đăng ký bởi tài khoản khác");
     }
 });
 ```
-He thong kiem tra so dinh danh (CCCD) truoc khi cho nop KYC. Neu trung voi user khac -> tu choi.
+Hệ thống kiểm tra số định danh (CCCD) trước khi cho nộp KYC. Nếu trùng với user khác -> từ chối.
 
-## Q20.3: Donor chuyen tien nhung ghi sai noi dung. Tien co bi mat khong?
+## Q20.3: Donor chuyển tiền nhưng ghi sai nội dung. Tiền có bị mất không?
 
-**Tra loi:** **Khong.** He thong co fallback:
-- Casso Webhook nhan duoc **tat ca giao dich** vao tai khoan lien ket voi chien dich.
-- Neu noi dung khong match voi `TF {donationId}`, he thong tao **Anonymous Donation** tu dong.
-- Tien van duoc cong vao balance cua chien dich (dua tren tai khoan nhan).
+**Trả lời:** **Không.** Hệ thống có fallback:
+- Casso Webhook nhận được **tất cả giao dịch** vào tài khoản liên kết với chiến dịch.
+- Nếu nội dung không match với `TF {donationId}`, hệ thống tạo **Anonymous Donation** tự động.
+- Tiền vẫn được cộng vào balance của chiến dịch (dựa trên tài khoản nhận).
 
-## Q20.4: He thong payment bi sap giua luc xu ly giao dich. Tien co bi mat?
+## Q20.4: Hệ thống payment bị sập giữa lúc xử lý giao dịch. Tiền có bị mất?
 
-**Tra loi:**
-- **Casso Transaction luu truoc:** He thong luu `CassoTransaction` vao DB truoc khi xu ly tiep. Neu bi crash, du lieu van con.
-- **Dedup bang tid:** Khi restart, neu webhook gui lai cung transaction, he thong skip vi `existsByTid(tid) = true`.
-- **Balance sync flag:** `isBalanceSynchronized` dam bao khong cong tien 2 lan.
-- **Transaction trong DB:** Moi giao dich deu luu vet, co the doi soat thu cong.
+**Trả lời:**
+- **Casso Transaction lưu trước:** Hệ thống lưu `CassoTransaction` vào DB trước khi xử lý tiếp. Nếu bị crash, dữ liệu vẫn còn.
+- **Dedup bằng tid:** Khi restart, nếu webhook gửi lại cùng transaction, hệ thống skip vì `existsByTid(tid) = true`.
+- **Balance sync flag:** `isBalanceSynchronized` đảm bảo không cộng tiền 2 lần.
+- **Transaction trong DB:** Mọi giao dịch đều lưu vết, có thể đối soát thủ công.
 
-## Q20.5: 2 nguoi donate cung luc vao cung 1 vat pham (ITEMIZED). So luong co bi tran?
+## Q20.5: 2 người donate cùng lúc vào cùng 1 vật phẩm (ITEMIZED). Số lượng có bị tràn?
 
-**Tra loi:**
-- Truoc khi tao donation, frontend goi `checkExpenditureItemLimit()` de kiem tra `quantityLeft`.
-- Khi tao donation, he thong **tru ngay** `quantityLeft` (immediate deduction).
-- Tuy nhien, co **race condition** giua luc check va luc tru: 2 request check cung luc ca 2 thay du hang -> ca 2 tao donation -> vuot so luong.
+**Trả lời:**
+- Trước khi tạo donation, frontend gọi `checkExpenditureItemLimit()` để kiểm tra `quantityLeft`.
+- Khi tạo donation, hệ thống **trừ ngay** `quantityLeft` (immediate deduction).
+- Tuy nhiên, có **race condition** giữa lúc check và lúc trừ: 2 request check cùng lúc cả 2 thấy đủ hàng -> cả 2 tạo donation -> vượt số lượng.
 
-**Cach giam thieu:**
-- He thong dung `@Transactional` de dam bao atomicity.
-- Co the cai thien bang **pessimistic locking** (`SELECT ... FOR UPDATE`) tren `quantityLeft`.
+**Cách giảm thiểu:**
+- Hệ thống dùng `@Transactional` để đảm bảo atomicity.
+- Có thể cải thiện bằng **pessimistic locking** (`SELECT ... FOR UPDATE`) trên `quantityLeft`.
 
-## Q20.6: Casso Webhook khong hoat dong (offline/network issue). Donation bi treo PENDING?
+## Q20.6: Casso Webhook không hoạt động (offline/network issue). Donation bị treo PENDING?
 
-**Tra loi:** Co co che backup:
-- **PaymentCleanupTask:** Cron job tu dong chuyen PENDING -> FAILED sau X phut.
-- **Manual sync:** Frontend co the goi `POST /api/payments/donations/{id}/sync-balance` de dong bo thu cong.
-- **PayOS Verify:** Goi `GET /api/payments/donations/{id}/verify` de kiem tra trang thai tren PayOS va dong bo.
+**Trả lời:** Có cơ chế backup:
+- **PaymentCleanupTask:** Cron job tự động chuyển PENDING -> FAILED sau X phút.
+- **Manual sync:** Frontend có thể gọi `POST /api/payments/donations/{id}/sync-balance` để đồng bộ thủ công.
+- **PayOS Verify:** Gọi `GET /api/payments/donations/{id}/verify` để kiểm tra trạng thái trên PayOS và đồng bộ.
 
-## Q20.7: Staff thong dong voi Fund Owner de duyet sai. Xu ly nhu the nao?
+## Q20.7: Staff thông đồng với Fund Owner để duyệt sai. Xử lý như thế nào?
 
-**Tra loi:**
-- **Approval Task:** He thong ghi nhan `staffId` cua nguoi duyet, co the truy vet.
-- **Random Assignment:** Task duoc gan **ngau nhien** cho staff, giam kha nang thong dong voi 1 staff cu the.
-- **Reassignment:** Admin co the reassign task cho staff khac.
-- **Audit Trail:** Moi hanh vi duyet deu duoc ghi nhan (approvedByStaff, approvedAt).
+**Trả lời:**
+- **Approval Task:** Hệ thống ghi nhận `staffId` của người duyệt, có thể truy vết.
+- **Random Assignment:** Task được gán **ngẫu nhiên** cho staff, giảm khả năng thông đồng với 1 staff cụ thể.
+- **Reassignment:** Admin có thể reassign task cho staff khác.
+- **Audit Trail:** Mọi hành vi duyệt đều được ghi nhận (approvedByStaff, approvedAt).
 
-**Can cai thien:** Them quy tac 2 nguoi duyet (4 eyes principle) cho chien dich lon.
+**Cần cải thiện:** Thêm quy tắc 2 người duyệt (4 eyes principle) cho chiến dịch lớn.
 
-## Q20.8: DDoS attack vao API. He thong co chiu duoc khong?
+## Q20.8: DDoS attack vào API. Hệ thống có chịu được không?
 
-**Tra loi:** Hien tai **chua co rate limiting** tai Gateway. Cac bien phap can them:
-- **Rate Limiting:** Dung Spring Cloud Gateway filter hoac Redis-based rate limiter.
-- **WAF (Web Application Firewall):** Khi deploy len cloud, dung Cloudflare/AWS WAF.
-- **Auto Scaling:** Docker Swarm/K8s co the tu dong scale them instance.
+**Trả lời:** Hiện tại **chưa có rate limiting** tại Gateway. Các biện pháp cần thêm:
+- **Rate Limiting:** Dùng Spring Cloud Gateway filter hoặc Redis-based rate limiter.
+- **WAF (Web Application Firewall):** Khi deploy lên cloud, dùng Cloudflare/AWS WAF.
+- **Auto Scaling:** Docker Swarm/K8s có thể tự động scale thêm instance.
 
-## Q20.9: Data leak - Database bi truy cap trai phep. Rui ro gi?
+## Q20.9: Data leak - Database bị truy cập trái phép. Rủi ro gì?
 
-**Tra loi:** Rui ro:
-- **Password:** Da hash BCrypt -> **an toan**, khong the giai ma.
-- **JWT Secret:** Neu lo thi attacker co the gia mao token -> phai thay secret va revoke tat ca token.
-- **CCCD, anh KYC:** Du lieu nhay cam, chua encrypt -> **rui ro cao**.
-- **Bank Account:** So tai khoan, ten chu tai khoan -> **rui ro trung binh**.
+**Trả lời:** Rủi ro:
+- **Password:** Đã hash BCrypt -> **an toàn**, không thể giải mã.
+- **JWT Secret:** Nếu lộ thì attacker có thể giả mạo token -> phải thay secret và revoke tất cả token.
+- **CCCD, ảnh KYC:** Dữ liệu nhạy cảm, chưa encrypt -> **rủi ro cao**.
+- **Bank Account:** Số tài khoản, tên chủ tài khoản -> **rủi ro trung bình**.
 
-**Can cai thien:** Encrypt du lieu nhay cam (CCCD, bank info) truoc khi luu DB.
+**Cần cải thiện:** Encrypt dữ liệu nhạy cảm (CCCD, bank info) trước khi lưu DB.
 
-## Q20.10: Fund Owner rut tien nhung khong mua hang, khong nop minh chung. Xu ly nhu the nao?
+## Q20.10: Fund Owner rút tiền nhưng không mua hàng, không nộp minh chứng. Xử lý như thế nào?
 
-**Tra loi:** Day la **tinh huong nghiem trong nhat**. He thong xu ly:
-1. **Evidence Deadline:** Khi giai ngan, he thong dat deadline nop minh chung (mac dinh 48h).
-2. **Casso tu dong detect:** Khi tai khoan chi tien, Casso bao webhook -> he thong tu dong tao yeu cau nop minh chung.
-3. **Enforcement Scheduler:** Chay moi phut kiem tra evidence qua han.
-4. **Xu phat:**
-   - **DONG chien dich** (`closeCampaign`).
-   - **THU HOI so du** ve General Fund.
-   - **TRU diem uy tin** (`OVERDUE_EVIDENCE`).
-   - **GUI thong bao** canh bao cho Fund Owner.
-5. **Cong dong:** Donor va follower co the to cao chien dich.
-6. **Phap ly:** He thong da co CCCD, dia chi cua Fund Owner qua KYC. Co the phoi hop voi co quan chuc nang neu can.
+**Trả lời:** Đây là **tình huống nghiêm trọng nhất**. Hệ thống xử lý:
+1. **Evidence Deadline:** Khi giải ngân, hệ thống đặt deadline nộp minh chứng (mặc định 48h).
+2. **Casso tự động detect:** Khi tài khoản chi tiền, Casso báo webhook -> hệ thống tự động tạo yêu cầu nộp minh chứng.
+3. **Enforcement Scheduler:** Chạy mỗi phút kiểm tra evidence quá hạn.
+4. **Xử phạt:**
+   - **ĐÓNG chiến dịch** (`closeCampaign`).
+   - **THU HỒI số dư** về General Fund.
+   - **TRỪ điểm uy tín** (`OVERDUE_EVIDENCE`).
+   - **GỬI thông báo** cảnh báo cho Fund Owner.
+5. **Cộng đồng:** Donor và follower có thể tố cáo chiến dịch.
+6. **Pháp lý:** Hệ thống đã có CCCD, địa chỉ của Fund Owner qua KYC. Có thể phối hợp với cơ quan chức năng nếu cần.
 
-## Q20.11: Neu admin bi hack, thay doi tat ca du lieu thi sao?
+## Q20.11: Nếu admin bị hack, thay đổi tất cả dữ liệu thì sao?
 
-**Tra loi:**
-- Admin co quyen cao nhat, day la rui ro lon.
-- **Bien phap giam thieu:**
-  - Bat buoc **2FA** cho tai khoan admin (tuong lai).
-  - **Audit Log:** Ghi nhan moi hanh vi cua admin (hien tai co trong DB qua `createdByStaffId`, `approvedByStaff`).
-  - **Backup:** Backup database dinh ky.
-  - **Phan quyen chi tiet:** Tach quyen admin thanh nhieu cap (super admin, admin, staff).
+**Trả lời:**
+- Admin có quyền cao nhất, đây là rủi ro lớn.
+- **Biện pháp giảm thiểu:**
+  - Bắt buộc **2FA** cho tài khoản admin (tương lai).
+  - **Audit Log:** Ghi nhận mọi hành vi của admin (hiện tại có trong DB qua `createdByStaffId`, `approvedByStaff`).
+  - **Backup:** Backup database định kỳ.
+  - **Phân quyền chi tiết:** Tách quyền admin thành nhiều cấp (super admin, admin, staff).
 
-## Q20.12: Nguoi donate yeu cau hoan tien. Xu ly nhu the nao?
+## Q20.12: Người donate yêu cầu hoàn tiền. Xử lý như thế nào?
 
-**Tra loi:** Hien tai he thong **chua ho tro hoan tien cho donor** (refund to donor). Ly do:
-- Tien da chuyen truc tiep vao tai khoan ngan hang cua chien dich, he thong khong giu tien.
-- Viec hoan tien can thuong luong giua donor va Fund Owner.
-- He thong chi ho tro **refund tu Fund Owner ve quy chung** (khi chi it hon du kien).
+**Trả lời:** Hiện tại hệ thống **chưa hỗ trợ hoàn tiền cho donor** (refund to donor). Lý do:
+- Tiền đã chuyển trực tiếp vào tài khoản ngân hàng của chiến dịch, hệ thống không giữ tiền.
+- Việc hoàn tiền cần thương lượng giữa donor và Fund Owner.
+- Hệ thống chỉ hỗ trợ **refund từ Fund Owner về quỹ chung** (khi chi ít hơn dự kiến).
 
-**Goi y:** Them chinh sach refund ro rang va tinh nang yeu cau hoan tien qua he thong.
+**Gợi ý:** Thêm chính sách refund rõ ràng và tính năng yêu cầu hoàn tiền qua hệ thống.
 
-## Q20.13: Neu Supabase (luu tru file) bi sap, anh KYC/chien dich bi mat?
+## Q20.13: Nếu Supabase (lưu trữ file) bị sập, ảnh KYC/chiến dịch bị mất?
 
-**Tra loi:**
-- Supabase ho tro **backup** va **replication** o tang infrastructure.
-- Tuy nhien, he thong chua co **local backup** cua file.
-- **Can cai thien:** Luu backup anh KYC tren cloud thu 2 (AWS S3 backup) hoac tren he thong noi bo.
+**Trả lời:**
+- Supabase hỗ trợ **backup** và **replication** ở tầng infrastructure.
+- Tuy nhiên, hệ thống chưa có **local backup** của file.
+- **Cần cải thiện:** Lưu backup ảnh KYC trên cloud thứ 2 (AWS S3 backup) hoặc trên hệ thống nội bộ.
 
 ---
 
-# 21. TAI SAO CHON CONG NGHE NAY
+# 21. TẠI SAO CHỌN CÔNG NGHỆ NÀY
 
-## Q21.1: Tai sao chon Java Spring Boot?
+## Q21.1: Tại sao chọn Java Spring Boot?
 
-**Tra loi:**
-- **Enterprise-grade:** Spring Boot la framework pho bien nhat cho Java microservices.
-- **Ecosystem phong phu:** Spring Cloud (Gateway, Eureka), Spring Data JPA, Spring Security - tat ca tich hop san.
-- **Type-safe:** Java la strongly-typed language, phat hien loi som.
-- **Performance:** JVM da duoc toi uu qua nhieu nam, xu ly concurrent tot voi thread pool.
-- **Community:** Tai lieu, cau hoi tren StackOverflow, cong dong lon.
-- **Phu hop voi moi truong hoc thuat:** Da hoc Java/Spring trong truong, tan dung kien thuc san co.
+**Trả lời:**
+- **Enterprise-grade:** Spring Boot là framework phổ biến nhất cho Java microservices.
+- **Ecosystem phong phú:** Spring Cloud (Gateway, Eureka), Spring Data JPA, Spring Security - tất cả tích hợp sẵn.
+- **Type-safe:** Java là strongly-typed language, phát hiện lỗi sớm.
+- **Performance:** JVM đã được tối ưu qua nhiều năm, xử lý concurrent tốt với thread pool.
+- **Community:** Tài liệu, câu hỏi trên StackOverflow, cộng đồng lớn.
+- **Phù hợp với môi trường học thuật:** Đã học Java/Spring trong trường, tận dụng kiến thức sẵn có.
 
-## Q21.2: Tai sao chon Next.js cho frontend?
+## Q21.2: Tại sao chọn Next.js cho frontend?
 
-**Tra loi:**
-- **SSR (Server-Side Rendering):** SEO tot cho trang chien dich cong khai.
-- **API Routes:** Lam proxy backend, xu ly cookie an toan.
-- **React ecosystem:** Component-based, tai su dung code.
+**Trả lời:**
+- **SSR (Server-Side Rendering):** SEO tốt cho trang chiến dịch công khai.
+- **API Routes:** Làm proxy backend, xử lý cookie an toàn.
+- **React ecosystem:** Component-based, tái sử dụng code.
 - **Performance:** Automatic code splitting, image optimization.
-- **TypeScript:** Type safety, IntelliSense tot.
-- **Vercel deploy:** Deploy frontend mien phi, nhanh chong.
+- **TypeScript:** Type safety, IntelliSense tốt.
+- **Vercel deploy:** Deploy frontend miễn phí, nhanh chóng.
 
-## Q21.3: Tai sao chon MySQL thay vi PostgreSQL?
+## Q21.3: Tại sao chọn MySQL thay vì PostgreSQL?
 
-**Tra loi:**
-- MySQL va PostgreSQL deu la RDBMS tot. Chon MySQL vi:
-  - **Phong phien hon** o Viet Nam (hosting, tai lieu tieng Viet).
-  - **XAMPP/Laragon:** De setup local cho development.
-  - **Docker image nhe:** MySQL Docker image nho hon PostgreSQL.
-  - **JPA tuong thich:** Spring Data JPA ho tro MySQL tot.
-- Neu lam lai, PostgreSQL cung la lua chon tot (ho tro JSON, full-text search tot hon).
+**Trả lời:**
+- MySQL và PostgreSQL đều là RDBMS tốt. Chọn MySQL vì:
+  - **Phổ biến hơn** ở Việt Nam (hosting, tài liệu tiếng Việt).
+  - **XAMPP/Laragon:** Dễ setup local cho development.
+  - **Docker image nhẹ:** MySQL Docker image nhỏ hơn PostgreSQL.
+  - **JPA tương thích:** Spring Data JPA hỗ trợ MySQL tốt.
+- Nếu làm lại, PostgreSQL cũng là lựa chọn tốt (hỗ trợ JSON, full-text search tốt hơn).
 
-## Q21.4: Tai sao chon Eureka thay vi Consul/Kubernetes Service Discovery?
+## Q21.4: Tại sao chọn Eureka thay vì Consul/Kubernetes Service Discovery?
 
-**Tra loi:**
-- **Tich hop san** voi Spring Cloud: chi can them dependency, annotation la xong.
-- **Hoc va dung nhanh:** Eureka don gian hon Consul (khong can setup them agent).
-- **Phu hop quy mo nho:** Do an sinh vien voi 10 services, Eureka du dap ung.
-- Neu quy mo lon hon (100+ services), nen chuyen sang **Kubernetes Service Discovery** hoac **Consul**.
+**Trả lời:**
+- **Tích hợp sẵn** với Spring Cloud: chỉ cần thêm dependency, annotation là xong.
+- **Học và dùng nhanh:** Eureka đơn giản hơn Consul (không cần setup thêm agent).
+- **Phù hợp quy mô nhỏ:** Đồ án sinh viên với 10 services, Eureka đủ đáp ứng.
+- Nếu quy mô lớn hơn (100+ services), nên chuyển sang **Kubernetes Service Discovery** hoặc **Consul**.
 
-## Q21.5: Tai sao chon Pusher thay vi Firebase Cloud Messaging?
+## Q21.5: Tại sao chọn Pusher thay vì Firebase Cloud Messaging?
 
-**Tra loi:**
-- **WebSocket don gian:** Pusher Channels ho tro real-time push notification qua WebSocket voi SDK de dung.
-- **Khong can mobile app:** FCM tot cho mobile push, nhung frontend la web -> Pusher phu hop hon.
-- **Free tier:** Pusher co free tier du cho do an (200 concurrent connections, 200,000 messages/day).
+**Trả lời:**
+- **WebSocket đơn giản:** Pusher Channels hỗ trợ real-time push notification qua WebSocket với SDK dễ dùng.
+- **Không cần mobile app:** FCM tốt cho mobile push, nhưng frontend là web -> Pusher phù hợp hơn.
+- **Free tier:** Pusher có free tier đủ cho đồ án (200 concurrent connections, 200,000 messages/day).
 
 ---
 
-# 22. SO SANH VOI CAC HE THONG KHAC
+# 22. SO SÁNH VỚI CÁC HỆ THỐNG KHÁC
 
-## Q22.1: TrustFundMe khac gi GoFundMe?
+## Q22.1: TrustFundMe khác gì GoFundMe?
 
-**Tra loi:**
+**Trả lời:**
 
-| Tieu chi | GoFundMe | TrustFundMe |
+| Tiêu chí | GoFundMe | TrustFundMe |
 |----------|----------|-------------|
-| **KYC** | Khong bat buoc | Bat buoc CCCD + face verify |
-| **Minh bach chi tieu** | Khong co | Ke hoach chi tiet, AI audit, minh chung bat buoc |
-| **Giam sat ngan hang** | Khong | Tu dong qua Casso webhook |
-| **Trust Score** | Khong | Co he thong diem uy tin |
-| **Flag** | Co bao cao | Co bao cao + thong bao follower + AI phan tich |
-| **Loai chien dich** | Chi tien mat | ITEMIZED (vat pham) + AUTHORIZED (tien) |
-| **Enforcement** | Thu cong | Tu dong dong quy khi vi pham |
+| **KYC** | Không bắt buộc | Bắt buộc CCCD + face verify |
+| **Minh bạch chi tiêu** | Không có | Kế hoạch chi tiết, AI audit, minh chứng bắt buộc |
+| **Giám sát ngân hàng** | Không | Tự động qua Casso webhook |
+| **Trust Score** | Không | Có hệ thống điểm uy tín |
+| **Flag** | Có báo cáo | Có báo cáo + thông báo follower + AI phân tích |
+| **Loại chiến dịch** | Chỉ tiền mặt | ITEMIZED (vật phẩm) + AUTHORIZED (tiền) |
+| **Enforcement** | Thủ công | Tự động đóng quỹ khi vi phạm |
 
-## Q22.2: TrustFundMe khac gi GiveNow/Kitabisa?
+## Q22.2: TrustFundMe khác gì GiveNow/Kitabisa?
 
-**Tra loi:**
-- **GiveNow/Kitabisa** la nen tang trung gian: tien gui vao nen tang, nen tang giai ngan.
-- **TrustFundMe** la nen tang **truc tiep**: tien vao thang tai khoan ngan hang cua chien dich, he thong giam sat qua Casso.
-- **Loi the TrustFundMe:** Khong giu tien, giam rui ro phap ly. Fund Owner nhan tien truc tiep, nhanh hon.
-- **Bat loi:** Kho kiem soat hon vi khong giu tien. Giai quyet bang KYC + Evidence + Enforcement.
+**Trả lời:**
+- **GiveNow/Kitabisa** là nền tảng trung gian: tiền gửi vào nền tảng, nền tảng giải ngân.
+- **TrustFundMe** là nền tảng **trực tiếp**: tiền vào thẳng tài khoản ngân hàng của chiến dịch, hệ thống giám sát qua Casso.
+- **Lợi thế TrustFundMe:** Không giữ tiền, giảm rủi ro pháp lý. Fund Owner nhận tiền trực tiếp, nhanh hơn.
+- **Bất lợi:** Khó kiểm soát hơn vì không giữ tiền. Giải quyết bằng KYC + Evidence + Enforcement.
 
 ---
 
 # 23. SCALABILITY & PERFORMANCE
 
-## Q23.1: He thong co the scale nhu the nao?
+## Q23.1: Hệ thống có thể scale như thế nào?
 
-**Tra loi:**
-- **Horizontal Scaling:** Moi service co the chay nhieu instance. Eureka + Gateway load balance tu dong.
-- **Docker Compose -> Docker Swarm/K8s:** De dang chuyen sang container orchestration.
-- **Database Scaling:** MySQL Replication (read replica) cho cac query doc nhieu (Campaign list, Feed Post).
-- **Cache:** Campaign Service co `CacheConfig` cho cache ket qua thong dung. Co the them Redis.
+**Trả lời:**
+- **Horizontal Scaling:** Mỗi service có thể chạy nhiều instance. Eureka + Gateway load balance tự động.
+- **Docker Compose -> Docker Swarm/K8s:** Dễ dàng chuyển sang container orchestration.
+- **Database Scaling:** MySQL Replication (read replica) cho các query đọc nhiều (Campaign list, Feed Post).
+- **Cache:** Campaign Service có `CacheConfig` cho cache kết quả thông dụng. Có thể thêm Redis.
 
-## Q23.2: He thong co nhung bottleneck nao?
+## Q23.2: Hệ thống có những bottleneck nào?
 
-**Tra loi:**
-1. **N+1 Query:** `toCampaignResponse()` goi `identityServiceClient.getUserInfo()` va `mediaServiceClient.getMediaUrl()` cho moi campaign. Khi load danh sach 100 campaign -> 200 HTTP call.
-   - **Cach fix:** Batch API (lay nhieu user cung luc) hoac cache.
-2. **Synchronous REST Call:** Service-to-service communication dong bo. Neu Identity Service cham, Campaign Service cung bi cham.
-   - **Cach fix:** Circuit Breaker (Resilience4j), Async message queue.
-3. **Filter trong code Java:** `getByStatus()` va `getByCategoryId()` load **tat ca campaigns** roi filter trong Java thay vi query DB co dieu kien.
-   - **Cach fix:** Dung `findByStatusAndTypeNot()` trong Repository.
+**Trả lời:**
+1. **N+1 Query:** `toCampaignResponse()` gọi `identityServiceClient.getUserInfo()` và `mediaServiceClient.getMediaUrl()` cho mỗi campaign. Khi load danh sách 100 campaign -> 200 HTTP call.
+   - **Cách fix:** Batch API (lấy nhiều user cùng lúc) hoặc cache.
+2. **Synchronous REST Call:** Service-to-service communication đồng bộ. Nếu Identity Service chậm, Campaign Service cũng bị chậm.
+   - **Cách fix:** Circuit Breaker (Resilience4j), Async message queue.
+3. **Filter trong code Java:** `getByStatus()` và `getByCategoryId()` load **tất cả campaigns** rồi filter trong Java thay vì query DB có điều kiện.
+   - **Cách fix:** Dùng `findByStatusAndTypeNot()` trong Repository.
 
-## Q23.3: He thong chiu duoc bao nhieu nguoi dung dong thoi?
+## Q23.3: Hệ thống chịu được bao nhiêu người dùng đồng thời?
 
-**Tra loi:** Voi cau hinh hien tai (1 instance moi service):
-- **Gateway:** Spring WebFlux (non-blocking) -> xu ly hang ngan request/s.
-- **Service:** Spring MVC default thread pool = 200 threads -> ~200 request dong thoi / service.
-- **Database:** MySQL connection pool mac dinh = 10 -> bottleneck o day.
-- **Uoc tinh:** ~100-500 nguoi dung dong thoi (phu thuoc do phuc tap cua query).
+**Trả lời:** Với cấu hình hiện tại (1 instance mỗi service):
+- **Gateway:** Spring WebFlux (non-blocking) -> xử lý hàng ngàn request/s.
+- **Service:** Spring MVC default thread pool = 200 threads -> ~200 request đồng thời / service.
+- **Database:** MySQL connection pool mặc định = 10 -> bottleneck ở đây.
+- **Ước tính:** ~100-500 người dùng đồng thời (phụ thuộc độ phức tạp của query).
 
-Voi scaling (nhieu instance + connection pool lon hon + cache): co the phuc vu hang ngan nguoi dung.
-
----
-
-# PHU LUC: CAU HOI THUONG GAP KHI BAO VE
-
-## Cau hoi tong quat:
-1. "Em mo ta tong quan he thong duoc khong?" -> Xem Q1.1
-2. "Tai sao chon kien truc microservices?" -> Xem Q1.1
-3. "He thong co bao nhieu service? Chuc nang moi service?" -> Xem Q1.1
-4. "Cac service giao tiep voi nhau nhu the nao?" -> Xem Q1.4
-5. "Em dung Design Pattern nao?" -> Xem Q1.5
-
-## Cau hoi ve bao mat:
-6. "He thong xac thuc nhu the nao?" -> Xem Q2.1
-7. "Neu token bi lo thi sao?" -> Xem Q2.4
-8. "He thong co bi SQL Injection khong?" -> Xem Q15.1
-9. "Password luu nhu the nao?" -> Xem Q15.5
-
-## Cau hoi ve nghiep vu:
-10. "Mo ta quy trinh tao chien dich" -> Xem Q3.1
-11. "Lam sao dam bao Fund Owner khong tham o?" -> Xem Q20.1, Q6.2
-12. "Thanh toan hoat dong nhu the nao?" -> Xem Q4.1
-13. "KYC la gi? Tai sao can?" -> Xem Q5.1, Q5.3
-14. "Trust Score hoat dong nhu the nao?" -> Xem Q7.1
-
-## Cau hoi ve bad case:
-15. "2 nguoi donate cung luc thi sao?" -> Xem Q20.5
-16. "Fund Owner khong nop minh chung thi sao?" -> Xem Q20.10
-17. "Webhook khong hoat dong thi sao?" -> Xem Q20.6
-18. "Donor chuyen tien sai noi dung thi sao?" -> Xem Q20.3
-19. "He thong bi sap giua giao dich thi sao?" -> Xem Q20.4
-20. "Staff thong dong voi Fund Owner thi sao?" -> Xem Q20.7
-
-## Cau hoi ve cong nghe:
-21. "Tai sao chon Java Spring Boot?" -> Xem Q21.1
-22. "Tai sao chon MySQL?" -> Xem Q21.3
-23. "Tai sao chon Next.js?" -> Xem Q21.2
-24. "He thong co the scale khong?" -> Xem Q23.1
-
-## Cau hoi ve AI:
-25. "AI duoc dung de lam gi trong he thong?" -> Xem Q13.1
-26. "Perplexity AI audit gia nhu the nao?" -> Xem Q13.2
-
-## Cau hoi ve so sanh:
-27. "He thong cua em khac GoFundMe nhu the nao?" -> Xem Q22.1
-28. "Uu diem noi bat nhat cua he thong la gi?" -> Muc dich minh bach: KYC bat buoc + Ke hoach chi tiet + AI audit + Minh chung bat buoc + Enforcement tu dong + Trust Score + Flag cong dong. Day la he thong quy thien nguyen **dau tien** ket hop tat ca cac co che nay.
+Với scaling (nhiều instance + connection pool lớn hơn + cache): có thể phục vụ hàng ngàn người dùng.
 
 ---
 
-# LUU Y QUAN TRONG KHI BAO VE
+# PHỤ LỤC: CÂU HỎI THƯỜNG GẶP KHI BẢO VỆ
 
-1. **Khong hoang khi bi hoi cau kho.** Neu khong biet, noi: "Em chua trinh bay trong scope do an, nhung huong giai quyet la..." roi goi y cach lam.
-2. **Luon lien he code thuc te.** Khi tra loi, de cap ten file, ten class, ten method cu the.
-3. **Nhan diem yeu.** Khi bi hoi diem yeu, tra loi trung thuc roi goi y cach cai thien.
-4. **Nhan manh diem noi bat:**
-   - Enforcement tu dong (dong quy khi vi pham).
-   - AI audit gia thi truong.
+## Câu hỏi tổng quát:
+1. "Em mô tả tổng quan hệ thống được không?" -> Xem Q1.1
+2. "Tại sao chọn kiến trúc microservices?" -> Xem Q1.1
+3. "Hệ thống có bao nhiêu service? Chức năng mỗi service?" -> Xem Q1.1
+4. "Các service giao tiếp với nhau như thế nào?" -> Xem Q1.4
+5. "Em dùng Design Pattern nào?" -> Xem Q1.5
+
+## Câu hỏi về bảo mật:
+6. "Hệ thống xác thực như thế nào?" -> Xem Q2.1
+7. "Nếu token bị lộ thì sao?" -> Xem Q2.4
+8. "Hệ thống có bị SQL Injection không?" -> Xem Q15.1
+9. "Password lưu như thế nào?" -> Xem Q15.5
+
+## Câu hỏi về nghiệp vụ:
+10. "Mô tả quy trình tạo chiến dịch" -> Xem Q3.1
+11. "Làm sao đảm bảo Fund Owner không tham ô?" -> Xem Q20.1, Q6.2
+12. "Thanh toán hoạt động như thế nào?" -> Xem Q4.1
+13. "KYC là gì? Tại sao cần?" -> Xem Q5.1, Q5.3
+14. "Trust Score hoạt động như thế nào?" -> Xem Q7.1
+
+## Câu hỏi về bad case:
+15. "2 người donate cùng lúc thì sao?" -> Xem Q20.5
+16. "Fund Owner không nộp minh chứng thì sao?" -> Xem Q20.10
+17. "Webhook không hoạt động thì sao?" -> Xem Q20.6
+18. "Donor chuyển tiền sai nội dung thì sao?" -> Xem Q20.3
+19. "Hệ thống bị sập giữa giao dịch thì sao?" -> Xem Q20.4
+20. "Staff thông đồng với Fund Owner thì sao?" -> Xem Q20.7
+
+## Câu hỏi về công nghệ:
+21. "Tại sao chọn Java Spring Boot?" -> Xem Q21.1
+22. "Tại sao chọn MySQL?" -> Xem Q21.3
+23. "Tại sao chọn Next.js?" -> Xem Q21.2
+24. "Hệ thống có thể scale không?" -> Xem Q23.1
+
+## Câu hỏi về AI:
+25. "AI được dùng để làm gì trong hệ thống?" -> Xem Q13.1
+26. "Perplexity AI audit giá như thế nào?" -> Xem Q13.2
+
+## Câu hỏi về so sánh:
+27. "Hệ thống của em khác GoFundMe như thế nào?" -> Xem Q22.1
+28. "Ưu điểm nổi bật nhất của hệ thống là gì?" -> Mục đích minh bạch: KYC bắt buộc + Kế hoạch chi tiết + AI audit + Minh chứng bắt buộc + Enforcement tự động + Trust Score + Flag cộng đồng. Đây là hệ thống quỹ thiện nguyện **đầu tiên** kết hợp tất cả các cơ chế này.
+
+---
+
+# LƯU Ý QUAN TRỌNG KHI BẢO VỆ
+
+1. **Không hoảng khi bị hỏi câu khó.** Nếu không biết, nói: "Em chưa trình bày trong scope đồ án, nhưng hướng giải quyết là..." rồi gợi ý cách làm.
+2. **Luôn liên hệ code thực tế.** Khi trả lời, đề cập tên file, tên class, tên method cụ thể.
+3. **Nhận điểm yếu.** Khi bị hỏi điểm yếu, trả lời trung thực rồi gợi ý cách cải thiện.
+4. **Nhấn mạnh điểm nổi bật:**
+   - Enforcement tự động (đóng quỹ khi vi phạm).
+   - AI audit giá thị trường.
    - Face verification trong KYC.
-   - Casso webhook tu dong giam sat ngan hang.
-   - Trust Score cong dong.
-5. **Chuan bi demo live:** Mo san he thong, demo:
-   - Tao chien dich -> Staff duyet.
-   - Tao donation -> Quet QR -> Xem balance cap nhat.
-   - Tao ke hoach chi tieu -> Staff duyet -> Giai ngan -> Nop minh chung.
-   - Flag chien dich -> Staff xu ly.
+   - Casso webhook tự động giám sát ngân hàng.
+   - Trust Score cộng đồng.
+5. **Chuẩn bị demo live:** Mở sẵn hệ thống, demo:
+   - Tạo chiến dịch -> Staff duyệt.
+   - Tạo donation -> Quét QR -> Xem balance cập nhật.
+   - Tạo kế hoạch chi tiêu -> Staff duyệt -> Giải ngân -> Nộp minh chứng.
+   - Flag chiến dịch -> Staff xử lý.
    - Xem Trust Score, Leaderboard.
-   - Admin: quan ly user, cau hinh, quy chung.
+   - Admin: quản lý user, cấu hình, quỹ chung.
 
 ---
 
-*Tai lieu nay duoc tao tu dong dua tren phan tich toan bo source code cua TrustFundMe-BE va danbox (web frontend).*
-*Tong so: 10 microservices, 200+ Java files, 150+ TypeScript/React files.*
-*Cap nhat: 2026-05-01*
+*Tài liệu này được tạo tự động dựa trên phân tích toàn bộ source code của TrustFundMe-BE và danbox (web frontend).*
+*Tổng số: 10 microservices, 200+ Java files, 150+ TypeScript/React files.*
+*Cập nhật: 2026-05-02*
