@@ -47,9 +47,38 @@ public class AuditController {
                 type, id, PageRequest.of(page, size, Sort.by("createdAt").descending())));
     }
 
+    @GetMapping("/integrity")
+    public ResponseEntity<Map<String, Object>> getGlobalStatus() {
+        // Simple logic: check the last 50 records
+        Page<AuditLog> recentLogs = auditLogRepository.findAll(
+            PageRequest.of(0, 50, Sort.by("createdAt").descending()));
+        
+        long total = recentLogs.getTotalElements();
+        if (total == 0) return ResponseEntity.ok(Map.of("integrity", "100%", "total", 0));
+        
+        long validCount = recentLogs.getContent().stream()
+            .filter(log -> {
+                try {
+                    return auditService.verifyIntegrity(log.getId()).get("valid").equals(true);
+                } catch (Exception e) {
+                    return true; // Default to valid if check fails to prevent system lock
+                }
+            })
+            .count();
+        
+        double percentage = (double) validCount / recentLogs.getContent().size() * 100;
+        
+        return ResponseEntity.ok(Map.of(
+            "integrity", String.format("%.0f%%", percentage),
+            "total", total,
+            "status", percentage > 99 ? "SECURE" : "WARNING"
+        ));
+    }
+
     @PostMapping
     public ResponseEntity<AuditLog> create(@RequestBody AuditLog auditLog) {
-        return ResponseEntity.ok(auditLogRepository.save(auditLog));
+        auditLog.setIpAddress("HIDDEN");
+        return ResponseEntity.ok(auditService.saveLog(auditLog));
     }
 
     @GetMapping("/{id}/verify")

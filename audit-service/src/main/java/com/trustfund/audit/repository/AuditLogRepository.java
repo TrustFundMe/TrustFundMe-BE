@@ -9,9 +9,14 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
+    
+    Optional<AuditLog> findTopByOrderByCreatedAtDesc();
+    
+    Optional<AuditLog> findFirstByCreatedAtBeforeOrderByCreatedAtDesc(java.time.LocalDateTime createdAt);
     
     Page<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId, Pageable pageable);
     

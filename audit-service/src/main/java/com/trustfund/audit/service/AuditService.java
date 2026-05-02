@@ -18,6 +18,19 @@ public class AuditService {
 
     private final AuditLogRepository auditLogRepository;
 
+    public AuditLog saveLog(AuditLog log) {
+        // Find the latest record to link the chain
+        Optional<AuditLog> latestLog = auditLogRepository.findTopByOrderByCreatedAtDesc();
+        
+        if (latestLog.isPresent()) {
+            log.setPreviousHash(latestLog.get().getAuditHash());
+        } else {
+            log.setPreviousHash("0000000000000000000000000000000000000000000000000000000000000000");
+        }
+        
+        return auditLogRepository.save(log);
+    }
+
     public Map<String, Object> verifyIntegrity(Long id) {
         Optional<AuditLog> logOpt = auditLogRepository.findById(id);
         if (logOpt.isEmpty()) {
@@ -26,13 +39,32 @@ public class AuditService {
 
         AuditLog log = logOpt.get();
         String currentDataHash = calculateHash(log.getDataSnapshot());
+        boolean isDataValid = currentDataHash.equalsIgnoreCase(log.getAuditHash());
         
-        boolean isValid = currentDataHash.equalsIgnoreCase(log.getAuditHash());
+        // Chain Verification: Check if this record links correctly to the previous one
+        boolean isChainValid = true;
+        String expectedPreviousHash = null;
+        
+        String prevEntityInfo = null;
+        Optional<AuditLog> prevLogOpt = auditLogRepository.findFirstByCreatedAtBeforeOrderByCreatedAtDesc(log.getCreatedAt());
+        if (prevLogOpt.isPresent()) {
+            AuditLog prevLog = prevLogOpt.get();
+            expectedPreviousHash = prevLog.getAuditHash();
+            isChainValid = log.getPreviousHash() != null && log.getPreviousHash().equalsIgnoreCase(expectedPreviousHash);
+            if (!isChainValid) {
+                prevEntityInfo = prevLog.getEntityType() + " #" + prevLog.getEntityId() + " (" + (prevLog.getActorName() != null ? prevLog.getActorName() : "System") + ")";
+            }
+        } else {
+            isChainValid = "0000000000000000000000000000000000000000000000000000000000000000".equals(log.getPreviousHash());
+        }
         
         return Map.of(
-                "valid", isValid,
+                "valid", isDataValid && isChainValid,
+                "dataValid", isDataValid,
+                "chainValid", isChainValid,
                 "storedHash", log.getAuditHash(),
-                "actualHash", currentDataHash
+                "actualHash", currentDataHash,
+                "tamperedEntity", prevEntityInfo != null ? prevEntityInfo : "None"
         );
     }
 
