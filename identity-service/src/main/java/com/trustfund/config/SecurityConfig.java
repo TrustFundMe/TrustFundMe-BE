@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/webjars/**")
                         .permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers("/api/audit/**").hasAnyRole("ADMIN", "STAFF")
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/emails/**").permitAll()
                         .requestMatchers("/api/users/**").hasAnyRole("ADMIN", "STAFF")

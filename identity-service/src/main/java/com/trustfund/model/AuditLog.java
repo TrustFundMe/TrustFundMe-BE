@@ -1,4 +1,4 @@
-package com.trustfund.audit.entity;
+package com.trustfund.model;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
