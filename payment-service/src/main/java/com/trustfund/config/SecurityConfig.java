@@ -39,6 +39,8 @@ public class SecurityConfig {
                                 .authorizeHttpRequests(auth -> auth
                                                 .requestMatchers("/api/payments/webhook").permitAll()
                                                 .requestMatchers("/api/payments/casso-webhook").permitAll()
+                                                .requestMatchers("/api/payments/casso-webhook/ping").permitAll()
+                                                .requestMatchers("/api/payments/casso-webhook/verify-key").permitAll()
                                                 .requestMatchers("/api/payments/casso/**").permitAll()
                                                 .requestMatchers("/api/payments/debug/**").permitAll()
                                                 .requestMatchers("/api/payments/create").permitAll()

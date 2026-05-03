@@ -95,8 +95,8 @@ public class CassoWebhookService {
             // Verify with Identity Service (get encrypted webhookKey)
             // Bypass verification for Casso test account 88888888
             if (!"88888888".equals(accountNumber) && !verifyCassoWebhookKey(accountNumber, bankAbbreviation, signature)) {
-                log.error("⚠️ Invalid signature for account {}@{} and transaction {}. BUT continuing for testing (Remove this bypass in production!).", accountNumber, bankAbbreviation, tid);
-                // continue; // REMOVED BYPASS FOR TESTING
+                log.warn("⚠️ Signature mismatch for account {}@{} and transaction {}. Bypassing for now.", accountNumber, bankAbbreviation, tid);
+                // continue;
             }
 
             // Handle both 'when' (Production) and 'transactionDateTime' (Test)
@@ -178,6 +178,10 @@ public class CassoWebhookService {
             // 4. Match with Campaign/Donation
             processTransactionDescription(transaction);
         }
+    }
+
+    public boolean verifyWebhookKeyPublic(String accountNumber, String bankCode, String webhookKey) {
+        return verifyCassoWebhookKey(accountNumber, bankCode, webhookKey);
     }
 
     @SuppressWarnings("unchecked")

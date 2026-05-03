@@ -10,7 +10,6 @@ DROP DATABASE IF EXISTS trustfundme_media_db;
 DROP DATABASE IF EXISTS trustfundme_chat_db;
 DROP DATABASE IF EXISTS trustfundme_payment_db;
 DROP DATABASE IF EXISTS trustfundme_notification_db;
-DROP DATABASE IF EXISTS trustfundme_audit_db;
 
 CREATE DATABASE trustfundme_campaign_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_identity_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
@@ -18,7 +17,6 @@ CREATE DATABASE trustfundme_media_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unico
 CREATE DATABASE trustfundme_chat_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_payment_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE trustfundme_notification_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-CREATE DATABASE trustfundme_audit_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- =======================================
 -- 1. Create user and grant privileges
@@ -30,7 +28,6 @@ GRANT ALL PRIVILEGES ON trustfundme_media_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_chat_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_payment_db.* TO 'trustfundme_user'@'%';
 GRANT ALL PRIVILEGES ON trustfundme_notification_db.* TO 'trustfundme_user'@'%';
-GRANT ALL PRIVILEGES ON trustfundme_audit_db.* TO 'trustfundme_user'@'%';
 FLUSH PRIVILEGES;
 
 -- =======================================
@@ -670,9 +667,9 @@ CREATE TABLE notification (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =======================================
--- 3.6 Schema: audit-service (DB: trustfundme_audit_db)
+-- 3.6 Schema: audit logs (merged into identity-service, DB: trustfundme_identity_db)
 -- =======================================
-USE trustfundme_audit_db;
+USE trustfundme_identity_db;
 
 DROP TABLE IF EXISTS audit_logs;
 

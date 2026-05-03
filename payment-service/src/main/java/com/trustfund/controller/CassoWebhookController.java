@@ -16,6 +16,28 @@ public class CassoWebhookController {
 
     private final CassoWebhookService cassoWebhookService;
 
+    @GetMapping("/casso-webhook/ping")
+    public ResponseEntity<?> pingWebhook() {
+        return ResponseEntity.ok(Map.of("error", 0, "success", true, "message", "TrustFundMe webhook endpoint is reachable"));
+    }
+
+    @PostMapping("/casso-webhook/verify-key")
+    public ResponseEntity<?> verifyWebhookKey(
+            @RequestBody Map<String, String> body) {
+        String accountNumber = body.get("accountNumber");
+        String bankCode = body.get("bankCode");
+        String webhookKey = body.get("webhookKey");
+        if (accountNumber == null || webhookKey == null) {
+            return ResponseEntity.badRequest().body(Map.of("valid", false, "message", "Thiếu accountNumber hoặc webhookKey"));
+        }
+        boolean valid = cassoWebhookService.verifyWebhookKeyPublic(accountNumber, bankCode, webhookKey);
+        if (valid) {
+            return ResponseEntity.ok(Map.of("valid", true, "message", "Mã kết nối Casso hợp lệ"));
+        } else {
+            return ResponseEntity.ok(Map.of("valid", false, "message", "Mã kết nối Casso không đúng hoặc tài khoản chưa đăng ký"));
+        }
+    }
+
     @PostMapping("/casso-webhook")
     public ResponseEntity<?> handleCassoWebhook(
             @RequestBody Map<String, Object> payload,

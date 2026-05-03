@@ -20,7 +20,6 @@ public class CreateBankAccountRequest {
 
     @NotBlank(message = "Số tài khoản không được để trống")
     @Size(min = 6, max = 50, message = "Số tài khoản phải từ 6 đến 50 ký tự")
-    @Pattern(regexp = "\\d+", message = "Số tài khoản chỉ được chứa các chữ số")
     private String accountNumber;
 
     @NotBlank(message = "Tên chủ tài khoản không được để trống")
