@@ -14,12 +14,9 @@
 
     <modules>
         <module>api-gateway</module>
-        <module>audit-service</module>
         <module>campaign-service</module>
         <module>chat-service</module>
         <module>discovery-server</module>
-        <module>feed-service</module>
-        <module>flag-service</module>
         <module>identity-service</module>
         <module>media-service</module>
         <module>notification-service</module>
