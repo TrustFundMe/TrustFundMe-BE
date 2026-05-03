@@ -231,6 +231,129 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional
+    public ExpenditureResponse updateExpenditure(Long id, CreateExpenditureRequest request) {
+        Expenditure expenditure = expenditureRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Không tìm thấy khoản chi tiêu."));
+
+        if (!"ALLOWED_EDIT".equalsIgnoreCase(expenditure.getStatus())
+                && !"PENDING".equalsIgnoreCase(expenditure.getStatus())) {
+            if (!"ALLOWED_EDIT".equalsIgnoreCase(expenditure.getStatus())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Khoản chi tiêu này không trong trạng thái được phép chỉnh sửa.");
+            }
+        }
+
+        CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
+        if ("DISABLED".equalsIgnoreCase(campaign.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Chiến dịch đã bị vô hiệu hóa.");
+        }
+
+        log.info("Updating expenditure ID: {}, plan: {}", id, request.getPlan());
+
+        BigDecimal totalExpectedAmount = BigDecimal.ZERO;
+        List<CreateExpenditureItemRequest> allItemRequests = new java.util.ArrayList<>();
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            for (CreateExpenditureCatologyRequest cat : request.getCategories()) {
+                if (cat.getItems() != null) {
+                    allItemRequests.addAll(cat.getItems());
+                }
+            }
+        } else if (request.getItems() != null) {
+            allItemRequests.addAll(request.getItems());
+        }
+
+        if (!allItemRequests.isEmpty()) {
+            totalExpectedAmount = allItemRequests.stream()
+                    .map(item -> {
+                        BigDecimal price = item.getExpectedPrice() != null ? item.getExpectedPrice() : BigDecimal.ZERO;
+                        int qty = item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0;
+                        return price.multiply(BigDecimal.valueOf(qty));
+                    })
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        }
+
+        if (!"ITEMIZED".equalsIgnoreCase(campaign.getType())) {
+            expenditure.setTotalReceivedAmount(totalExpectedAmount);
+        }
+
+        expenditure.setPlan(request.getPlan());
+        // expenditure.setEvidenceDueAt(request.getEvidenceDueAt()); // Removed: Owner
+        // cannot edit dates
+        expenditure.setTotalExpectedAmount(totalExpectedAmount);
+        expenditure.setTotalAmount(BigDecimal.ZERO);
+        expenditure.setVariance(totalExpectedAmount);
+        expenditure.setStatus("PENDING_REVIEW");
+        expenditure.setRejectReason(null);
+
+        expenditureItemRepository.deleteByExpenditureId(id);
+        catologyRepository.deleteByExpenditureId(id);
+
+        Expenditure savedExpenditure = expenditureRepository.save(expenditure);
+
+        if (request.getCategories() != null && !request.getCategories().isEmpty()) {
+            for (CreateExpenditureCatologyRequest catReq : request.getCategories()) {
+                BigDecimal catExpectedAmount = catReq.getItems() != null ? catReq.getItems().stream()
+                        .map(i -> (i.getExpectedPrice() != null ? i.getExpectedPrice() : BigDecimal.ZERO)
+                                .multiply(BigDecimal
+                                        .valueOf(i.getExpectedQuantity() != null ? i.getExpectedQuantity() : 0)))
+                        .reduce(BigDecimal.ZERO, BigDecimal::add) : BigDecimal.ZERO;
+
+                ExpenditureCatology catology = ExpenditureCatology.builder()
+                        .expenditure(savedExpenditure)
+                        .name(catReq.getName())
+                        .description(catReq.getDescription())
+                        .expectedAmount(catExpectedAmount)
+                        .actualAmount(BigDecimal.ZERO)
+                        .withdrawalCondition(catReq.getWithdrawalCondition())
+                        .build();
+                ExpenditureCatology savedCatology = catologyRepository.save(catology);
+
+                if (catReq.getItems() != null) {
+                    List<ExpenditureItem> items = catReq.getItems().stream()
+                            .map(itemReq -> ExpenditureItem.builder()
+                                    .expenditure(savedExpenditure)
+                                    .catology(savedCatology)
+                                    .name(itemReq.getName())
+                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
+                                    .expectedQuantity(itemReq.getExpectedQuantity())
+                                    .actualQuantity(0)
+                                    .quantityLeft(itemReq.getExpectedQuantity())
+                                    .actualPrice(BigDecimal.ZERO)
+                                    .expectedPrice(itemReq.getExpectedPrice())
+                                    .expectedNote(itemReq.getExpectedNote())
+                                    .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
+                                    .expectedBrand(itemReq.getExpectedBrand())
+                                    .expectedUnit(itemReq.getExpectedUnit())
+                                    .build())
+                            .collect(Collectors.toList());
+                    expenditureItemRepository.saveAll(items);
+                }
+            }
+        } else if (request.getItems() != null && !request.getItems().isEmpty()) {
+            List<ExpenditureItem> items = request.getItems().stream()
+                    .map(itemReq -> ExpenditureItem.builder()
+                            .expenditure(savedExpenditure)
+                            .name(itemReq.getName())
+                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
+                            .expectedQuantity(itemReq.getExpectedQuantity())
+                            .actualQuantity(0)
+                            .quantityLeft(itemReq.getExpectedQuantity())
+                            .actualPrice(BigDecimal.ZERO)
+                            .expectedPrice(itemReq.getExpectedPrice())
+                            .expectedNote(itemReq.getExpectedNote())
+                            .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
+                            .expectedBrand(itemReq.getExpectedBrand())
+                            .expectedUnit(itemReq.getExpectedUnit())
+                            .build())
+                    .collect(Collectors.toList());
+            expenditureItemRepository.saveAll(items);
+        }
+
+        return mapToResponse(savedExpenditure);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByCampaign(Long campaignId) {
         List<Expenditure> expenditures = expenditureRepository.findByCampaignId(campaignId);
@@ -386,6 +509,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         if ("REJECTED".equalsIgnoreCase(status)) {
             expenditure.setStatus("REJECTED");
+            expenditure.setRejectReason(request.getReasonReject());
+        } else if ("ALLOWED_EDIT".equalsIgnoreCase(status)) {
+            expenditure.setStatus("ALLOWED_EDIT");
             expenditure.setRejectReason(request.getReasonReject());
         } else if ("APPROVED".equalsIgnoreCase(status)) {
             CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
@@ -550,7 +676,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         // Gửi thông báo duyệt chi tiêu cho chủ sở hữu chiến dịch
         if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)
-                || "DISBURSED".equalsIgnoreCase(status)) {
+                || "DISBURSED".equalsIgnoreCase(status) || "ALLOWED_EDIT".equalsIgnoreCase(status)) {
             try {
                 CampaignResponse campaign = campaignService.getById(expenditure.getCampaignId());
                 String notiType;
@@ -566,6 +692,11 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     notiType = "EXPENDITURE_REJECTED";
                     title = "Yêu cầu chi tiêu bị từ chối";
                     content = String.format("Yêu cầu chi tiêu cho chiến dịch '%s' đã bị từ chối. Lý do: %s",
+                            campaign.getTitle(), request.getReasonReject());
+                } else if ("ALLOWED_EDIT".equalsIgnoreCase(status)) {
+                    notiType = "EXPENDITURE_CORRECTION_REQUESTED";
+                    title = "Yêu cầu chỉnh sửa chi tiêu";
+                    content = String.format("Staff yêu cầu chỉnh sửa khoản chi cho chiến dịch '%s'. Lý do: %s",
                             campaign.getTitle(), request.getReasonReject());
                 } else {
                     notiType = "EXPENDITURE_DISBURSED";
@@ -1239,15 +1370,16 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description) {
         Expenditure expenditure = expenditureRepository.findById(expenditureId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
-        
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Expenditure not found: " + expenditureId));
+
         com.trustfund.model.ExpenditureCatology cat = com.trustfund.model.ExpenditureCatology.builder()
                 .expenditure(expenditure)
                 .name(name)
                 .description(description)
                 .build();
         cat = java.util.Optional.ofNullable(cat).map(c -> catologyRepository.save(c)).orElseThrow();
-        
+
         return ExpenditureCatologyResponse.builder()
                 .id(cat.getId())
                 .name(cat.getName())

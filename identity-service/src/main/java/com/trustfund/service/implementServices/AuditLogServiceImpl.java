@@ -1,7 +1,8 @@
-package com.trustfund.audit.service;
+package com.trustfund.service.implementServices;
 
-import com.trustfund.audit.entity.AuditLog;
-import com.trustfund.audit.repository.AuditLogRepository;
+import com.trustfund.model.AuditLog;
+import com.trustfund.repository.AuditLogRepository;
+import com.trustfund.service.interfaceServices.AuditLogService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -14,23 +15,26 @@ import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
-public class AuditService {
+public class AuditLogServiceImpl implements AuditLogService {
+
+    private static final String GENESIS_HASH = "0000000000000000000000000000000000000000000000000000000000000000";
 
     private final AuditLogRepository auditLogRepository;
 
+    @Override
     public AuditLog saveLog(AuditLog log) {
-        // Find the latest record to link the chain
         Optional<AuditLog> latestLog = auditLogRepository.findTopByOrderByCreatedAtDesc();
-        
+
         if (latestLog.isPresent()) {
             log.setPreviousHash(latestLog.get().getAuditHash());
         } else {
-            log.setPreviousHash("0000000000000000000000000000000000000000000000000000000000000000");
+            log.setPreviousHash(GENESIS_HASH);
         }
-        
+
         return auditLogRepository.save(log);
     }
 
+    @Override
     public Map<String, Object> verifyIntegrity(Long id) {
         Optional<AuditLog> logOpt = auditLogRepository.findById(id);
         if (logOpt.isEmpty()) {
@@ -40,24 +44,23 @@ public class AuditService {
         AuditLog log = logOpt.get();
         String currentDataHash = calculateHash(log.getDataSnapshot());
         boolean isDataValid = currentDataHash.equalsIgnoreCase(log.getAuditHash());
-        
-        // Chain Verification: Check if this record links correctly to the previous one
+
         boolean isChainValid = true;
-        String expectedPreviousHash = null;
-        
         String prevEntityInfo = null;
+
         Optional<AuditLog> prevLogOpt = auditLogRepository.findFirstByCreatedAtBeforeOrderByCreatedAtDesc(log.getCreatedAt());
         if (prevLogOpt.isPresent()) {
             AuditLog prevLog = prevLogOpt.get();
-            expectedPreviousHash = prevLog.getAuditHash();
+            String expectedPreviousHash = prevLog.getAuditHash();
             isChainValid = log.getPreviousHash() != null && log.getPreviousHash().equalsIgnoreCase(expectedPreviousHash);
             if (!isChainValid) {
-                prevEntityInfo = prevLog.getEntityType() + " #" + prevLog.getEntityId() + " (" + (prevLog.getActorName() != null ? prevLog.getActorName() : "System") + ")";
+                prevEntityInfo = prevLog.getEntityType() + " #" + prevLog.getEntityId()
+                        + " (" + (prevLog.getActorName() != null ? prevLog.getActorName() : "System") + ")";
             }
         } else {
-            isChainValid = "0000000000000000000000000000000000000000000000000000000000000000".equals(log.getPreviousHash());
+            isChainValid = GENESIS_HASH.equals(log.getPreviousHash());
         }
-        
+
         return Map.of(
                 "valid", isDataValid && isChainValid,
                 "dataValid", isDataValid,

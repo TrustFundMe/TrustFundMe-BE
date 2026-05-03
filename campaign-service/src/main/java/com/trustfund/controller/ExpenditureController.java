@@ -8,7 +8,6 @@ import com.trustfund.model.request.CreateExpenditureRequest;
 import com.trustfund.model.request.UpdateExpenditureActualsRequest;
 import com.trustfund.model.request.UpdateDisbursementProofRequest;
 import com.trustfund.model.request.CreateRefundRequest;
-import com.trustfund.model.request.CreateEvidenceRequirementRequest;
 import com.trustfund.model.response.ExpenditureTransactionResponse;
 import com.trustfund.service.ExpenditureService;
 import com.trustfund.utils.ExpenditureExcelHelper;
@@ -39,6 +38,13 @@ public class ExpenditureController {
     public ResponseEntity<ExpenditureResponse> create(@Valid @RequestBody CreateExpenditureRequest request) {
         ExpenditureResponse created = expenditureService.createExpenditure(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
+    }
+
+    @PutMapping("/{id}")
+    @Operation(summary = "Cập nhật/Sửa đổi khoản chi tiêu", description = "Dùng cho Fund Owner chỉnh sửa lại kế hoạch chi tiêu khi có yêu cầu (ALLOWED_EDIT).")
+    public ResponseEntity<ExpenditureResponse> update(@PathVariable("id") Long id,
+            @Valid @RequestBody CreateExpenditureRequest request) {
+        return ResponseEntity.ok(expenditureService.updateExpenditure(id, request));
     }
 
     @GetMapping("/campaign/{campaignId}")
@@ -248,27 +254,31 @@ public class ExpenditureController {
 
     @PostMapping("/internal/evidence-requirement")
     @Operation(summary = "Tạo yêu cầu minh chứng (Hệ thống)", description = "API nội bộ dùng để tạo yêu cầu minh chứng khi phát hiện giao dịch âm từ Casso.")
-    public ResponseEntity<Void> createEvidenceRequirement(@RequestBody com.trustfund.model.request.CreateEvidenceRequirementRequest request) {
+    public ResponseEntity<Void> createEvidenceRequirement(
+            @RequestBody com.trustfund.model.request.CreateEvidenceRequirementRequest request) {
         expenditureService.createEvidenceRequirement(request);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/evidence/{evidenceId}/submit")
     @Operation(summary = "Nộp minh chứng chi tiêu", description = "Chủ quỹ nộp file/ảnh minh chứng cho một yêu cầu cụ thể.")
-    public ResponseEntity<Void> submitEvidence(@PathVariable("evidenceId") Long evidenceId, @RequestParam("proofUrl") String proofUrl) {
+    public ResponseEntity<Void> submitEvidence(@PathVariable("evidenceId") Long evidenceId,
+            @RequestParam("proofUrl") String proofUrl) {
         expenditureService.submitEvidence(evidenceId, proofUrl);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping("/user/{userId}/pending-evidence")
     @Operation(summary = "Lấy danh sách minh chứng đang nợ", description = "Lấy toàn bộ các yêu cầu minh chứng chưa nộp của toàn bộ chiến dịch do user sở hữu.")
-    public ResponseEntity<List<com.trustfund.model.response.ExpenditureEvidenceResponse>> getPendingEvidence(@PathVariable("userId") Long userId) {
+    public ResponseEntity<List<com.trustfund.model.response.ExpenditureEvidenceResponse>> getPendingEvidence(
+            @PathVariable("userId") Long userId) {
         return ResponseEntity.ok(expenditureService.getPendingEvidenceByUser(userId));
     }
 
     @PatchMapping("/evidence/{evidenceId}/assign")
     @Operation(summary = "Gán minh chứng vào đợt chi tiêu", description = "Dùng cho các minh chứng chưa được gán tự động vào đợt nào.")
-    public ResponseEntity<Void> assignEvidence(@PathVariable("evidenceId") Long evidenceId, @RequestParam("expenditureId") Long expenditureId) {
+    public ResponseEntity<Void> assignEvidence(@PathVariable("evidenceId") Long evidenceId,
+            @RequestParam("expenditureId") Long expenditureId) {
         expenditureService.assignEvidenceToPhase(evidenceId, expenditureId);
         return ResponseEntity.ok().build();
     }
