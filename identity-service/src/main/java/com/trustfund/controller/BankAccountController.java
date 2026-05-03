@@ -4,7 +4,9 @@ import com.trustfund.model.request.CreateBankAccountRequest;
 import com.trustfund.model.request.UpdateBankAccountRequest;
 import com.trustfund.model.request.UpdateBankAccountStatusRequest;
 import com.trustfund.model.response.BankAccountResponse;
+import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.service.interfaceServices.BankAccountService;
+import com.trustfund.utils.EncryptionUtils;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -25,6 +27,8 @@ import java.util.List;
 public class BankAccountController {
 
     private final BankAccountService bankAccountService;
+    private final BankAccountRepository bankAccountRepository;
+    private final EncryptionUtils encryptionUtils;
 
     @GetMapping
     @Operation(summary = "Get my bank accounts", description = "Get all bank accounts linked by current authenticated user")
@@ -131,6 +135,15 @@ public class BankAccountController {
 
         BankAccountResponse response = bankAccountService.updateStatus(id, request, currentUserId, currentRole);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/check-webhook-key-exists")
+    @Operation(summary = "Check if webhook key already in use", description = "Check if a Casso webhook key is already registered by another bank account")
+    public ResponseEntity<java.util.Map<String, Boolean>> checkWebhookKeyExists(
+            @RequestParam("webhookKey") String webhookKey) {
+        String encrypted = encryptionUtils.encrypt(webhookKey);
+        boolean exists = bankAccountRepository.existsByWebhookKey(encrypted);
+        return ResponseEntity.ok(java.util.Map.of("exists", exists));
     }
 
     @GetMapping("/check-exists")

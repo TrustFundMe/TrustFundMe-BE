@@ -21,4 +21,6 @@ public interface BankAccountRepository extends JpaRepository<BankAccount, Long> 
     Optional<BankAccount> findByCampaignId(Long campaignId);
 
     boolean existsByAccountNumberAndBankCodeAndUserIdNot(String accountNumber, String bankCode, Long userId);
+
+    boolean existsByWebhookKey(String webhookKey);
 }
