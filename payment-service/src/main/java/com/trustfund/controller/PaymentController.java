@@ -228,6 +228,17 @@ public class PaymentController {
         return ResponseEntity.ok(donationService.getUserDonationCount(userId));
     }
 
+    @PostMapping("/donation/{id}/cancel")
+    public ResponseEntity<?> cancelDonation(@PathVariable("id") Long id) {
+        try {
+            donationService.cancelDonationById(id);
+            return ResponseEntity.ok(Map.of("message", "Donation cancelled"));
+        } catch (Exception e) {
+            log.error("Cancel donation failed for {}", id, e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     @GetMapping("/campaigns/total-raised")
     public ResponseEntity<java.math.BigDecimal> getTotalRaisedByCampaignIds(
             @RequestParam("campaignIds") String campaignIdsStr) {

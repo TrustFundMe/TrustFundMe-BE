@@ -295,15 +295,22 @@ public class CassoWebhookService {
             return;
         }
 
-        // Strategy 1: Match "TF {id}" pattern in description
+        // Strategy 1: Match "TF {orderCode}" pattern in description
         Pattern pattern = Pattern.compile("TF[-_\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(tx.getDescription() != null ? tx.getDescription() : "");
 
         boolean matched = false;
         if (matcher.find()) {
-            Long donationId = Long.parseLong(matcher.group(1));
-            log.info("➔ [MATCH] Strategy 1: Matched TF pattern → donationId={}", donationId);
-            matched = tryMarkDonationPaid(donationId, tx.getTid());
+            Long code = Long.parseLong(matcher.group(1));
+            // Try matching by orderCode first, then fall back to donationId
+            java.util.Optional<Donation> byOrder = donationRepository.findByOrderCode(code);
+            if (byOrder.isPresent()) {
+                log.info("➔ [MATCH] Strategy 1: Matched TF pattern → orderCode={}, donationId={}", code, byOrder.get().getId());
+                matched = tryMarkDonationPaid(byOrder.get().getId(), tx.getTid());
+            } else {
+                log.info("➔ [MATCH] Strategy 1: No orderCode match, trying as donationId={}", code);
+                matched = tryMarkDonationPaid(code, tx.getTid());
+            }
         }
 
         // Strategy 2: If TF pattern not found, try matching by campaignId + amount (PENDING only)
@@ -393,15 +400,18 @@ public class CassoWebhookService {
         List<Donation> donations = donationRepository.findByCampaignId(campaignId);
         java.util.Map<Long, Donation> donationMap = donations.stream()
             .collect(java.util.stream.Collectors.toMap(Donation::getId, d -> d, (a, b) -> a));
+        java.util.Map<Long, Donation> orderCodeMap = donations.stream()
+            .filter(d -> d.getOrderCode() != null)
+            .collect(java.util.stream.Collectors.toMap(Donation::getOrderCode, d -> d, (a, b) -> a));
 
         // Use a local cache for donor names to avoid redundant API calls within this request
         java.util.Map<Long, String> nameCache = new java.util.HashMap<>();
 
-        txs.forEach(tx -> enrichTransactionOptimized(tx, donationMap, nameCache));
+        txs.forEach(tx -> enrichTransactionOptimized(tx, donationMap, orderCodeMap, nameCache));
         return txs;
     }
 
-    private void enrichTransactionOptimized(CassoTransaction tx, java.util.Map<Long, Donation> donationMap, java.util.Map<Long, String> nameCache) {
+    private void enrichTransactionOptimized(CassoTransaction tx, java.util.Map<Long, Donation> donationMap, java.util.Map<Long, Donation> orderCodeMap, java.util.Map<Long, String> nameCache) {
         // Handle outgoing transactions
         if (tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) < 0) {
             tx.setDonorName("Chi phí chiến dịch");
@@ -412,17 +422,19 @@ public class CassoWebhookService {
             tx.setDonorName("Người ủng hộ ẩn danh");
             return;
         }
-        
-        // Pattern: Matches TF {id}, TF{id}, or any variation
+
+        // Pattern: Matches TF {orderCode/id}, TF{orderCode/id}, or any variation
         Pattern pattern = Pattern.compile("TF[-_\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(tx.getDescription());
 
         if (matcher.find()) {
             try {
                 String idStr = matcher.group(1);
-                Long donationId = Long.parseLong(idStr);
-                
-                Donation donation = donationMap.get(donationId);
+                Long code = Long.parseLong(idStr);
+
+                // Try orderCode first, then fall back to donationId
+                Donation donation = orderCodeMap.get(code);
+                if (donation == null) donation = donationMap.get(code);
                 if (donation != null) {
                     if (Boolean.TRUE.equals(donation.getIsAnonymous())) {
                         tx.setDonorName("Người ủng hộ ẩn danh");
