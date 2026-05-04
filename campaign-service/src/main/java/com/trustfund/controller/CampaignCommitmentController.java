@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 @RestController
 @RequestMapping("/api/campaigns/commitments")
@@ -126,19 +127,26 @@ public class CampaignCommitmentController {
 
         CampaignCommitment saved = commitmentRepository.save(commitment);
 
-        // Gửi email xác nhận sau khi ký thành công (try-catch để không block main flow)
-        try {
-            CampaignResponse campaign = campaignService.getById(commitment.getCampaignId());
-            var ownerInfo = identityServiceClient.getUserById(commitment.getUserId());
-            if (campaign != null && ownerInfo != null && ownerInfo.getEmail() != null) {
-                emailServiceClient.sendCommitmentSuccessEmail(
-                        ownerInfo.getEmail(),
-                        ownerInfo.getFullName(),
-                        campaign.getTitle());
+        // Gửi email xác nhận chạy nền — KHÔNG block response.
+        // Trước đây chạy đồng bộ → khi media-service lỗi, request bị treo
+        // ~30s đến khi browser timeout → trả 500 dù DB đã save thành công.
+        Long campaignId = commitment.getCampaignId();
+        Long userId = commitment.getUserId();
+        CompletableFuture.runAsync(() -> {
+            try {
+                CampaignResponse campaign = campaignService.getById(campaignId);
+                var ownerInfo = identityServiceClient.getUserById(userId);
+                if (campaign != null && ownerInfo != null && ownerInfo.getEmail() != null) {
+                    emailServiceClient.sendCommitmentSuccessEmail(
+                            ownerInfo.getEmail(),
+                            ownerInfo.getFullName(),
+                            campaign.getTitle());
+                }
+            } catch (Exception e) {
+                log.error("Warning: Could not send confirmation email after signing for campaign {}: {}",
+                        campaignId, e.getMessage());
             }
-        } catch (Exception e) {
-            log.error("➔ Warning: Could not send confirmation email after signing: {}", e.getMessage());
-        }
+        });
 
         return ResponseEntity.ok(saved);
     }
