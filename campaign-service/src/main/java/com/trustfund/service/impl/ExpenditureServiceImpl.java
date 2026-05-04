@@ -1386,6 +1386,44 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         evidence.setStatus("SUBMITTED");
         evidenceRepository.save(evidence);
         log.info("✅ Evidence {} submitted with URL: {}", evidenceId, proofUrl);
+
+        // [AUDIT] Log the evidence submission
+        try {
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("evidenceId", evidence.getId());
+            snapshotMap.put("campaignId", evidence.getCampaignId());
+            snapshotMap.put("amount", evidence.getAmount());
+            snapshotMap.put("description", evidence.getDescription());
+            snapshotMap.put("proofUrl", proofUrl);
+            snapshotMap.put("status", "SUBMITTED");
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            String ownerName = "Chủ chiến dịch";
+            Long fundOwnerId = 0L;
+            try {
+                CampaignResponse campaign = campaignService.getById(evidence.getCampaignId());
+                fundOwnerId = campaign.getFundOwnerId();
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(fundOwnerId);
+                if (ownerInfo != null && ownerInfo.getFullName() != null) {
+                    ownerName = ownerInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch owner name for audit log: {}", e.getMessage());
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EVIDENCE_SUBMISSION");
+            auditRequest.put("entityId", evidence.getCampaignId());
+            auditRequest.put("action", "EVIDENCE_SUBMITTED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", fundOwnerId);
+            auditRequest.put("actorName", ownerName);
+            
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for evidence submission {}: {}", evidenceId, e.getMessage());
+        }
     }
 
     @Override
@@ -1460,5 +1498,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         // Recalculate totals for the expenditure
         recalculateExpenditureTotals(expenditureId);
         log.info("✅ Deleted category {} and its items from expenditure {}", categoryId, expenditureId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.trustfund.model.response.ExpenditureEvidenceResponse getEvidenceById(Long id) {
+        com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found: " + id));
+        return mapToEvidenceResponse(evidence);
     }
 }

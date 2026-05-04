@@ -46,6 +46,41 @@ public class AuditController {
                 type, id, PageRequest.of(page, size, Sort.by("createdAt").descending())));
     }
 
+    @GetMapping("/user/{actorId}")
+    public ResponseEntity<Page<AuditLog>> getByUser(
+            @PathVariable Long actorId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        
+        // Exclude KYC_SUBMISSION or USER_KYC. 
+        // We will exclude "USER_KYC" which is typical for the KYC process
+        return ResponseEntity.ok(auditLogRepository.findByActorIdAndEntityTypeNot(
+                actorId, "USER_KYC", PageRequest.of(page, size, Sort.by("createdAt").descending())));
+    @PostMapping("/reconciliation")
+    public ResponseEntity<Page<AuditLog>> getReconciliation(
+            @RequestBody Map<String, Object> request,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "500") int size) {
+        
+        Long userId = Long.valueOf(request.get("userId").toString());
+        java.util.List<Long> campaignIds = ((java.util.List<?>) request.get("campaignIds")).stream()
+                .map(id -> Long.valueOf(id.toString()))
+                .collect(java.util.stream.Collectors.toList());
+
+        PageRequest pageRequest = PageRequest.of(page, size, Sort.by("createdAt").descending());
+        
+        Page<AuditLog> logs;
+        if (campaignIds.isEmpty()) {
+            // If no campaigns, just fetch by actorId to avoid SQL 'IN ()' error
+            logs = auditLogRepository.findByActorIdAndEntityTypeNot(userId, "USER_KYC", pageRequest);
+        } else {
+            // Fetch all logs related to the user OR their campaigns
+            logs = auditLogRepository.findByReconciliationContext(userId, campaignIds, pageRequest);
+        }
+        
+        return ResponseEntity.ok(logs);
+    }
+
     @GetMapping("/integrity")
     public ResponseEntity<Map<String, Object>> getGlobalStatus() {
         Page<AuditLog> recentLogs = auditLogRepository.findAll(

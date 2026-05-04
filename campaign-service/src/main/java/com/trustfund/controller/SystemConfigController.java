@@ -16,6 +16,12 @@ public class SystemConfigController {
 
     private final SystemConfigRepository systemConfigRepository;
 
+    @GetMapping
+    @Operation(summary = "Lấy tất cả cấu hình", description = "Lấy toàn bộ danh sách cấu hình hệ thống không phân biệt nhóm.")
+    public ResponseEntity<java.util.List<SystemConfig>> getAll() {
+        return ResponseEntity.ok(systemConfigRepository.findAll());
+    }
+
     @GetMapping("/{key}")
     @Operation(summary = "Lấy cấu hình theo key", description = "Lấy giá trị cấu hình hệ thống (ví dụ: Prompt AI) theo key.")
     public ResponseEntity<SystemConfig> getByKey(@PathVariable("key") String key) {
