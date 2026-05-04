@@ -74,6 +74,7 @@ class AppointmentScheduleServiceImplTest {
                                 .location("123 Main St")
                                 .purpose("Fund discussion")
                                 .status(status)
+                                .createdByRole("ROLE_USER") // mặc định: lịch do user/donor tạo
                                 .createdAt(LocalDateTime.now().minusDays(1))
                                 .updatedAt(LocalDateTime.now())
                                 .build();
@@ -224,6 +225,7 @@ class AppointmentScheduleServiceImplTest {
                         // Arrange
                         LocalDateTime startTime = LocalDateTime.now().plusDays(2);
                         LocalDateTime endTime = LocalDateTime.now().plusDays(2).plusHours(1);
+                        // appointment do ROLE_USER tạo, staff xác nhận → hợp lệ
                         AppointmentSchedule appointment = buildAppointment(
                                         1L, 10L, 20L, AppointmentStatus.PENDING, startTime, endTime);
                         AppointmentSchedule updatedAppointment = buildAppointment(
@@ -232,6 +234,8 @@ class AppointmentScheduleServiceImplTest {
                         when(repository.findById(1L)).thenReturn(Optional.of(appointment));
                         when(repository.save(any(AppointmentSchedule.class))).thenReturn(updatedAppointment);
                         when(restTemplate.getForObject(anyString(), eq(String.class))).thenReturn(null);
+                        // Staff đang thực hiện hành động confirm
+                        when(httpServletRequest.getHeader("X-User-Role")).thenReturn("ROLE_STAFF");
 
                         // Act
                         AppointmentScheduleResponse response = appointmentService.updateStatus(1L,
