@@ -46,6 +46,8 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/payments/create").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/donation/**")
                                                 .permitAll()
+                                                .requestMatchers(HttpMethod.POST, "/api/payments/donation/*/cancel")
+                                                .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/donations/**")
                                                 .permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/payments/campaign/**").permitAll()

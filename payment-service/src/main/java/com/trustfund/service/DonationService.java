@@ -121,7 +121,7 @@ public class DonationService {
                         String accName = bankAccount.get("accountHolderName") != null ? String.valueOf(bankAccount.get("accountHolderName")) : "";
                         
                         qrCodeUrl = String.format("https://img.vietqr.io/image/%s-%s-compact2.png?amount=%d&addInfo=TF%%20%d&accountName=%s",
-                            bankCode, accNum, totalAmountLong, donation.getId(), java.net.URLEncoder.encode(accName, "UTF-8").replace("+", "%20"));
+                            bankCode, accNum, totalAmountLong, orderCode, java.net.URLEncoder.encode(accName, "UTF-8").replace("+", "%20"));
                         log.info("Successfully generated VietQR URL for Campaign {}: {}", request.getCampaignId(), qrCodeUrl);
                     } else {
                         log.warn("Missing bank details for Campaign {}", request.getCampaignId());
@@ -225,6 +225,13 @@ public class DonationService {
                         donationRepository.save(donation);
                         processQuantityRollback(donation);
                 }
+        }
+
+        @Transactional
+        public void cancelDonationById(Long id) {
+                Donation donation = donationRepository.findById(id)
+                        .orElseThrow(() -> new RuntimeException("Donation not found: " + id));
+                failDonation(donation);
         }
 
         public CheckItemLimitResponse checkExpenditureItemLimit(Long expenditureItemId, Integer requestedQuantity) {

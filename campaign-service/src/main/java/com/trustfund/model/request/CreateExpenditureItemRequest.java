@@ -22,6 +22,8 @@ public class CreateExpenditureItemRequest {
     @NotNull(message = "Số lượng dự kiến không được để trống")
     private Integer expectedQuantity;
 
+    private Integer actualQuantity;
+
     @NotNull(message = "Giá thực tế không được để trống")
     @DecimalMin(value = "0.0", message = "Giá thực tế không được nhỏ hơn 0")
     private BigDecimal actualPrice;
