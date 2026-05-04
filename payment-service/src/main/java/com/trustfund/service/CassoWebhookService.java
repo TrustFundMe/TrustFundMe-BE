@@ -280,51 +280,74 @@ public class CassoWebhookService {
     }
 
     private void processTransactionDescription(CassoTransaction tx) {
-        // Pattern: TF {id}
-        Pattern pattern = Pattern.compile("TF\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(tx.getDescription());
+        log.info("➔ [MATCH] Processing description for tid={}: '{}'", tx.getTid(), tx.getDescription());
+
+        // Strategy 1: Match "TF {id}" pattern in description
+        Pattern pattern = Pattern.compile("TF[-_\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(tx.getDescription() != null ? tx.getDescription() : "");
 
         boolean matched = false;
         if (matcher.find()) {
             Long donationId = Long.parseLong(matcher.group(1));
-            log.info("Matched transaction {} with donation ID {}", tx.getTid(), donationId);
+            log.info("➔ [MATCH] Strategy 1: Matched TF pattern → donationId={}", donationId);
+            matched = tryMarkDonationPaid(donationId, tx.getTid());
+        }
 
-            java.util.Optional<Donation> donationOpt = donationRepository.findById(donationId);
-            if (donationOpt.isPresent()) {
-                Donation donation = donationOpt.get();
-                if ("PENDING".equals(donation.getStatus())) {
-                    donation.setStatus("PAID");
-                    donationRepository.save(donation);
-                    
-                    // Mark as synced, but do NOT call updateBalance in CampaignService 
-                    // because we already did it in handleCassoWebhook
-                    donationService.markAsBalancedSynced(donation);
-                    log.info("Donation {} marked as PAID and synced via Casso", donationId);
-                    matched = true;
-                } else {
-                    log.warn("Donation {} is already {}. Treating this transaction as a new anonymous donation.", 
-                        donationId, donation.getStatus());
+        // Strategy 2: If TF pattern not found, try matching by campaignId + exact amount (PENDING only)
+        if (!matched && tx.getCampaignId() != null && tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            log.info("➔ [MATCH] Strategy 2: Looking for PENDING donation with campaignId={} and amount={}",
+                     tx.getCampaignId(), tx.getAmount());
+            List<Donation> pendingDonations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(
+                    tx.getCampaignId(), "PENDING");
+
+            for (Donation d : pendingDonations) {
+                if (d.getTotalAmount() != null && d.getTotalAmount().compareTo(tx.getAmount()) == 0) {
+                    log.info("➔ [MATCH] Strategy 2: Found matching PENDING donation id={} with amount={}",
+                             d.getId(), d.getTotalAmount());
+                    matched = tryMarkDonationPaid(d.getId(), tx.getTid());
+                    if (matched) break;
                 }
-            } else {
-                log.warn("Donation ID {} from description not found in database.", donationId);
+            }
+            if (!matched) {
+                log.warn("➔ [MATCH] Strategy 2: No PENDING donation found with exact amount {} for campaign {}",
+                         tx.getAmount(), tx.getCampaignId());
             }
         }
 
         if (!matched) {
-            // Direct transfer without matching description OR duplicate/refilled note -> Create Anonymous Donation
-            log.info("Transaction {} did not match a PENDING donation. Creating a new Anonymous donation record.", tx.getTid());
+            log.info("➔ [MATCH] No match found. Creating anonymous donation for campaign {} with amount {}",
+                     tx.getCampaignId(), tx.getAmount());
             Donation anonymousDonation = Donation.builder()
                     .campaignId(tx.getCampaignId())
                     .donationAmount(tx.getAmount())
                     .totalAmount(tx.getAmount())
                     .status("PAID")
                     .isAnonymous(true)
-                    .isBalanceSynchronized(true) // Already synced via handleCassoWebhook
+                    .isBalanceSynchronized(true)
                     .build();
-            
+
             donationRepository.save(anonymousDonation);
             log.info("Anonymous Donation {} created and marked as PAID for campaign {}", anonymousDonation.getId(), tx.getCampaignId());
         }
+    }
+
+    private boolean tryMarkDonationPaid(Long donationId, String tid) {
+        java.util.Optional<Donation> donationOpt = donationRepository.findById(donationId);
+        if (donationOpt.isPresent()) {
+            Donation donation = donationOpt.get();
+            if ("PENDING".equals(donation.getStatus())) {
+                donation.setStatus("PAID");
+                donationRepository.save(donation);
+                donationService.markAsBalancedSynced(donation);
+                log.info("✅ Donation {} marked as PAID via Casso transaction {}", donationId, tid);
+                return true;
+            } else {
+                log.warn("Donation {} is already {}. Skipping.", donationId, donation.getStatus());
+            }
+        } else {
+            log.warn("Donation ID {} not found in database.", donationId);
+        }
+        return false;
     }
 
     public List<CassoTransaction> getAllTransactions() {
