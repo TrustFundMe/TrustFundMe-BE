@@ -30,6 +30,8 @@ public class CassoWebhookService {
     private final RestTemplate restTemplate;
     private final EntityManager entityManager;
 
+    private final java.util.Set<String> processingTids = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
+
     @Value("${app.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
 
@@ -89,9 +91,16 @@ public class CassoWebhookService {
 
             log.info("Processing transaction: tid={}, account={}, bank={}", tid, accountNumber, bankAbbreviation);
             
+            // In-memory dedup (prevent race condition when Pusher fires same event twice)
+            if (!processingTids.add(tid)) {
+                log.warn("Casso transaction {} is already being processed by another thread. Skipping.", tid);
+                continue;
+            }
+
             // Deduplication (using tid or id)
             if (cassoTransactionRepository.existsByTid(tid)) {
                 log.warn("Casso transaction {} already processed. Skipping.", tid);
+                processingTids.remove(tid);
                 continue;
             }
 
@@ -110,12 +119,6 @@ public class CassoWebhookService {
             // 2. Fetch campaignId for auditing
             Long campaignId = getCampaignIdFromAccount(accountNumber, bankAbbreviation);
             log.info("➔ [DEBUG] Found campaignId: {} for account: {}", campaignId, accountNumber);
-
-            // ⚠️ CHECK DUPLICATE TID
-            if (cassoTransactionRepository.existsByTid(tid)) {
-                log.warn("⚠️ Casso transaction {} already exists. Skipping to avoid duplicate processing.", tid);
-                return;
-            }
 
             // 3. Log transaction
             CassoTransaction transaction = CassoTransaction.builder()
@@ -138,6 +141,7 @@ public class CassoWebhookService {
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
                 log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping entire record.", tid);
                 entityManager.clear();
+                processingTids.remove(tid);
                 continue;
             }
 
@@ -179,6 +183,8 @@ public class CassoWebhookService {
             } else {
                 log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping.", tid);
             }
+
+            processingTids.remove(tid);
         }
     }
 
