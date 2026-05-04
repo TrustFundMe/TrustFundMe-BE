@@ -210,4 +210,17 @@ public class IdentityServiceClient {
             log.error("Failed to unban user {}: {}", userId, e.getMessage());
         }
     }
+
+    /**
+     * Ghi nhận Audit Log sang identity-service.
+     */
+    public void createAuditLog(java.util.Map<String, Object> auditRequest) {
+        String url = identityServiceUrl + "/api/audit";
+        try {
+            restTemplate.postForObject(url, auditRequest, java.util.Map.class);
+            log.info("✅ Successfully sent audit log to identity-service: {}", auditRequest.get("action"));
+        } catch (Exception e) {
+            log.error("❌ Failed to send audit log: {}", e.getMessage());
+        }
+    }
 }

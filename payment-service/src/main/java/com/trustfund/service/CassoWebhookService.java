@@ -136,8 +136,12 @@ public class CassoWebhookService {
                     .counterAccountBankId(data.get("counterAccountBankId") != null ? String.valueOf(data.get("counterAccountBankId")) : null)
                     .build();
             try {
-                cassoTransactionRepository.save(transaction);
+                CassoTransaction savedTx = cassoTransactionRepository.save(transaction);
                 log.info("✅ Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
+                
+                // [AUDIT] Create Audit Log for the successful transaction
+                createAuditLogForTransaction(savedTx);
+                
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
                 log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping entire record.", tid);
                 entityManager.clear();
@@ -479,5 +483,42 @@ public class CassoWebhookService {
             debug.put("found", false);
         });
         return debug;
+    }
+
+    private void createAuditLogForTransaction(CassoTransaction tx) {
+        try {
+            log.info("➔ [AUDIT] Creating audit log for transaction: {}", tx.getTid());
+            
+            // 1. Prepare data snapshot
+            Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("tid", tx.getTid());
+            snapshotMap.put("amount", tx.getAmount());
+            snapshotMap.put("description", tx.getDescription());
+            snapshotMap.put("campaignId", tx.getCampaignId());
+            snapshotMap.put("transactionDate", tx.getTransactionDate());
+            snapshotMap.put("accountNumber", tx.getAccountNumber());
+            snapshotMap.put("counterAccountName", tx.getCounterAccountName());
+            snapshotMap.put("counterAccountNumber", tx.getCounterAccountNumber());
+            snapshotMap.put("source", "CASSO_WEBHOOK");
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            // 2. Prepare Audit Log Request
+            Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "DONATION_TRANSACTION");
+            auditRequest.put("entityId", tx.getCampaignId()); // Reference to campaign
+            auditRequest.put("action", tx.getAmount().compareTo(BigDecimal.ZERO) >= 0 ? "DONATION_RECEIVED" : "EXPENDITURE_DISBURSED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", 0); // System/Webhook actor
+            auditRequest.put("actorName", tx.getCounterAccountName() != null ? tx.getCounterAccountName() : "Người ủng hộ ẩn danh");
+            
+            // Send to Identity Service Audit API
+            String auditUrl = identityServiceUrl + "/api/audit";
+            restTemplate.postForObject(auditUrl, auditRequest, Map.class);
+            
+            log.info("✅ [AUDIT] Audit log for transaction {} created successfully.", tx.getTid());
+        } catch (Exception e) {
+            log.error("❌ [AUDIT] Failed to create audit log for transaction {}: {}", tx.getTid(), e.getMessage());
+        }
     }
 }

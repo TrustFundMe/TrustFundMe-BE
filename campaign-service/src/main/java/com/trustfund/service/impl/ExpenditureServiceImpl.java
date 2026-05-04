@@ -808,6 +808,41 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         transactionRepository.save(transaction);
 
+        // [AUDIT] Log the withdrawal request
+        try {
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("expenditureId", expenditure.getId());
+            snapshotMap.put("campaignId", expenditure.getCampaignId());
+            snapshotMap.put("withdrawAmount", withdrawAmount);
+            snapshotMap.put("plan", expenditure.getPlan());
+            snapshotMap.put("status", "WITHDRAWAL_REQUESTED");
+            if (evidenceDueAt != null) snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            String ownerName = "Chủ chiến dịch";
+            try {
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(campaign.getFundOwnerId());
+                if (ownerInfo != null && ownerInfo.getFullName() != null) {
+                    ownerName = ownerInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch owner name for audit log: {}", e.getMessage());
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EXPENDITURE_WITHDRAWAL");
+            auditRequest.put("entityId", expenditure.getCampaignId());
+            auditRequest.put("action", "WITHDRAWAL_REQUESTED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", campaign.getFundOwnerId());
+            auditRequest.put("actorName", ownerName);
+            
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for withdrawal request {}: {}", id, e.getMessage());
+        }
+
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
