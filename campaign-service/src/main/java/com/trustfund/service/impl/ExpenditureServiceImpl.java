@@ -1238,25 +1238,62 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(id);
 
-        List<java.util.Map<String, Object>> itemsToAudit = items.stream().map(item -> {
+        // 1. Chỉ gửi itemName, brand, unit cho Perplexity
+        List<java.util.Map<String, Object>> itemsToAI = items.stream().map(item -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("itemName", item.getName());
             map.put("brand", item.getExpectedBrand());
             map.put("unit", item.getExpectedUnit());
-            map.put("purchaseLocation", item.getExpectedPurchaseLocation());
-            map.put("note", item.getExpectedNote());
-            map.put("declaredPrice", item.getExpectedPrice());
-            map.put("quantity", item.getExpectedQuantity());
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
-        com.trustfund.model.response.AuditResultResponse response = perplexityClient.auditExpenseItems(itemsToAudit);
-        if (response == null) {
+        com.trustfund.model.response.AuditResultResponse aiResponse = perplexityClient.auditExpenseItems(itemsToAI);
+        if (aiResponse == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                     "Cannot get audit result from Perplexity AI");
         }
-        return response;
+
+        // 2. Tự so sánh giá trong Backend
+        if (aiResponse.getDetectedItems() != null) {
+            for (int i = 0; i < items.size(); i++) {
+                ExpenditureItem sysItem = items.get(i);
+                // AI trả về items theo đúng thứ tự gửi lên
+                if (i < aiResponse.getDetectedItems().size()) {
+                    var aiItem = aiResponse.getDetectedItems().get(i);
+
+                    BigDecimal declaredPrice = sysItem.getExpectedPrice() != null ? sysItem.getExpectedPrice()
+                            : BigDecimal.ZERO;
+                    double min = aiItem.getMarketPriceMin() != null ? aiItem.getMarketPriceMin() : -1;
+                    double max = aiItem.getMarketPriceMax() != null ? aiItem.getMarketPriceMax() : -1;
+
+                    // Gán lại thông tin từ hệ thống để FE hiển thị đúng mapping
+                    aiItem.setUnitPrice(declaredPrice.doubleValue());
+                    aiItem.setQuantity(sysItem.getExpectedQuantity());
+
+                    if (min <= 0 || max <= 0) {
+                        aiItem.setPriceStatus("UNKNOWN");
+                        aiItem.setStatusMessage("Không tìm thấy giá thị trường tham chiếu.");
+                        continue;
+                    }
+
+                    double declared = declaredPrice.doubleValue();
+                    // So sánh: Cho phép lệch 15% so với Min/Max
+                    if (declared > max * 1.15) {
+                        aiItem.setPriceStatus("OVERPRICED");
+                        aiItem.setStatusMessage("Giá kê khai cao hơn đáng kể so với thị trường (Max: " + max + ")");
+                    } else if (declared < min * 0.85) {
+                        aiItem.setPriceStatus("UNDERPRICED");
+                        aiItem.setStatusMessage("Giá kê khai thấp hơn nhiều so với thị trường (Min: " + min + ")");
+                    } else {
+                        aiItem.setPriceStatus("MATCHED");
+                        aiItem.setStatusMessage("Giá kê khai nằm trong khoảng hợp lý.");
+                    }
+                }
+            }
+        }
+
+        return aiResponse;
     }
 
     private ExpenditureEvidenceResponse mapToEvidenceResponse(com.trustfund.model.ExpenditureEvidence evidence) {
