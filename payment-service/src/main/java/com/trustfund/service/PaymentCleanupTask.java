@@ -28,8 +28,8 @@ public class PaymentCleanupTask {
     public void cleanupPendingTransactions() {
         log.info("⏰ [Cron] Starting Pending Transactions Cleanup...");
 
-        // Threshold: 10 minutes (to avoid failing active user sessions)
-        LocalDateTime threshold = LocalDateTime.now().minusMinutes(10);
+        // Threshold: 30 minutes (Casso webhook can take 5-15 mins to arrive)
+        LocalDateTime threshold = LocalDateTime.now().minusMinutes(30);
 
         // Cleanup Donations (update status and rollback quantity)
         List<Donation> staleDonations = donationRepository.findAllByStatusAndCreatedAtBefore("PENDING", threshold);

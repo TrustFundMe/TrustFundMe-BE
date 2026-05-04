@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.persistence.EntityManager;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,7 @@ public class CassoWebhookService {
     private final DonationRepository donationRepository;
     private final DonationService donationService;
     private final RestTemplate restTemplate;
+    private final EntityManager entityManager;
 
     @Value("${app.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
@@ -133,7 +136,8 @@ public class CassoWebhookService {
                 cassoTransactionRepository.save(transaction);
                 log.info("✅ Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping save but continuing logic.", tid);
+                log.warn("⚠️ Casso transaction {} was already saved by another thread. Clearing session and continuing.", tid);
+                entityManager.clear();
             }
 
             if (transaction.getCampaignId() != null) {
@@ -348,15 +352,16 @@ public class CassoWebhookService {
         java.util.Optional<Donation> donationOpt = donationRepository.findById(donationId);
         if (donationOpt.isPresent()) {
             Donation donation = donationOpt.get();
-            if ("PENDING".equals(donation.getStatus())) {
-                donation.setStatus("PAID");
-                donationRepository.save(donation);
-                donationService.markAsBalancedSynced(donation);
-                log.info("✅ Donation {} marked as PAID via Casso transaction {}", donationId, tid);
+            if ("PAID".equals(donation.getStatus())) {
+                log.warn("Donation {} is already PAID. Skipping.", donationId);
                 return true;
-            } else {
-                log.warn("Donation {} is already {}. Skipping.", donationId, donation.getStatus());
             }
+            // Cho phép PENDING hoặc FAILED → set PAID (tiền thật đã vào qua Casso)
+            log.info("✅ Donation {} status {} → PAID via Casso transaction {}", donationId, donation.getStatus(), tid);
+            donation.setStatus("PAID");
+            donationRepository.save(donation);
+            donationService.markAsBalancedSynced(donation);
+            return true;
         } else {
             log.warn("Donation ID {} not found in database.", donationId);
         }
