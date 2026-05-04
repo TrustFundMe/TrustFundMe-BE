@@ -19,8 +19,6 @@ public class CreateExpenditureItemRequest {
     @NotBlank(message = "Tên hàng hóa không được để trống")
     private String name;
 
-    private String expectedPurchaseLink;
-
     @NotNull(message = "Số lượng dự kiến không được để trống")
     private Integer expectedQuantity;
 
@@ -42,7 +40,5 @@ public class CreateExpenditureItemRequest {
     private Long catologyId;
     private String expectedUnit;
 
-    private Integer actualQuantity;
-    private String actualPurchaseLink;
     private String actualUnit;
 }

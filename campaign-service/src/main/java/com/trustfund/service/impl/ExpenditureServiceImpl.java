@@ -180,7 +180,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .expenditure(savedExpenditure)
                                     .catology(savedCatology)
                                     .name(itemReq.getName())
-                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                                     .expectedQuantity(itemReq.getExpectedQuantity())
                                     .actualQuantity(0)
                                     .quantityLeft(itemReq.getExpectedQuantity())
@@ -201,7 +200,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
                             .name(itemReq.getName())
-                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                             .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
                             .quantityLeft(itemReq.getExpectedQuantity())
@@ -315,7 +313,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .expenditure(savedExpenditure)
                                     .catology(savedCatology)
                                     .name(itemReq.getName())
-                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                                     .expectedQuantity(itemReq.getExpectedQuantity())
                                     .actualQuantity(0)
                                     .quantityLeft(itemReq.getExpectedQuantity())
@@ -335,7 +332,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
                             .name(itemReq.getName())
-                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                             .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
                             .quantityLeft(itemReq.getExpectedQuantity())
@@ -392,8 +388,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .id(item.getId())
                 .expenditureId(item.getExpenditure().getId())
                 .name(item.getName())
-                .expectedPurchaseLink(item.getExpectedPurchaseLink())
-                .actualPurchaseLink(item.getActualPurchaseLink())
                 .expectedQuantity(item.getExpectedQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
@@ -839,9 +833,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             if (updateItem.getActualPrice() != null) {
                 item.setActualPrice(updateItem.getActualPrice());
             }
-            if (updateItem.getActualPurchaseLink() != null) {
-                item.setActualPurchaseLink(updateItem.getActualPurchaseLink());
-            }
             if (updateItem.getActualBrand() != null) {
                 item.setActualBrand(updateItem.getActualBrand());
             }
@@ -893,7 +884,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .map(itemReq -> ExpenditureItem.builder()
                         .expenditure(expenditure)
                         .name(itemReq.getName())
-                        .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                         .expectedQuantity(itemReq.getExpectedQuantity())
                         .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
                         .quantityLeft(itemReq.getExpectedQuantity())
@@ -904,7 +894,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .actualBrand(itemReq.getActualBrand())
                         .expectedUnit(itemReq.getExpectedUnit())
                         .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
-                        .actualPurchaseLink(itemReq.getActualPurchaseLink())
                         .actualUnit(itemReq.getActualUnit())
                         .catologyId(itemReq.getCatologyId())
                         .build())
@@ -1226,7 +1215,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             map.put("note", item.getExpectedNote());
             map.put("declaredPrice", item.getExpectedPrice());
             map.put("quantity", item.getExpectedQuantity());
-            map.put("expectedPurchaseLink", item.getExpectedPurchaseLink());
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
@@ -1391,16 +1379,17 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public void deleteCategory(Long categoryId) {
         ExpenditureCatology cat = catologyRepository.findById(categoryId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Category not found: " + categoryId));
-        
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Category not found: " + categoryId));
+
         Long expenditureId = cat.getExpenditure().getId();
-        
+
         // Delete all items in this category
         expenditureItemRepository.deleteByCatologyId(categoryId);
-        
+
         // Delete the category itself
         catologyRepository.delete(cat);
-        
+
         // Recalculate totals for the expenditure
         recalculateExpenditureTotals(expenditureId);
         log.info("✅ Deleted category {} and its items from expenditure {}", categoryId, expenditureId);

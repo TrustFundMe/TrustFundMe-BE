@@ -16,8 +16,6 @@ public class ExpenditureItemResponse {
     private Long id;
     private Long expenditureId;
     private String name;
-    private String expectedPurchaseLink;
-    private String actualPurchaseLink;
     private Integer expectedQuantity;
     private Integer actualQuantity;
     private Integer quantityLeft;

@@ -25,12 +25,13 @@ public class ExpenditureExcelHelper {
     static String SHEET_ITEMS = "HẠNG MỤC CHI TIẾT";
 
     static String[] HEADERS_PLAN = {
-            "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)", "Hạn nộp minh chứng (dd/mm/yyyy)", "Mô tả"
+            "STT", "Tên đợt giải ngân", "Ngày bắt đầu (dd/mm/yyyy)", "Ngày kết thúc (dd/mm/yyyy)",
+            "Hạn nộp minh chứng (dd/mm/yyyy)", "Mô tả"
     };
 
     static String[] HEADERS_ITEMS = {
             "STT", "Đợt / Mốc giải ngân", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
-            "Link mua dự kiến", "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
+            "Số lượng dự kiến", "Đơn vị", "Đơn giá dự kiến (VNĐ)",
             "Thành tiền dự kiến (VNĐ)", "Ghi chú"
     };
 
@@ -75,9 +76,8 @@ public class ExpenditureExcelHelper {
                 row.createCell(1).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
                 row.createCell(2).setCellValue(item.getName() != null ? item.getName() : "");
                 row.createCell(3).setCellValue(item.getExpectedBrand() != null ? item.getExpectedBrand() : "");
-                row.createCell(4).setCellValue(item.getExpectedPurchaseLocation() != null ? item.getExpectedPurchaseLocation() : "");
-                row.createCell(5)
-                        .setCellValue(item.getExpectedPurchaseLink() != null ? item.getExpectedPurchaseLink() : "");
+                row.createCell(4).setCellValue(
+                        item.getExpectedPurchaseLocation() != null ? item.getExpectedPurchaseLocation() : "");
                 row.createCell(6).setCellValue(item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0);
                 row.createCell(7).setCellValue(item.getExpectedUnit() != null ? item.getExpectedUnit() : "");
                 double expectedPrice = toDouble(item.getExpectedPrice());
@@ -197,16 +197,21 @@ public class ExpenditureExcelHelper {
                 }
 
                 // Fallbacks if headers not found strictly
-                if (titleIdx == -1) titleIdx = 1;
-                if (startIdx == -1) startIdx = 2;
-                if (endIdx == -1) endIdx = 3;
-                if (dueIdx == -1) dueIdx = 4;
-                if (descIdx == -1) descIdx = 5;
+                if (titleIdx == -1)
+                    titleIdx = 1;
+                if (startIdx == -1)
+                    startIdx = 2;
+                if (endIdx == -1)
+                    endIdx = 3;
+                if (dueIdx == -1)
+                    dueIdx = 4;
+                if (descIdx == -1)
+                    descIdx = 5;
                 while (planRows.hasNext()) {
                     Row row = planRows.next();
                     if (isEmptyRow(row))
                         continue;
-                    
+
                     Cell titleCell = titleIdx != -1 ? row.getCell(titleIdx) : null;
                     String title = getCellStringValue(titleCell).trim();
                     if (title.isEmpty())
@@ -261,26 +266,36 @@ public class ExpenditureExcelHelper {
                     }
 
                     // Fallbacks for Sheet 1
-                    if (milIdx == -1) milIdx = 1;
-                    if (catIdx == -1) catIdx = 2;
-                    if (nameIdx == -1) nameIdx = 3;
-                    if (brandIdx == -1) brandIdx = 4; 
-                    if (locIdx == -1) locIdx = 5;
-                    if (linkIdx == -1) linkIdx = 6;
-                    if (qtyIdx == -1) qtyIdx = 7;
-                    if (unitIdx == -1) unitIdx = 8;
-                    if (priceIdx == -1) priceIdx = 9;
-                    if (noteIdx == -1) noteIdx = 11;
+                    if (milIdx == -1)
+                        milIdx = 1;
+                    if (catIdx == -1)
+                        catIdx = 2;
+                    if (nameIdx == -1)
+                        nameIdx = 3;
+                    if (brandIdx == -1)
+                        brandIdx = 4;
+                    if (locIdx == -1)
+                        locIdx = 5;
+                    if (linkIdx == -1)
+                        linkIdx = 6;
+                    if (qtyIdx == -1)
+                        qtyIdx = 7;
+                    if (unitIdx == -1)
+                        unitIdx = 8;
+                    if (priceIdx == -1)
+                        priceIdx = 9;
+                    if (noteIdx == -1)
+                        noteIdx = 11;
 
                     while (itemRows.hasNext()) {
                         Row row = itemRows.next();
                         if (isEmptyRow(row))
                             continue;
-                        
+
                         String milTitle = milIdx != -1 ? getCellStringValue(row.getCell(milIdx)).trim() : "";
                         String catName = catIdx != -1 ? getCellStringValue(row.getCell(catIdx)).trim() : "";
                         String itemName = nameIdx != -1 ? getCellStringValue(row.getCell(nameIdx)).trim() : "";
-                        
+
                         if (milTitle.isEmpty() || catName.isEmpty() || itemName.isEmpty())
                             continue;
 
@@ -315,8 +330,6 @@ public class ExpenditureExcelHelper {
                             item.setExpectedBrand(getCellStringValue(row.getCell(brandIdx)));
                         if (locIdx != -1)
                             item.setExpectedPurchaseLocation(getCellStringValue(row.getCell(locIdx)));
-                        if (linkIdx != -1)
-                            item.setExpectedPurchaseLink(getCellStringValue(row.getCell(linkIdx)));
                         if (noteIdx != -1)
                             item.setExpectedNote(getCellStringValue(row.getCell(noteIdx)));
                         item.setActualPrice(BigDecimal.ZERO);
@@ -444,11 +457,6 @@ public class ExpenditureExcelHelper {
                     Cell c = currentRow.getCell(locationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
                     item.setExpectedPurchaseLocation(getCellStringValue(c));
                 }
-                if (linkIdx != -1) {
-                    Cell c = currentRow.getCell(linkIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
-                    item.setExpectedPurchaseLink(getCellStringValue(c));
-                }
-
                 // If name is empty, skip this row (probably end of data)
                 if (item.getName() == null || item.getName().trim().isEmpty()) {
                     continue;
@@ -532,7 +540,8 @@ public class ExpenditureExcelHelper {
                 try {
                     String val = cell.getStringCellValue().trim()
                             .replaceAll("[^0-9.,]", "");
-                    if (val.isEmpty()) return BigDecimal.ZERO;
+                    if (val.isEmpty())
+                        return BigDecimal.ZERO;
                     // Handle formats like "1.000,00" or "1000.00"
                     if (val.contains(",") && val.contains(".")) {
                         if (val.indexOf(".") < val.indexOf(",")) {
@@ -542,7 +551,7 @@ public class ExpenditureExcelHelper {
                         }
                     } else if (val.contains(",")) {
                         // If only comma, usually it's the decimal separator in VN
-                        val = val.replace(",", "."); 
+                        val = val.replace(",", ".");
                     }
                     return new BigDecimal(val);
                 } catch (Exception e) {
