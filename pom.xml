@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 
+         http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- Aggregator POM để build tất cả microservices bằng 1 lệnh mvn -->
+    <groupId>com.trustfund</groupId>
+    <artifactId>trustfund-backend-aggregator</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+    <name>TrustFundMe Backend Services Aggregator</name>
+
+    <modules>
+        <module>api-gateway</module>
+        <module>campaign-service</module>
+        <module>chat-service</module>
+        <module>discovery-server</module>
+        <module>identity-service</module>
+        <module>media-service</module>
+        <module>notification-service</module>
+        <module>payment-service</module>
+    </modules>
+</project>
