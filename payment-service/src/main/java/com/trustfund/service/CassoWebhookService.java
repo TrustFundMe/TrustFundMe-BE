@@ -136,8 +136,9 @@ public class CassoWebhookService {
                 cassoTransactionRepository.save(transaction);
                 log.info("✅ Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                log.warn("⚠️ Casso transaction {} was already saved by another thread. Clearing session and continuing.", tid);
+                log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping entire record.", tid);
                 entityManager.clear();
+                continue;
             }
 
             if (transaction.getCampaignId() != null) {
