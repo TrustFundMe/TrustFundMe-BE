@@ -140,18 +140,16 @@ public class CassoWebhookService {
                 log.info("➔ [SYNC] Syncing campaign {} balance with transaction amount: {}", transaction.getCampaignId(), transaction.getAmount());
                 donationService.updateBalanceOnlyInCampaignService(transaction.getCampaignId(), transaction.getAmount());
 
-                // NEW: If transaction is negative (expenditure), trigger evidence requirement
                 if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
-                    log.info("➔ [AUTO-EXPENDITURE] Negative transaction detected for campaign {}. Triggering evidence requirement.", 
-                             transaction.getCampaignId());
+                    // Giao dịch âm → trigger minh chứng, KHÔNG tạo donation
+                    log.info("➔ [AUTO-EXPENDITURE] Negative transaction for campaign {}. Amount={}. Triggering evidence (no donation created).",
+                             transaction.getCampaignId(), transaction.getAmount());
                     try {
                         String url = campaignServiceUrl + "/api/expenditures/internal/evidence-requirement";
-                        
-                        // Parse transactionDate string to LocalDateTime
+
                         java.time.LocalDateTime txDateTime = java.time.LocalDateTime.now();
                         try {
-                            // Casso usually sends yyyy-MM-dd HH:mm:ss
-                            txDateTime = java.time.LocalDateTime.parse(transactionDate, 
+                            txDateTime = java.time.LocalDateTime.parse(transactionDate,
                                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         } catch (Exception e) {
                             log.warn("Failed to parse transaction date '{}', using current time.", transactionDate);
@@ -164,19 +162,18 @@ public class CassoWebhookService {
                             "description", transaction.getDescription(),
                             "transactionDate", txDateTime
                         );
-                        log.info("➔ [DEBUG] Calling Campaign Service Internal API: {}", url);
                         restTemplate.postForObject(url, request, Void.class);
                         log.info("✅ [AUTO-EXPENDITURE] Evidence requirement triggered successfully.");
                     } catch (Exception e) {
                         log.error("❌ [AUTO-EXPENDITURE] Failed to trigger evidence requirement: {}", e.getMessage(), e);
                     }
+                } else {
+                    // Giao dịch dương → match donation
+                    processTransactionDescription(transaction);
                 }
             } else {
-                log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping evidence trigger.", tid);
+                log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping.", tid);
             }
-
-            // 4. Match with Campaign/Donation
-            processTransactionDescription(transaction);
         }
     }
 
@@ -282,6 +279,11 @@ public class CassoWebhookService {
     private void processTransactionDescription(CassoTransaction tx) {
         log.info("➔ [MATCH] Processing description for tid={}: '{}'", tx.getTid(), tx.getDescription());
 
+        if (tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            log.info("➔ [MATCH] Skipping negative/zero transaction tid={} (amount={}). Not a donation.", tx.getTid(), tx.getAmount());
+            return;
+        }
+
         // Strategy 1: Match "TF {id}" pattern in description
         Pattern pattern = Pattern.compile("TF[-_\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
         Matcher matcher = pattern.matcher(tx.getDescription() != null ? tx.getDescription() : "");
@@ -293,24 +295,35 @@ public class CassoWebhookService {
             matched = tryMarkDonationPaid(donationId, tx.getTid());
         }
 
-        // Strategy 2: If TF pattern not found, try matching by campaignId + exact amount (PENDING only)
+        // Strategy 2: If TF pattern not found, try matching by campaignId + amount (PENDING only)
         if (!matched && tx.getCampaignId() != null && tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
-            log.info("➔ [MATCH] Strategy 2: Looking for PENDING donation with campaignId={} and amount={}",
-                     tx.getCampaignId(), tx.getAmount());
             List<Donation> pendingDonations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(
                     tx.getCampaignId(), "PENDING");
+            log.info("➔ [MATCH] Strategy 2: Looking for PENDING donation with campaignId={} and amount={}. Found {} PENDING donations.",
+                     tx.getCampaignId(), tx.getAmount(), pendingDonations.size());
 
             for (Donation d : pendingDonations) {
-                if (d.getTotalAmount() != null && d.getTotalAmount().compareTo(tx.getAmount()) == 0) {
-                    log.info("➔ [MATCH] Strategy 2: Found matching PENDING donation id={} with amount={}",
-                             d.getId(), d.getTotalAmount());
+                log.info("➔ [MATCH] Strategy 2: Checking donation id={}, totalAmount={}, donationAmount={}",
+                         d.getId(), d.getTotalAmount(), d.getDonationAmount());
+                boolean amountMatch = (d.getTotalAmount() != null && d.getTotalAmount().compareTo(tx.getAmount()) == 0)
+                        || (d.getDonationAmount() != null && d.getDonationAmount().compareTo(tx.getAmount()) == 0);
+                if (amountMatch) {
+                    log.info("➔ [MATCH] Strategy 2: ✅ Matched PENDING donation id={}", d.getId());
                     matched = tryMarkDonationPaid(d.getId(), tx.getTid());
                     if (matched) break;
                 }
             }
+
+            // Strategy 3: If exact amount didn't match, take the most recent PENDING donation for this campaign
+            if (!matched && !pendingDonations.isEmpty()) {
+                Donation mostRecent = pendingDonations.get(0);
+                log.info("➔ [MATCH] Strategy 3: No exact amount match. Falling back to most recent PENDING donation id={} (totalAmount={}) for campaign {}",
+                         mostRecent.getId(), mostRecent.getTotalAmount(), tx.getCampaignId());
+                matched = tryMarkDonationPaid(mostRecent.getId(), tx.getTid());
+            }
+
             if (!matched) {
-                log.warn("➔ [MATCH] Strategy 2: No PENDING donation found with exact amount {} for campaign {}",
-                         tx.getAmount(), tx.getCampaignId());
+                log.warn("➔ [MATCH] Strategy 2+3: No PENDING donation found for campaign {}", tx.getCampaignId());
             }
         }
 
