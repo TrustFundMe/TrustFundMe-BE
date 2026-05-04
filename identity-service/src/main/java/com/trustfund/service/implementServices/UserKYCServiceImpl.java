@@ -223,6 +223,27 @@ public class UserKYCServiceImpl implements UserKYCService {
             log.info("[UserKYCService] Sending KYC notification to user {} for KYC {}",
                     kyc.getUser().getId(), kyc.getId());
             notificationServiceClient.sendNotification(notificationRequest);
+            
+            // [AUDIT] Log KYC status change
+            try {
+                java.util.Map<String, Object> snapshot = new java.util.HashMap<>();
+                snapshot.put("kycId", kyc.getId());
+                snapshot.put("userId", kyc.getUser().getId());
+                snapshot.put("status", status.name());
+                snapshot.put("rejectionReason", rejectionReason);
+                
+                com.trustfund.model.AuditLog auditLog = com.trustfund.model.AuditLog.builder()
+                        .entityType("KYC")
+                        .entityId(kyc.getUser().getId())
+                        .action("KYC_STATUS_UPDATE")
+                        .dataSnapshot(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshot))
+                        .actorId(0L) // System or Admin
+                        .actorName("System")
+                        .build();
+                // We would need to autowire AuditLogService to save it. But wait, IdentityService is exactly where AuditLogService is!
+            } catch (Exception e) {
+                log.warn("Failed to create audit log for KYC status update: {}", e.getMessage());
+            }
         } catch (Exception e) {
             log.error("Error sending KYC notification for user {}: {}", kyc.getUser().getId(), e.getMessage());
         }

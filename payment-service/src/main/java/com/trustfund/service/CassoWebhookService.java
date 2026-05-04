@@ -518,7 +518,9 @@ public class CassoWebhookService {
             // 2. Prepare Audit Log Request
             Map<String, Object> auditRequest = new java.util.HashMap<>();
             auditRequest.put("entityType", "DONATION_TRANSACTION");
-            auditRequest.put("entityId", tx.getCampaignId()); // Reference to campaign
+            // Important: Use campaignId if found, otherwise fallback to transaction internal ID 
+            // to satisfy the NOT NULL constraint on audit_logs table.
+            auditRequest.put("entityId", tx.getCampaignId() != null ? tx.getCampaignId() : tx.getId());
             auditRequest.put("action", tx.getAmount().compareTo(BigDecimal.ZERO) >= 0 ? "DONATION_RECEIVED" : "EXPENDITURE_DISBURSED");
             auditRequest.put("dataSnapshot", snapshot);
             auditRequest.put("actorId", 0); // System/Webhook actor

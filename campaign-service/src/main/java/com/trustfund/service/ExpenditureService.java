@@ -82,4 +82,6 @@ public interface ExpenditureService {
         ExpenditureCatologyResponse createCategory(Long expenditureId, String name, String description);
 
         void deleteCategory(Long categoryId);
+
+        com.trustfund.model.response.ExpenditureEvidenceResponse getEvidenceById(Long id);
 }
