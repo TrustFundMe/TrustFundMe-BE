@@ -66,11 +66,11 @@ public class ExpenditureEnforcementScheduler {
                     log.warn("⚠️ [ENFORCEMENT] Campaign {} (Owner: {}) has overdue evidence {}. Locking fund.",
                             campaign.getTitle(), campaign.getFundOwnerId(), evidence.getId());
 
-                    // 1. Disable Campaign
-                    campaignService.closeCampaign(campaignId, 1L); // Using System Admin ID 1 to close
+                    // 1. Close Campaign
+                    campaignService.closeCampaign(campaignId, 1L);
 
                     // 2. Penalize Trust Score
-                    trustScoreService.addScore(campaign.getFundOwnerId(), "OVERDUE_EVIDENCE", evidence.getId(),
+                    trustScoreService.addScore(campaign.getFundOwnerId(), "LATE_SUBMIT", evidence.getId(),
                             "EXPENDITURE_EVIDENCE", "Vi phạm thời hạn nộp minh chứng chi tiêu.");
 
                     // 3. Mark evidence as OVERDUE
