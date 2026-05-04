@@ -59,15 +59,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @PostConstruct
     public void cleanupOldDatabaseConstraints() {
-        try {
-            log.info("Checking and removing old unique constraints on expenditures table...");
-            // Thử xóa UNIQUE constraint/index cũ ở field campaign_id nếu tồn tại (do code
-            // cũ)
-            jdbcTemplate.execute("ALTER TABLE expenditures DROP INDEX campaign_id");
-            log.info("✅ Successfully dropped old 'campaign_id' unique index.");
-        } catch (Exception e) {
-            log.info("Old unique index for 'campaign_id' not found or already dropped. Safe to ignore.");
-        }
+        // Performance fix: DDL command removed - this constraint cleanup should only run once via migration script
+        // If needed, run manually: ALTER TABLE expenditures DROP INDEX campaign_id
+        log.info("Startup constraint cleanup skipped (already handled by migration).");
     }
 
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
@@ -180,7 +174,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .expenditure(savedExpenditure)
                                     .catology(savedCatology)
                                     .name(itemReq.getName())
-                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                                     .expectedQuantity(itemReq.getExpectedQuantity())
                                     .actualQuantity(0)
                                     .quantityLeft(itemReq.getExpectedQuantity())
@@ -201,7 +194,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
                             .name(itemReq.getName())
-                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                             .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
                             .quantityLeft(itemReq.getExpectedQuantity())
@@ -315,7 +307,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                                     .expenditure(savedExpenditure)
                                     .catology(savedCatology)
                                     .name(itemReq.getName())
-                                    .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                                     .expectedQuantity(itemReq.getExpectedQuantity())
                                     .actualQuantity(0)
                                     .quantityLeft(itemReq.getExpectedQuantity())
@@ -335,7 +326,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     .map(itemReq -> ExpenditureItem.builder()
                             .expenditure(savedExpenditure)
                             .name(itemReq.getName())
-                            .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                             .expectedQuantity(itemReq.getExpectedQuantity())
                             .actualQuantity(0)
                             .quantityLeft(itemReq.getExpectedQuantity())
@@ -392,8 +382,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .id(item.getId())
                 .expenditureId(item.getExpenditure().getId())
                 .name(item.getName())
-                .expectedPurchaseLink(item.getExpectedPurchaseLink())
-                .actualPurchaseLink(item.getActualPurchaseLink())
                 .expectedQuantity(item.getExpectedQuantity())
                 .actualQuantity(item.getActualQuantity())
                 .quantityLeft(item.getQuantityLeft())
@@ -808,6 +796,41 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         transactionRepository.save(transaction);
 
+        // [AUDIT] Log the withdrawal request
+        try {
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("expenditureId", expenditure.getId());
+            snapshotMap.put("campaignId", expenditure.getCampaignId());
+            snapshotMap.put("withdrawAmount", withdrawAmount);
+            snapshotMap.put("plan", expenditure.getPlan());
+            snapshotMap.put("status", "WITHDRAWAL_REQUESTED");
+            if (evidenceDueAt != null) snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            String ownerName = "Chủ chiến dịch";
+            try {
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(campaign.getFundOwnerId());
+                if (ownerInfo != null && ownerInfo.getFullName() != null) {
+                    ownerName = ownerInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch owner name for audit log: {}", e.getMessage());
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EXPENDITURE_WITHDRAWAL");
+            auditRequest.put("entityId", expenditure.getCampaignId());
+            auditRequest.put("action", "WITHDRAWAL_REQUESTED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", campaign.getFundOwnerId());
+            auditRequest.put("actorName", ownerName);
+            
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for withdrawal request {}: {}", id, e.getMessage());
+        }
+
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
@@ -838,9 +861,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
             if (updateItem.getActualPrice() != null) {
                 item.setActualPrice(updateItem.getActualPrice());
-            }
-            if (updateItem.getActualPurchaseLink() != null) {
-                item.setActualPurchaseLink(updateItem.getActualPurchaseLink());
             }
             if (updateItem.getActualBrand() != null) {
                 item.setActualBrand(updateItem.getActualBrand());
@@ -893,7 +913,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .map(itemReq -> ExpenditureItem.builder()
                         .expenditure(expenditure)
                         .name(itemReq.getName())
-                        .expectedPurchaseLink(itemReq.getExpectedPurchaseLink())
                         .expectedQuantity(itemReq.getExpectedQuantity())
                         .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
                         .quantityLeft(itemReq.getExpectedQuantity())
@@ -904,7 +923,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .actualBrand(itemReq.getActualBrand())
                         .expectedUnit(itemReq.getExpectedUnit())
                         .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
-                        .actualPurchaseLink(itemReq.getActualPurchaseLink())
                         .actualUnit(itemReq.getActualUnit())
                         .catologyId(itemReq.getCatologyId())
                         .build())
@@ -1226,7 +1244,6 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             map.put("note", item.getExpectedNote());
             map.put("declaredPrice", item.getExpectedPrice());
             map.put("quantity", item.getExpectedQuantity());
-            map.put("expectedPurchaseLink", item.getExpectedPurchaseLink());
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
@@ -1339,11 +1356,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             return java.util.Collections.emptyList();
         }
 
-        // Tìm tất cả minh chứng của các chiến dịch này mà có status là PENDING hoặc
-        // OVERDUE
-        return evidenceRepository.findAll().stream()
-                .filter(ev -> campaignIds.contains(ev.getCampaignId()) &&
-                        ("PENDING".equals(ev.getStatus()) || "OVERDUE".equals(ev.getStatus())))
+        // Performance fix: proper DB query instead of findAll().stream().filter()
+        return evidenceRepository.findByCampaignIdInAndStatusIn(campaignIds, java.util.List.of("PENDING", "OVERDUE"))
+                .stream()
                 .map(this::mapToEvidenceResponse)
                 .collect(Collectors.toList());
     }
@@ -1391,16 +1406,17 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional
     public void deleteCategory(Long categoryId) {
         ExpenditureCatology cat = catologyRepository.findById(categoryId)
-                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND, "Category not found: " + categoryId));
-        
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Category not found: " + categoryId));
+
         Long expenditureId = cat.getExpenditure().getId();
-        
+
         // Delete all items in this category
         expenditureItemRepository.deleteByCatologyId(categoryId);
-        
+
         // Delete the category itself
         catologyRepository.delete(cat);
-        
+
         // Recalculate totals for the expenditure
         recalculateExpenditureTotals(expenditureId);
         log.info("✅ Deleted category {} and its items from expenditure {}", categoryId, expenditureId);

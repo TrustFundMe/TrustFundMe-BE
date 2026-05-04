@@ -65,7 +65,6 @@ public class AuditResultResponse {
         private Boolean productExists;
         private Boolean productExistsByBrand;
         private String linkType;
-        private Boolean isLinkMatched;
 
         // New Geographic Defense Fields
         private String geographicEvidenceUrl; // Link chứng minh giá khu vực (báo chí, báo cáo giá địa phương)

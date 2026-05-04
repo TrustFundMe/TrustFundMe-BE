@@ -19,10 +19,10 @@ public class CreateExpenditureItemRequest {
     @NotBlank(message = "Tên hàng hóa không được để trống")
     private String name;
 
-    private String expectedPurchaseLink;
-
     @NotNull(message = "Số lượng dự kiến không được để trống")
     private Integer expectedQuantity;
+
+    private Integer actualQuantity;
 
     @NotNull(message = "Giá thực tế không được để trống")
     @DecimalMin(value = "0.0", message = "Giá thực tế không được nhỏ hơn 0")
@@ -42,7 +42,5 @@ public class CreateExpenditureItemRequest {
     private Long catologyId;
     private String expectedUnit;
 
-    private Integer actualQuantity;
-    private String actualPurchaseLink;
     private String actualUnit;
 }

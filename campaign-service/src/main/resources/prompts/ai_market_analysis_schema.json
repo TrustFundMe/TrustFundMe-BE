@@ -87,9 +87,6 @@
                             },
                             "linkType": {
                                 "type": "string"
-                            },
-                            "isLinkMatched": {
-                                "type": "boolean"
                             }
                         },
                         "required": [
@@ -97,7 +94,6 @@
                             "declaredPrice",
                             "marketPrice",
                             "isSuspicious",
-                            "isLinkMatched",
                             "evidenceUrls"
                         ]
                     }

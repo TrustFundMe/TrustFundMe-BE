@@ -12,4 +12,9 @@ public interface ExpenditureEvidenceRepository extends JpaRepository<Expenditure
     List<ExpenditureEvidence> findByExpenditureId(Long expenditureId);
     Optional<ExpenditureEvidence> findByCassoTransactionId(String cassoTransactionId);
     List<ExpenditureEvidence> findByStatusAndDueAtBefore(String status, java.time.LocalDateTime now);
+
+    /**
+     * Find evidences by campaign IDs and statuses - replaces findAll().stream().filter() bottleneck
+     */
+    List<ExpenditureEvidence> findByCampaignIdInAndStatusIn(List<Long> campaignIds, List<String> statuses);
 }

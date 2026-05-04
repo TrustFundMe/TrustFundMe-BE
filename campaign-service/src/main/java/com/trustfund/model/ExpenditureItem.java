@@ -41,12 +41,6 @@ public class ExpenditureItem {
     @Column(name = "name", length = 255)
     private String name;
 
-    @Column(name = "expected_purchase_link", length = 1000)
-    private String expectedPurchaseLink;
-
-    @Column(name = "actual_purchase_link", length = 1000)
-    private String actualPurchaseLink;
-
     @Column(name = "expected_quantity")
     private Integer expectedQuantity;
 
