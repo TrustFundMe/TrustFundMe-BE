@@ -59,7 +59,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @PostConstruct
     public void cleanupOldDatabaseConstraints() {
-        // Performance fix: DDL command removed - this constraint cleanup should only run once via migration script
+        // Performance fix: DDL command removed - this constraint cleanup should only
+        // run once via migration script
         // If needed, run manually: ALTER TABLE expenditures DROP INDEX campaign_id
         log.info("Startup constraint cleanup skipped (already handled by migration).");
     }
@@ -804,13 +805,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             snapshotMap.put("withdrawAmount", withdrawAmount);
             snapshotMap.put("plan", expenditure.getPlan());
             snapshotMap.put("status", "WITHDRAWAL_REQUESTED");
-            if (evidenceDueAt != null) snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
+            if (evidenceDueAt != null)
+                snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
 
             String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
-            
+
             String ownerName = "Chủ chiến dịch";
             try {
-                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(campaign.getFundOwnerId());
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient
+                        .getUserById(campaign.getFundOwnerId());
                 if (ownerInfo != null && ownerInfo.getFullName() != null) {
                     ownerName = ownerInfo.getFullName();
                 }
@@ -825,7 +828,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             auditRequest.put("dataSnapshot", snapshot);
             auditRequest.put("actorId", campaign.getFundOwnerId());
             auditRequest.put("actorName", ownerName);
-            
+
             identityServiceClient.createAuditLog(auditRequest);
         } catch (Exception e) {
             log.error("❌ Failed to create audit log for withdrawal request {}: {}", id, e.getMessage());
@@ -914,7 +917,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .expenditure(expenditure)
                         .name(itemReq.getName())
                         .expectedQuantity(itemReq.getExpectedQuantity())
-                        .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
+                        .actualQuantity(0)
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(itemReq.getActualPrice() != null ? itemReq.getActualPrice() : BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
