@@ -91,6 +91,7 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/feed-posts/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/flags/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/system-configs/**").permitAll()
                                                 // User post seen — allow GET (returns empty for anon), POST needs auth
                                                 .requestMatchers(HttpMethod.GET, "/api/user-post-seen").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-post-seen").authenticated()

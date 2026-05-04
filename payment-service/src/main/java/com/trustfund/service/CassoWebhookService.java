@@ -11,6 +11,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
+import jakarta.persistence.EntityManager;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,9 @@ public class CassoWebhookService {
     private final DonationRepository donationRepository;
     private final DonationService donationService;
     private final RestTemplate restTemplate;
+    private final EntityManager entityManager;
+
+    private final java.util.Set<String> processingTids = java.util.Collections.synchronizedSet(new java.util.HashSet<>());
 
     @Value("${app.identity-service.url:http://localhost:8081}")
     private String identityServiceUrl;
@@ -86,9 +91,16 @@ public class CassoWebhookService {
 
             log.info("Processing transaction: tid={}, account={}, bank={}", tid, accountNumber, bankAbbreviation);
             
+            // In-memory dedup (prevent race condition when Pusher fires same event twice)
+            if (!processingTids.add(tid)) {
+                log.warn("Casso transaction {} is already being processed by another thread. Skipping.", tid);
+                continue;
+            }
+
             // Deduplication (using tid or id)
             if (cassoTransactionRepository.existsByTid(tid)) {
                 log.warn("Casso transaction {} already processed. Skipping.", tid);
+                processingTids.remove(tid);
                 continue;
             }
 
@@ -107,12 +119,6 @@ public class CassoWebhookService {
             // 2. Fetch campaignId for auditing
             Long campaignId = getCampaignIdFromAccount(accountNumber, bankAbbreviation);
             log.info("➔ [DEBUG] Found campaignId: {} for account: {}", campaignId, accountNumber);
-
-            // ⚠️ CHECK DUPLICATE TID
-            if (cassoTransactionRepository.existsByTid(tid)) {
-                log.warn("⚠️ Casso transaction {} already exists. Skipping to avoid duplicate processing.", tid);
-                return;
-            }
 
             // 3. Log transaction
             CassoTransaction transaction = CassoTransaction.builder()
@@ -133,25 +139,26 @@ public class CassoWebhookService {
                 cassoTransactionRepository.save(transaction);
                 log.info("✅ Casso transaction {} saved successfully for account {}@{}", tid, accountNumber, bankAbbreviation);
             } catch (org.springframework.dao.DataIntegrityViolationException e) {
-                log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping save but continuing logic.", tid);
+                log.warn("⚠️ Casso transaction {} was already saved by another thread. Skipping entire record.", tid);
+                entityManager.clear();
+                processingTids.remove(tid);
+                continue;
             }
 
             if (transaction.getCampaignId() != null) {
                 log.info("➔ [SYNC] Syncing campaign {} balance with transaction amount: {}", transaction.getCampaignId(), transaction.getAmount());
                 donationService.updateBalanceOnlyInCampaignService(transaction.getCampaignId(), transaction.getAmount());
 
-                // NEW: If transaction is negative (expenditure), trigger evidence requirement
                 if (transaction.getAmount().compareTo(BigDecimal.ZERO) < 0) {
-                    log.info("➔ [AUTO-EXPENDITURE] Negative transaction detected for campaign {}. Triggering evidence requirement.", 
-                             transaction.getCampaignId());
+                    // Giao dịch âm → trigger minh chứng, KHÔNG tạo donation
+                    log.info("➔ [AUTO-EXPENDITURE] Negative transaction for campaign {}. Amount={}. Triggering evidence (no donation created).",
+                             transaction.getCampaignId(), transaction.getAmount());
                     try {
                         String url = campaignServiceUrl + "/api/expenditures/internal/evidence-requirement";
-                        
-                        // Parse transactionDate string to LocalDateTime
+
                         java.time.LocalDateTime txDateTime = java.time.LocalDateTime.now();
                         try {
-                            // Casso usually sends yyyy-MM-dd HH:mm:ss
-                            txDateTime = java.time.LocalDateTime.parse(transactionDate, 
+                            txDateTime = java.time.LocalDateTime.parse(transactionDate,
                                 java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
                         } catch (Exception e) {
                             log.warn("Failed to parse transaction date '{}', using current time.", transactionDate);
@@ -164,19 +171,20 @@ public class CassoWebhookService {
                             "description", transaction.getDescription(),
                             "transactionDate", txDateTime
                         );
-                        log.info("➔ [DEBUG] Calling Campaign Service Internal API: {}", url);
                         restTemplate.postForObject(url, request, Void.class);
                         log.info("✅ [AUTO-EXPENDITURE] Evidence requirement triggered successfully.");
                     } catch (Exception e) {
                         log.error("❌ [AUTO-EXPENDITURE] Failed to trigger evidence requirement: {}", e.getMessage(), e);
                     }
+                } else {
+                    // Giao dịch dương → match donation
+                    processTransactionDescription(transaction);
                 }
             } else {
-                log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping evidence trigger.", tid);
+                log.warn("⚠️ [DEBUG] No campaignId found for transaction {}. Skipping.", tid);
             }
 
-            // 4. Match with Campaign/Donation
-            processTransactionDescription(transaction);
+            processingTids.remove(tid);
         }
     }
 
@@ -280,51 +288,91 @@ public class CassoWebhookService {
     }
 
     private void processTransactionDescription(CassoTransaction tx) {
-        // Pattern: TF {id}
-        Pattern pattern = Pattern.compile("TF\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
-        Matcher matcher = pattern.matcher(tx.getDescription());
+        log.info("➔ [MATCH] Processing description for tid={}: '{}'", tx.getTid(), tx.getDescription());
+
+        if (tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            log.info("➔ [MATCH] Skipping negative/zero transaction tid={} (amount={}). Not a donation.", tx.getTid(), tx.getAmount());
+            return;
+        }
+
+        // Strategy 1: Match "TF {id}" pattern in description
+        Pattern pattern = Pattern.compile("TF[-_\\s]*(\\d+)", Pattern.CASE_INSENSITIVE);
+        Matcher matcher = pattern.matcher(tx.getDescription() != null ? tx.getDescription() : "");
 
         boolean matched = false;
         if (matcher.find()) {
             Long donationId = Long.parseLong(matcher.group(1));
-            log.info("Matched transaction {} with donation ID {}", tx.getTid(), donationId);
+            log.info("➔ [MATCH] Strategy 1: Matched TF pattern → donationId={}", donationId);
+            matched = tryMarkDonationPaid(donationId, tx.getTid());
+        }
 
-            java.util.Optional<Donation> donationOpt = donationRepository.findById(donationId);
-            if (donationOpt.isPresent()) {
-                Donation donation = donationOpt.get();
-                if ("PENDING".equals(donation.getStatus())) {
-                    donation.setStatus("PAID");
-                    donationRepository.save(donation);
-                    
-                    // Mark as synced, but do NOT call updateBalance in CampaignService 
-                    // because we already did it in handleCassoWebhook
-                    donationService.markAsBalancedSynced(donation);
-                    log.info("Donation {} marked as PAID and synced via Casso", donationId);
-                    matched = true;
-                } else {
-                    log.warn("Donation {} is already {}. Treating this transaction as a new anonymous donation.", 
-                        donationId, donation.getStatus());
+        // Strategy 2: If TF pattern not found, try matching by campaignId + amount (PENDING only)
+        if (!matched && tx.getCampaignId() != null && tx.getAmount() != null && tx.getAmount().compareTo(java.math.BigDecimal.ZERO) > 0) {
+            List<Donation> pendingDonations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtDesc(
+                    tx.getCampaignId(), "PENDING");
+            log.info("➔ [MATCH] Strategy 2: Looking for PENDING donation with campaignId={} and amount={}. Found {} PENDING donations.",
+                     tx.getCampaignId(), tx.getAmount(), pendingDonations.size());
+
+            for (Donation d : pendingDonations) {
+                log.info("➔ [MATCH] Strategy 2: Checking donation id={}, totalAmount={}, donationAmount={}",
+                         d.getId(), d.getTotalAmount(), d.getDonationAmount());
+                boolean amountMatch = (d.getTotalAmount() != null && d.getTotalAmount().compareTo(tx.getAmount()) == 0)
+                        || (d.getDonationAmount() != null && d.getDonationAmount().compareTo(tx.getAmount()) == 0);
+                if (amountMatch) {
+                    log.info("➔ [MATCH] Strategy 2: ✅ Matched PENDING donation id={}", d.getId());
+                    matched = tryMarkDonationPaid(d.getId(), tx.getTid());
+                    if (matched) break;
                 }
-            } else {
-                log.warn("Donation ID {} from description not found in database.", donationId);
+            }
+
+            // Strategy 3: If exact amount didn't match, take the most recent PENDING donation for this campaign
+            if (!matched && !pendingDonations.isEmpty()) {
+                Donation mostRecent = pendingDonations.get(0);
+                log.info("➔ [MATCH] Strategy 3: No exact amount match. Falling back to most recent PENDING donation id={} (totalAmount={}) for campaign {}",
+                         mostRecent.getId(), mostRecent.getTotalAmount(), tx.getCampaignId());
+                matched = tryMarkDonationPaid(mostRecent.getId(), tx.getTid());
+            }
+
+            if (!matched) {
+                log.warn("➔ [MATCH] Strategy 2+3: No PENDING donation found for campaign {}", tx.getCampaignId());
             }
         }
 
         if (!matched) {
-            // Direct transfer without matching description OR duplicate/refilled note -> Create Anonymous Donation
-            log.info("Transaction {} did not match a PENDING donation. Creating a new Anonymous donation record.", tx.getTid());
+            log.info("➔ [MATCH] No match found. Creating anonymous donation for campaign {} with amount {}",
+                     tx.getCampaignId(), tx.getAmount());
             Donation anonymousDonation = Donation.builder()
                     .campaignId(tx.getCampaignId())
                     .donationAmount(tx.getAmount())
                     .totalAmount(tx.getAmount())
                     .status("PAID")
                     .isAnonymous(true)
-                    .isBalanceSynchronized(true) // Already synced via handleCassoWebhook
+                    .isBalanceSynchronized(true)
                     .build();
-            
+
             donationRepository.save(anonymousDonation);
             log.info("Anonymous Donation {} created and marked as PAID for campaign {}", anonymousDonation.getId(), tx.getCampaignId());
         }
+    }
+
+    private boolean tryMarkDonationPaid(Long donationId, String tid) {
+        java.util.Optional<Donation> donationOpt = donationRepository.findById(donationId);
+        if (donationOpt.isPresent()) {
+            Donation donation = donationOpt.get();
+            if ("PAID".equals(donation.getStatus())) {
+                log.warn("Donation {} is already PAID. Skipping.", donationId);
+                return true;
+            }
+            // Cho phép PENDING hoặc FAILED → set PAID (tiền thật đã vào qua Casso)
+            log.info("✅ Donation {} status {} → PAID via Casso transaction {}", donationId, donation.getStatus(), tid);
+            donation.setStatus("PAID");
+            donationRepository.save(donation);
+            donationService.markAsBalancedSynced(donation);
+            return true;
+        } else {
+            log.warn("Donation ID {} not found in database.", donationId);
+        }
+        return false;
     }
 
     public List<CassoTransaction> getAllTransactions() {

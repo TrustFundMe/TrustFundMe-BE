@@ -30,6 +30,10 @@ public class AuditLogServiceImpl implements AuditLogService {
         } else {
             log.setPreviousHash(GENESIS_HASH);
         }
+        
+        // RE-CALCULATE HASH TO ENSURE CHAIN INTEGRITY (Data + PreviousHash)
+        String contentToHash = log.getDataSnapshot() + log.getPreviousHash();
+        log.setAuditHash(calculateHash(contentToHash));
 
         return auditLogRepository.save(log);
     }
@@ -42,7 +46,10 @@ public class AuditLogServiceImpl implements AuditLogService {
         }
 
         AuditLog log = logOpt.get();
-        String currentDataHash = calculateHash(log.getDataSnapshot());
+        // Recalculate using the same chain logic: Data + PreviousHash
+        String contentToHash = log.getDataSnapshot() + log.getPreviousHash();
+        String currentDataHash = calculateHash(contentToHash);
+        
         boolean isDataValid = currentDataHash.equalsIgnoreCase(log.getAuditHash());
 
         boolean isChainValid = true;
