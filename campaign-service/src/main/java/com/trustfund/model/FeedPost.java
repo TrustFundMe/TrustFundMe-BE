@@ -9,7 +9,11 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "feed_post")
+@Table(name = "feed_post", indexes = {
+    @Index(name = "idx_feed_post_author_status", columnList = "author_id, status"),
+    @Index(name = "idx_feed_post_status_locked_visibility", columnList = "status, is_locked, visibility"),
+    @Index(name = "idx_feed_post_target", columnList = "target_id, target_type")
+})
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
