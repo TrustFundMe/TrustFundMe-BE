@@ -61,10 +61,7 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
-        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND,
-                org.springframework.data.domain.PageRequest.of(0, Integer.MAX_VALUE,
-                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                                "createdAt")))
+        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND)
                 .stream()
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
@@ -173,11 +170,8 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignResponse> getByStatus(String status) {
         return campaignRepository
-                .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
-                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                                "createdAt"))
+                .findByStatusAndTypeNot(status, Campaign.TYPE_GENERAL_FUND)
                 .stream()
-                .filter(c -> c.getStatus().equalsIgnoreCase(status))
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }
@@ -185,11 +179,8 @@ public class CampaignServiceImpl implements CampaignService {
     @Override
     public List<CampaignResponse> getByCategoryId(Long categoryId) {
         return campaignRepository
-                .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
-                        org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC,
-                                "createdAt"))
+                .findByCategoryIdAndTypeNot(categoryId, Campaign.TYPE_GENERAL_FUND)
                 .stream()
-                .filter(c -> c.getCategory().getId().equals(categoryId))
                 .map(this::toCampaignResponse)
                 .collect(java.util.stream.Collectors.toList());
     }

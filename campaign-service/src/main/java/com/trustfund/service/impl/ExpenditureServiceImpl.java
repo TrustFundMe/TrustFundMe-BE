@@ -59,15 +59,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @PostConstruct
     public void cleanupOldDatabaseConstraints() {
-        try {
-            log.info("Checking and removing old unique constraints on expenditures table...");
-            // Thử xóa UNIQUE constraint/index cũ ở field campaign_id nếu tồn tại (do code
-            // cũ)
-            jdbcTemplate.execute("ALTER TABLE expenditures DROP INDEX campaign_id");
-            log.info("✅ Successfully dropped old 'campaign_id' unique index.");
-        } catch (Exception e) {
-            log.info("Old unique index for 'campaign_id' not found or already dropped. Safe to ignore.");
-        }
+        // Performance fix: DDL command removed - this constraint cleanup should only run once via migration script
+        // If needed, run manually: ALTER TABLE expenditures DROP INDEX campaign_id
+        log.info("Startup constraint cleanup skipped (already handled by migration).");
     }
 
     private final com.trustfund.service.ApprovalTaskService approvalTaskService;
@@ -1374,11 +1368,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             return java.util.Collections.emptyList();
         }
 
-        // Tìm tất cả minh chứng của các chiến dịch này mà có status là PENDING hoặc
-        // OVERDUE
-        return evidenceRepository.findAll().stream()
-                .filter(ev -> campaignIds.contains(ev.getCampaignId()) &&
-                        ("PENDING".equals(ev.getStatus()) || "OVERDUE".equals(ev.getStatus())))
+        // Performance fix: proper DB query instead of findAll().stream().filter()
+        return evidenceRepository.findByCampaignIdInAndStatusIn(campaignIds, java.util.List.of("PENDING", "OVERDUE"))
+                .stream()
                 .map(this::mapToEvidenceResponse)
                 .collect(Collectors.toList());
     }

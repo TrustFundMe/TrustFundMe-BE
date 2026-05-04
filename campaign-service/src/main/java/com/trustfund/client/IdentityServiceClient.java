@@ -1,9 +1,7 @@
 package com.trustfund.client;
 
-import com.trustfund.model.response.UserInfoResponse;
-import com.trustfund.model.response.UserVerificationStatusResponse;
-import com.trustfund.model.response.UserKYCResponse;
-import lombok.extern.slf4j.Slf4j;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -11,12 +9,35 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.trustfund.model.response.UserInfoResponse;
+import com.trustfund.model.response.UserKYCResponse;
+import com.trustfund.model.response.UserVerificationStatusResponse;
+
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
 @Component
 public class IdentityServiceClient {
 
     private final RestTemplate restTemplate;
     private final String identityServiceUrl;
+
+    // In-memory cache (30s TTL) to avoid repeated HTTP calls for the same user
+    private final ConcurrentHashMap<Long, CachedValue<UserInfoResponse>> userInfoCache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Long, CachedValue<UserVerificationStatusResponse>> verificationCache = new ConcurrentHashMap<>();
+    private static final long CACHE_TTL_MS = 30_000;
+
+    private static class CachedValue<T> {
+        final T value;
+        final long timestamp;
+        CachedValue(T value) {
+            this.value = value;
+            this.timestamp = System.currentTimeMillis();
+        }
+        boolean isExpired() {
+            return System.currentTimeMillis() - timestamp > CACHE_TTL_MS;
+        }
+    }
 
     public IdentityServiceClient(RestTemplate restTemplate,
             @Value("${identity.service.url:http://localhost:8081}") String identityServiceUrl) {
@@ -26,7 +47,6 @@ public class IdentityServiceClient {
 
     /**
      * Gọi identity-service để kiểm tra user có tồn tại không.
-     * Nếu không tồn tại hoặc không kết nối được -> ném 400.
      */
     public void validateUserExists(Long userId) {
         if (userId == null)
@@ -47,22 +67,31 @@ public class IdentityServiceClient {
     }
 
     /**
-     * Lấy trạng thái xác thực KYC và Bank Account của user từ identity-service.
+     * Lấy trạng thái xác thực KYC và Bank Account của user. Cached 30s.
      */
     public UserVerificationStatusResponse getVerificationStatus(Long userId) {
         if (userId == null)
             return null;
 
+        CachedValue<UserVerificationStatusResponse> cached = verificationCache.get(userId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.value;
+        }
+
         String url = identityServiceUrl + "/api/internal/users/" + userId + "/verification-status";
         try {
             log.debug("Fetching verification status for user {} from {}", userId, url);
-            return restTemplate.getForObject(url, UserVerificationStatusResponse.class);
+            UserVerificationStatusResponse result = restTemplate.getForObject(url, UserVerificationStatusResponse.class);
+            verificationCache.put(userId, new CachedValue<>(result));
+            return result;
         } catch (Exception e) {
             log.error("Failed to fetch verification status for user {}: {}", userId, e.getMessage());
-            return UserVerificationStatusResponse.builder()
+            UserVerificationStatusResponse fallback = UserVerificationStatusResponse.builder()
                     .kycVerified(false)
                     .bankVerified(false)
                     .build();
+            verificationCache.put(userId, new CachedValue<>(fallback));
+            return fallback;
         }
     }
 
@@ -83,16 +112,25 @@ public class IdentityServiceClient {
     }
 
     /**
-     * Lấy thông tin user từ identity-service.
+     * Lấy thông tin user từ identity-service. Cached 30s.
      */
     public UserInfoResponse getUserInfo(Long userId) {
         if (userId == null)
             return null;
 
+        CachedValue<UserInfoResponse> cached = userInfoCache.get(userId);
+        if (cached != null && !cached.isExpired()) {
+            return cached.value;
+        }
+
         String url = identityServiceUrl + "/api/internal/users/" + userId;
         try {
             log.debug("Fetching user info for user {} from {}", userId, url);
-            return restTemplate.getForObject(url, UserInfoResponse.class);
+            UserInfoResponse result = restTemplate.getForObject(url, UserInfoResponse.class);
+            if (result != null) {
+                userInfoCache.put(userId, new CachedValue<>(result));
+            }
+            return result;
         } catch (Exception e) {
             log.error("Failed to fetch user info for user {}: {}", userId, e.getMessage());
             return null;
@@ -161,19 +199,8 @@ public class IdentityServiceClient {
     }
 
     public UserInfoResponse getUserById(Long userId) {
-        if (userId == null) return null;
-        String url = identityServiceUrl + "/api/internal/users/" + userId;
-        try {
-            log.debug("Calling identity-service for user {}: {}", userId, url);
-            UserInfoResponse response = restTemplate.getForObject(url, UserInfoResponse.class);
-            if (response == null) {
-                log.warn("Identity service returned null for user {}", userId);
-            }
-            return response;
-        } catch (Exception e) {
-            log.error("Failed to get user {} from {}: {}", userId, url, e.getMessage());
-            return null;
-        }
+        // Reuse cached getUserInfo
+        return getUserInfo(userId);
     }
 
     public UserKYCResponse getUserKYC(Long userId) {
