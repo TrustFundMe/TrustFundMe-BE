@@ -13,6 +13,7 @@ import com.trustfund.repository.BankAccountRepository;
 import com.trustfund.repository.UserRepository;
 import com.trustfund.repository.UserKYCRepository;
 import com.trustfund.service.interfaceServices.BankAccountService;
+import com.trustfund.utils.BankCodeNormalizer;
 import com.trustfund.utils.EncryptionUtils;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,14 +35,16 @@ public class BankAccountServiceImpl implements BankAccountService {
         User user = userRepository.findById(Long.parseLong(userIdStr))
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        String normalizedBankCode = BankCodeNormalizer.normalize(request.getBankCode());
+
         if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                request.getAccountNumber().trim(), request.getBankCode().trim(), user.getId())) {
+                request.getAccountNumber().trim(), normalizedBankCode, user.getId())) {
             throw new BadRequestException("Bank account already exists for another user");
         }
 
         BankAccount bankAccount = BankAccount.builder()
                 .user(user)
-                .bankCode(request.getBankCode())
+                .bankCode(normalizedBankCode)
                 .accountNumber(request.getAccountNumber())
                 .accountHolderName(request.getAccountHolderName())
                 .isVerified(true) // Auto-verify when STAFF creates
@@ -153,16 +156,18 @@ public class BankAccountServiceImpl implements BankAccountService {
                 .orElseThrow(() -> new NotFoundException("Bank account not found"));
 
         checkBankPermission(bankAccount, currentUserId, currentRole, false);
-        
+
+        String normalizedBankCode = BankCodeNormalizer.normalize(request.getBankCode());
+
         if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                request.getAccountNumber().trim(), request.getBankCode().trim(), currentUserId)) {
+                request.getAccountNumber().trim(), normalizedBankCode, currentUserId)) {
             throw new BadRequestException("Bank account already exists for another user");
         }
 
-        bankAccount.setBankCode(request.getBankCode());
+        bankAccount.setBankCode(normalizedBankCode);
         bankAccount.setAccountNumber(request.getAccountNumber());
         bankAccount.setAccountHolderName(request.getAccountHolderName());
-        
+
         if (request.getWebhookKey() != null) {
             bankAccount.setWebhookKey(encryptionUtils.encrypt(request.getWebhookKey()));
         }
@@ -252,9 +257,11 @@ public class BankAccountServiceImpl implements BankAccountService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NotFoundException("User not found"));
 
+        String normalizedBankCode = BankCodeNormalizer.normalize(request.getBankCode());
+
         // Check if account number + bank code exists for ANY other user
         if (bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                request.getAccountNumber().trim(), request.getBankCode().trim(), userId)) {
+                request.getAccountNumber().trim(), normalizedBankCode, userId)) {
             throw new BadRequestException("Bank account already exists for another user");
         }
 
@@ -265,7 +272,7 @@ public class BankAccountServiceImpl implements BankAccountService {
         if (!existingAccounts.isEmpty()) {
             // Update existing account (take the first one)
             bankAccount = existingAccounts.get(0);
-            bankAccount.setBankCode(request.getBankCode());
+            bankAccount.setBankCode(normalizedBankCode);
             bankAccount.setAccountNumber(request.getAccountNumber());
             bankAccount.setAccountHolderName(request.getAccountHolderName());
             bankAccount.setIsVerified(true);
@@ -274,12 +281,13 @@ public class BankAccountServiceImpl implements BankAccountService {
             // Create new account
             bankAccount = BankAccount.builder()
                     .user(user)
-                    .bankCode(request.getBankCode())
+                    .bankCode(normalizedBankCode)
                     .accountNumber(request.getAccountNumber())
                     .accountHolderName(request.getAccountHolderName())
                     .isVerified(true) // Auto-verify when STAFF submits
                     .status("APPROVED") // Auto-approve when STAFF submits
-                    .webhookKey(request.getWebhookKey() != null ? encryptionUtils.encrypt(request.getWebhookKey()) : null)
+                    .webhookKey(
+                            request.getWebhookKey() != null ? encryptionUtils.encrypt(request.getWebhookKey()) : null)
                     .campaignId(request.getCampaignId())
                     .build();
         }
@@ -305,13 +313,13 @@ public class BankAccountServiceImpl implements BankAccountService {
     @Override
     public boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId) {
         return bankAccountRepository.existsByAccountNumberAndBankCodeAndUserIdNot(
-                accountNumber.trim(), bankCode.trim(), currentUserId);
+                accountNumber.trim(), BankCodeNormalizer.normalize(bankCode), currentUserId);
     }
 
     @Override
     public boolean checkAccountExists(String accountNumber, String bankCode) {
         return bankAccountRepository.existsByAccountNumberAndBankCode(
-                accountNumber.trim(), bankCode.trim());
+                accountNumber.trim(), BankCodeNormalizer.normalize(bankCode));
     }
 
     @Override
@@ -322,7 +330,8 @@ public class BankAccountServiceImpl implements BankAccountService {
     }
 
     @Override
-    public java.util.Optional<BankAccountResponse> findByAccountNumberAndBankCode(String accountNumber, String bankCode) {
+    public java.util.Optional<BankAccountResponse> findByAccountNumberAndBankCode(String accountNumber,
+            String bankCode) {
         return bankAccountRepository.findByAccountNumberAndBankCode(accountNumber.trim(), bankCode.trim())
                 .map(this::toBankAccountResponse);
     }
@@ -342,7 +351,7 @@ public class BankAccountServiceImpl implements BankAccountService {
         } catch (Exception e) {
             // Log warning but return raw/null to avoid 500 error
             // In a real app, we might return a placeholder or encrypted string
-            return "DECRYPTION_ERROR"; 
+            return "DECRYPTION_ERROR";
         }
     }
 }

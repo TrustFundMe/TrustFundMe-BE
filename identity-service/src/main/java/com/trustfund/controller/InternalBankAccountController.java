@@ -2,12 +2,15 @@ package com.trustfund.controller;
 
 import com.trustfund.model.response.BankAccountResponse;
 import com.trustfund.service.interfaceServices.BankAccountService;
+import com.trustfund.utils.BankCodeNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/internal/bank-accounts")
@@ -20,14 +23,24 @@ public class InternalBankAccountController {
     public ResponseEntity<BankAccountResponse> getByAccountNumber(
             @RequestParam("accountNumber") String accountNumber,
             @RequestParam(value = "bankCode", required = false) String bankCode) {
-        
+
+        String trimmedAccount = accountNumber.trim();
+
         if (bankCode != null && !bankCode.isBlank()) {
-            return bankAccountService.findByAccountNumberAndBankCode(accountNumber.trim(), bankCode.trim())
+            String normalizedCode = BankCodeNormalizer.normalize(bankCode.trim());
+            Optional<BankAccountResponse> result = bankAccountService.findByAccountNumberAndBankCode(trimmedAccount,
+                    normalizedCode);
+            if (result.isPresent()) {
+                return ResponseEntity.ok(result.get());
+            }
+            // Fallback: try lookup by accountNumber only (handles legacy data with
+            // mismatched bankCode)
+            return bankAccountService.findByAccountNumber(trimmedAccount)
                     .map(ResponseEntity::ok)
                     .orElse(ResponseEntity.notFound().build());
         }
-        
-        return bankAccountService.findByAccountNumber(accountNumber.trim())
+
+        return bankAccountService.findByAccountNumber(trimmedAccount)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
