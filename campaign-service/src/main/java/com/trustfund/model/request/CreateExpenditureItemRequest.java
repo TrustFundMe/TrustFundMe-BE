@@ -43,4 +43,6 @@ public class CreateExpenditureItemRequest {
     private String expectedUnit;
 
     private String actualUnit;
+
+    private String actualPurchaseLocation;
 }

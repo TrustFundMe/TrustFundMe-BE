@@ -1281,10 +1281,10 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                     // So sánh: Cho phép lệch 15% so với Min/Max
                     if (declared > max * 1.15) {
                         aiItem.setPriceStatus("OVERPRICED");
-                        aiItem.setStatusMessage("Giá kê khai cao hơn đáng kể so với thị trường (Max: " + max + ")");
+                        aiItem.setStatusMessage("Giá kê khai cao hơn đáng kể so với thị trường.");
                     } else if (declared < min * 0.85) {
                         aiItem.setPriceStatus("UNDERPRICED");
-                        aiItem.setStatusMessage("Giá kê khai thấp hơn nhiều so với thị trường (Min: " + min + ")");
+                        aiItem.setStatusMessage("Giá kê khai thấp hơn nhiều so với thị trường.");
                     } else {
                         aiItem.setPriceStatus("MATCHED");
                         aiItem.setStatusMessage("Giá kê khai nằm trong khoảng hợp lý.");
@@ -1398,13 +1398,14 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             snapshotMap.put("status", "SUBMITTED");
 
             String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
-            
+
             String ownerName = "Chủ chiến dịch";
             Long fundOwnerId = 0L;
             try {
                 CampaignResponse campaign = campaignService.getById(evidence.getCampaignId());
                 fundOwnerId = campaign.getFundOwnerId();
-                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(fundOwnerId);
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient
+                        .getUserById(fundOwnerId);
                 if (ownerInfo != null && ownerInfo.getFullName() != null) {
                     ownerName = ownerInfo.getFullName();
                 }
@@ -1419,7 +1420,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             auditRequest.put("dataSnapshot", snapshot);
             auditRequest.put("actorId", fundOwnerId);
             auditRequest.put("actorName", ownerName);
-            
+
             identityServiceClient.createAuditLog(auditRequest);
         } catch (Exception e) {
             log.error("❌ Failed to create audit log for evidence submission {}: {}", evidenceId, e.getMessage());

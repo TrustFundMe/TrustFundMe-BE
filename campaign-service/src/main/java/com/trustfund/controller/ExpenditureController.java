@@ -22,6 +22,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.core.io.InputStreamResource;
+import org.springframework.core.io.Resource;
 
 import java.util.List;
 
@@ -197,16 +199,31 @@ public class ExpenditureController {
     }
 
     @GetMapping("/import/template")
-    @Operation(summary = "Tải file mẫu Excel nhập khoản chi", description = "Tải file mẫu Excel với dữ liệu minh hoạ để người dùng nhập theo.")
-    public ResponseEntity<byte[]> downloadTemplate() {
-        java.io.ByteArrayInputStream data = expenditureService.exportItemsToExcelTemplate();
-        String filename = "Mau_Ke_Hoach_Chi_Tieu_Tong_Hop_"
-                + java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + ".xlsx";
+    @Operation(summary = "Tải file mẫu Excel chi tiêu", description = "Tải file Excel mẫu dùng để nhập kế hoạch chi tiêu.")
+    public ResponseEntity<Resource> downloadTemplate() {
+        String filename = "Mau_Ke_Hoach_Chi_Tieu.xlsx";
+        InputStreamResource file = new InputStreamResource(ExpenditureExcelHelper.itemsToExcelTemplate());
         return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + filename + "\"")
-                .contentType(
-                        MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                .body(data.readAllBytes());
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .body(file);
+    }
+
+    @GetMapping("/template")
+    @Operation(summary = "Tải file mẫu Excel chi tiêu (Legacy)", description = "Alias cho /import/template.")
+    public ResponseEntity<Resource> downloadTemplateLegacy() {
+        return downloadTemplate();
+    }
+
+    @GetMapping("/actuals-template")
+    @Operation(summary = "Tải file mẫu Excel thực chi", description = "Tải file Excel mẫu dùng để cập nhập thực chi (không có cột đợt/giải ngân).")
+    public ResponseEntity<Resource> downloadActualsTemplate() {
+        String filename = "Mau_Thuc_Chi.xlsx";
+        InputStreamResource file = new InputStreamResource(ExpenditureExcelHelper.itemsToActualsExcelTemplate());
+        return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+                .contentType(MediaType.parseMediaType("application/vnd.ms-excel"))
+                .body(file);
     }
 
     @PostMapping("/import-bulk")
@@ -227,6 +244,31 @@ public class ExpenditureController {
                     "message", "Đọc " + data.size() + " mốc giải ngân từ file Excel thành công",
                     "data", data));
         } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(java.util.Map.of("error", "Không thể đọc file Excel: " + e.getMessage()));
+        }
+    }
+
+    @PostMapping("/import")
+    @Operation(summary = "Nhập hạng mục chi tiêu từ Excel", description = "Đọc file Excel và trả về danh sách các hạng mục chi tiêu.")
+    public ResponseEntity<?> importItemsFromExcel(@RequestParam("file") MultipartFile file) {
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("error", "File không được để trống"));
+        }
+        if (!ExpenditureExcelHelper.hasExcelFormat(file)) {
+            return ResponseEntity.badRequest()
+                    .body(java.util.Map.of("error", "Vui lòng upload file Excel (.xlsx hoặc .xls)"));
+        }
+        try {
+            java.util.List<com.trustfund.model.request.CreateExpenditureItemRequest> data = ExpenditureExcelHelper
+                    .excelToItems(file.getInputStream());
+            return ResponseEntity.ok(java.util.Map.of(
+                    "success", true,
+                    "message", "Đọc " + data.size() + " hạng mục từ file Excel thành công",
+                    "data", data));
+        } catch (Exception e) {
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(java.util.Map.of("error", "Không thể đọc file Excel: " + e.getMessage()));
         }
@@ -262,7 +304,8 @@ public class ExpenditureController {
 
     @GetMapping("/evidence/{evidenceId}")
     @Operation(summary = "Lấy chi tiết minh chứng chi tiêu", description = "Lấy thông tin chi tiết của một minh chứng chi tiêu theo ID.")
-    public ResponseEntity<com.trustfund.model.response.ExpenditureEvidenceResponse> getEvidenceById(@PathVariable("evidenceId") Long evidenceId) {
+    public ResponseEntity<com.trustfund.model.response.ExpenditureEvidenceResponse> getEvidenceById(
+            @PathVariable("evidenceId") Long evidenceId) {
         return ResponseEntity.ok(expenditureService.getEvidenceById(evidenceId));
     }
 
