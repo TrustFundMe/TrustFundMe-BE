@@ -15,9 +15,10 @@ MỤC TIÊU PHÂN TÍCH (NẾU isBill = true):
      * Nếu lệch giá hoặc lệch số lượng (DÙ CHỈ MỘT CHÚT), phải ghi rõ tên món và số tiền lệch.
    - TRUY VẾT MÓN THIẾU: Flag nếu hạng mục có trong danh sách chi nhưng không thấy trên hóa đơn.
 
-2. THẨM ĐỊNH GIÁ THỊ TRƯỜNG (MARKET CHECK):
-   - Baseline tham khảo: Mì tôm (100k-150k/thùng), Gạo (18k-30k/kg), Sữa tươi lốc (24k-32k), Dầu ăn 1L (45k-60k).
-   - Nếu phát hiện đơn giá cao bất thường so với mặt bằng chung (>30%), hãy liệt kê vào "redFlags".
+2. KIỂM TRA GIÁ THỊ TRƯỜNG (MARKET VERIFICATION):
+   - Sử dụng tên vật phẩm trên hóa đơn làm từ khóa search (itemName, brand).
+   - Xác định khoảng giá thị trường hiện tại cho mặt hàng đó.
+   - Nếu đơn giá trên hóa đơn cao hơn thị trường >30% -> Liệt kê vào "redFlags" với lý do "Giá cao hơn mặt bằng chung".
 
    - Sai lệch TỔNG TIỀN (>10k): +30 điểm.
    - Thiếu minh chứng cho hạng mục đã chi: +25 điểm.

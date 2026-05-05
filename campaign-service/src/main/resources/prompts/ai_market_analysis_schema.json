@@ -5,31 +5,17 @@
         "schema": {
             "type": "object",
             "properties": {
-                "riskScore": {
-                    "type": "number"
-                },
-                "riskLevel": {
-                    "type": "string"
-                },
                 "summary": {
                     "type": "string"
                 },
                 "recommendation": {
                     "type": "string"
                 },
-                "redFlags": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "default": []
+                "riskScore": {
+                    "type": "number"
                 },
-                "spendingAnalysis": {
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    },
-                    "default": []
+                "riskLevel": {
+                    "type": "string"
                 },
                 "items": {
                     "type": "array",
@@ -39,25 +25,13 @@
                             "itemName": {
                                 "type": "string"
                             },
-                            "plannedCategory": {
-                                "type": "string"
-                            },
-                            "quantity": {
-                                "type": "number"
-                            },
-                            "declaredPrice": {
-                                "type": "number"
-                            },
                             "marketPrice": {
                                 "type": "number"
                             },
-                            "total": {
+                            "marketPriceMin": {
                                 "type": "number"
                             },
-                            "priceStatus": {
-                                "type": "string"
-                            },
-                            "deviationPercentage": {
+                            "marketPriceMax": {
                                 "type": "number"
                             },
                             "evidenceUrls": {
@@ -66,44 +40,23 @@
                                     "type": "string"
                                 },
                                 "default": []
-                            },
-                            "geographicEvidenceUrl": {
-                                "type": "string"
-                            },
-                            "logisticsScore": {
-                                "type": "number"
-                            },
-                            "vendorTrustScore": {
-                                "type": "number"
-                            },
-                            "geographicContextSummary": {
-                                "type": "string"
-                            },
-                            "statusMessage": {
-                                "type": "string"
-                            },
-                            "isSuspicious": {
-                                "type": "boolean"
-                            },
-                            "linkType": {
-                                "type": "string"
                             }
                         },
                         "required": [
                             "itemName",
-                            "declaredPrice",
                             "marketPrice",
-                            "isSuspicious",
+                            "marketPriceMin",
+                            "marketPriceMax",
                             "evidenceUrls"
                         ]
                     }
                 }
             },
             "required": [
-                "riskScore",
-                "riskLevel",
                 "summary",
                 "recommendation",
+                "riskScore",
+                "riskLevel",
                 "items"
             ]
         }

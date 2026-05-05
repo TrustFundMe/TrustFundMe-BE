@@ -260,6 +260,12 @@ public class ExpenditureController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/evidence/{evidenceId}")
+    @Operation(summary = "Lấy chi tiết minh chứng chi tiêu", description = "Lấy thông tin chi tiết của một minh chứng chi tiêu theo ID.")
+    public ResponseEntity<com.trustfund.model.response.ExpenditureEvidenceResponse> getEvidenceById(@PathVariable("evidenceId") Long evidenceId) {
+        return ResponseEntity.ok(expenditureService.getEvidenceById(evidenceId));
+    }
+
     @PostMapping("/evidence/{evidenceId}/submit")
     @Operation(summary = "Nộp minh chứng chi tiêu", description = "Chủ quỹ nộp file/ảnh minh chứng cho một yêu cầu cụ thể.")
     public ResponseEntity<Void> submitEvidence(@PathVariable("evidenceId") Long evidenceId,

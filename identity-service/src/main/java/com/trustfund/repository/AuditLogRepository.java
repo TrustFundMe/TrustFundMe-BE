@@ -29,4 +29,11 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
            "a.auditHash LIKE %:query% OR " +
            "a.actorName LIKE %:query%")
     Page<AuditLog> search(@Param("query") String query, Pageable pageable);
+
+    Page<AuditLog> findByActorId(Long actorId, Pageable pageable);
+
+    Page<AuditLog> findByActorIdAndEntityTypeNot(Long actorId, String entityType, Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE a.actorId = :actorId OR (a.entityType IN ('DONATION_TRANSACTION', 'CAMPAIGN', 'EVIDENCE_SUBMISSION', 'EXPENDITURE_WITHDRAWAL') AND a.entityId IN :campaignIds)")
+    Page<AuditLog> findByReconciliationContext(@Param("actorId") Long actorId, @Param("campaignIds") List<Long> campaignIds, Pageable pageable);
 }

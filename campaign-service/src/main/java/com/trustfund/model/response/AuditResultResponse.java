@@ -58,8 +58,13 @@ public class AuditResultResponse {
 
         // Diagnostic fields preserved from previous logic
         private String marketPriceRange;
-        private Double priceRangeMin;
-        private Double priceRangeMax;
+        @JsonProperty("marketPriceMin")
+        @JsonAlias({ "marketPriceMin", "priceRangeMin" })
+        private Double marketPriceMin;
+
+        @JsonProperty("marketPriceMax")
+        @JsonAlias({ "marketPriceMax", "priceRangeMax" })
+        private Double marketPriceMax;
         private String statusMessage;
         private String unit;
         private Boolean productExists;

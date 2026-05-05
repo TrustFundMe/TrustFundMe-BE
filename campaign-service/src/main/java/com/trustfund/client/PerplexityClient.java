@@ -78,32 +78,40 @@ public class PerplexityClient {
                             : "file: " + SCHEMA_FILE,
                     schemaJson.length());
             try {
-                schema = objectMapper.readValue(schemaJson, Map.class);
-                log.info("[Perplexity] response_format schema parsed OK. Type: {}, name: {}",
-                        schema.get("type"),
-                        schema.get("json_schema") != null ? ((Map<?, ?>) schema.get("json_schema")).get("name")
-                                : "N/A");
+                schema = objectMapper.readValue(schemaJson,
+                        new com.fasterxml.jackson.core.type.TypeReference<Map<String, Object>>() {
+                        });
             } catch (Exception e) {
                 log.error("[Perplexity] Failed to parse schema JSON — will call without response_format", e);
             }
-        } else {
-            log.warn("[Perplexity] No schema found in DB or file — calling Perplexity WITHOUT response_format");
         }
 
-        // ── 3. Gọi Perplexity API ─────────────────────────────────────────────
+        // ── 3. Gọi Perplexity API với cấu trúc "Search-then-Audit" ─────────────
         try {
+            // Bước 1: Tạo Search Keywords cho từng item để hỗ trợ AI định hướng search
+            StringBuilder keywordsBuilder = new StringBuilder();
+            for (int i = 0; i < itemsToAudit.size(); i++) {
+                Map<String, Object> item = itemsToAudit.get(i);
+                keywordsBuilder.append(String.format("%d. %s (Brand: %s, Unit: %s)\n",
+                        i + 1, item.get("itemName"), item.get("brand"), item.get("unit")));
+            }
+
             String content = objectMapper.writeValueAsString(itemsToAudit);
             String dateContext = String.format(
-                    "\nHôm nay là ngày %s. Hãy tìm giá thị trường có hiệu lực tại thời điểm này.",
+                    "\nHôm nay là ngày %s. Hãy tìm giá thị trường mới nhất.",
                     LocalDate.now().toString());
-            String fullSystemPrompt = promptInstruction + dateContext;
+
+            String userPrompt = String.format(
+                    "AUDIT TASK: Verify following items.\n" +
+                            "KEYWORDS TO SEARCH:\n%s\n\n" +
+                            "DATA TO PROCESS:\n%s",
+                    keywordsBuilder.toString(), content);
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("model", "sonar-pro");
             payload.put("messages", List.of(
-                    Map.of("role", "system", "content", fullSystemPrompt),
-                    Map.of("role", "user", "content",
-                            "Verify the following expenditure items against current market prices: " + content)));
+                    Map.of("role", "system", "content", promptInstruction + dateContext),
+                    Map.of("role", "user", "content", userPrompt)));
             payload.put("temperature", 0.0);
             payload.put("top_p", 1.0);
 
@@ -112,22 +120,15 @@ public class PerplexityClient {
             }
 
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, entity, Map.class);
+            ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity,
+                    (Class<Map<String, Object>>) (Class<?>) Map.class);
 
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
                 if (choices != null && !choices.isEmpty()) {
                     Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
                     String responseContent = (String) message.get("content");
-                    log.info("[Perplexity] Raw response (first 500 chars): {}",
-                            responseContent != null && responseContent.length() > 500
-                                    ? responseContent.substring(0, 500) + "..."
-                                    : responseContent);
                     AuditResultResponse result = objectMapper.readValue(responseContent, AuditResultResponse.class);
-                    if (result != null && (result.getDetectedItems() == null || result.getDetectedItems().isEmpty())) {
-                        log.warn("[Perplexity] detectedItems is NULL or EMPTY in the parsed response! Raw: {}",
-                                responseContent);
-                    }
                     return result;
                 }
             }
@@ -135,6 +136,35 @@ public class PerplexityClient {
             log.error("Failed to query Perplexity AI", e);
         }
         return null;
+    }
+
+    /**
+     * Gọi trực tiếp Search API của Perplexity để lấy raw kết quả (Dành cho các case
+     * cần dữ liệu thô)
+     */
+    public List<Map<String, Object>> rawSearch(String query, int maxResults) {
+        String url = "https://api.perplexity.ai/search"; // Search endpoint
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        if (apiKey == null || apiKey.isEmpty())
+            apiKey = System.getenv("PERPLEXITY_API_KEY");
+        headers.set("Authorization", "Bearer " + apiKey);
+
+        Map<String, Object> payload = Map.of(
+                "query", query,
+                "max_results", maxResults);
+
+        try {
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+            ResponseEntity<Map<String, Object>> response = restTemplate.postForEntity(url, entity,
+                    (Class<Map<String, Object>>) (Class<?>) Map.class);
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return (List<Map<String, Object>>) response.getBody().get("results");
+            }
+        } catch (Exception e) {
+            log.error("[Perplexity] Raw search failed for query: {}", query, e);
+        }
+        return List.of();
     }
 
     /** Load một file từ classpath, trả null nếu không tìm thấy */

@@ -59,7 +59,8 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
     @PostConstruct
     public void cleanupOldDatabaseConstraints() {
-        // Performance fix: DDL command removed - this constraint cleanup should only run once via migration script
+        // Performance fix: DDL command removed - this constraint cleanup should only
+        // run once via migration script
         // If needed, run manually: ALTER TABLE expenditures DROP INDEX campaign_id
         log.info("Startup constraint cleanup skipped (already handled by migration).");
     }
@@ -804,13 +805,15 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             snapshotMap.put("withdrawAmount", withdrawAmount);
             snapshotMap.put("plan", expenditure.getPlan());
             snapshotMap.put("status", "WITHDRAWAL_REQUESTED");
-            if (evidenceDueAt != null) snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
+            if (evidenceDueAt != null)
+                snapshotMap.put("evidenceDueAt", evidenceDueAt.toString());
 
             String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
-            
+
             String ownerName = "Chủ chiến dịch";
             try {
-                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(campaign.getFundOwnerId());
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient
+                        .getUserById(campaign.getFundOwnerId());
                 if (ownerInfo != null && ownerInfo.getFullName() != null) {
                     ownerName = ownerInfo.getFullName();
                 }
@@ -825,7 +828,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             auditRequest.put("dataSnapshot", snapshot);
             auditRequest.put("actorId", campaign.getFundOwnerId());
             auditRequest.put("actorName", ownerName);
-            
+
             identityServiceClient.createAuditLog(auditRequest);
         } catch (Exception e) {
             log.error("❌ Failed to create audit log for withdrawal request {}: {}", id, e.getMessage());
@@ -914,7 +917,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .expenditure(expenditure)
                         .name(itemReq.getName())
                         .expectedQuantity(itemReq.getExpectedQuantity())
-                        .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
+                        .actualQuantity(0)
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(itemReq.getActualPrice() != null ? itemReq.getActualPrice() : BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
@@ -1235,25 +1238,62 @@ public class ExpenditureServiceImpl implements ExpenditureService {
 
         List<ExpenditureItem> items = expenditureItemRepository.findByExpenditureId(id);
 
-        List<java.util.Map<String, Object>> itemsToAudit = items.stream().map(item -> {
+        // 1. Chỉ gửi itemName, brand, unit cho Perplexity
+        List<java.util.Map<String, Object>> itemsToAI = items.stream().map(item -> {
             java.util.Map<String, Object> map = new java.util.HashMap<>();
             map.put("itemName", item.getName());
             map.put("brand", item.getExpectedBrand());
             map.put("unit", item.getExpectedUnit());
-            map.put("purchaseLocation", item.getExpectedPurchaseLocation());
-            map.put("note", item.getExpectedNote());
-            map.put("declaredPrice", item.getExpectedPrice());
-            map.put("quantity", item.getExpectedQuantity());
             return map;
         }).collect(java.util.stream.Collectors.toList());
 
-        com.trustfund.model.response.AuditResultResponse response = perplexityClient.auditExpenseItems(itemsToAudit);
-        if (response == null) {
+        com.trustfund.model.response.AuditResultResponse aiResponse = perplexityClient.auditExpenseItems(itemsToAI);
+        if (aiResponse == null) {
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
                     "Cannot get audit result from Perplexity AI");
         }
-        return response;
+
+        // 2. Tự so sánh giá trong Backend
+        if (aiResponse.getDetectedItems() != null) {
+            for (int i = 0; i < items.size(); i++) {
+                ExpenditureItem sysItem = items.get(i);
+                // AI trả về items theo đúng thứ tự gửi lên
+                if (i < aiResponse.getDetectedItems().size()) {
+                    var aiItem = aiResponse.getDetectedItems().get(i);
+
+                    BigDecimal declaredPrice = sysItem.getExpectedPrice() != null ? sysItem.getExpectedPrice()
+                            : BigDecimal.ZERO;
+                    double min = aiItem.getMarketPriceMin() != null ? aiItem.getMarketPriceMin() : -1;
+                    double max = aiItem.getMarketPriceMax() != null ? aiItem.getMarketPriceMax() : -1;
+
+                    // Gán lại thông tin từ hệ thống để FE hiển thị đúng mapping
+                    aiItem.setUnitPrice(declaredPrice.doubleValue());
+                    aiItem.setQuantity(sysItem.getExpectedQuantity());
+
+                    if (min <= 0 || max <= 0) {
+                        aiItem.setPriceStatus("UNKNOWN");
+                        aiItem.setStatusMessage("Không tìm thấy giá thị trường tham chiếu.");
+                        continue;
+                    }
+
+                    double declared = declaredPrice.doubleValue();
+                    // So sánh: Cho phép lệch 15% so với Min/Max
+                    if (declared > max * 1.15) {
+                        aiItem.setPriceStatus("OVERPRICED");
+                        aiItem.setStatusMessage("Giá kê khai cao hơn đáng kể so với thị trường (Max: " + max + ")");
+                    } else if (declared < min * 0.85) {
+                        aiItem.setPriceStatus("UNDERPRICED");
+                        aiItem.setStatusMessage("Giá kê khai thấp hơn nhiều so với thị trường (Min: " + min + ")");
+                    } else {
+                        aiItem.setPriceStatus("MATCHED");
+                        aiItem.setStatusMessage("Giá kê khai nằm trong khoảng hợp lý.");
+                    }
+                }
+            }
+        }
+
+        return aiResponse;
     }
 
     private ExpenditureEvidenceResponse mapToEvidenceResponse(com.trustfund.model.ExpenditureEvidence evidence) {
@@ -1346,6 +1386,44 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         evidence.setStatus("SUBMITTED");
         evidenceRepository.save(evidence);
         log.info("✅ Evidence {} submitted with URL: {}", evidenceId, proofUrl);
+
+        // [AUDIT] Log the evidence submission
+        try {
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("evidenceId", evidence.getId());
+            snapshotMap.put("campaignId", evidence.getCampaignId());
+            snapshotMap.put("amount", evidence.getAmount());
+            snapshotMap.put("description", evidence.getDescription());
+            snapshotMap.put("proofUrl", proofUrl);
+            snapshotMap.put("status", "SUBMITTED");
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            String ownerName = "Chủ chiến dịch";
+            Long fundOwnerId = 0L;
+            try {
+                CampaignResponse campaign = campaignService.getById(evidence.getCampaignId());
+                fundOwnerId = campaign.getFundOwnerId();
+                com.trustfund.model.response.UserInfoResponse ownerInfo = identityServiceClient.getUserById(fundOwnerId);
+                if (ownerInfo != null && ownerInfo.getFullName() != null) {
+                    ownerName = ownerInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch owner name for audit log: {}", e.getMessage());
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EVIDENCE_SUBMISSION");
+            auditRequest.put("entityId", evidence.getCampaignId());
+            auditRequest.put("action", "EVIDENCE_SUBMITTED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", fundOwnerId);
+            auditRequest.put("actorName", ownerName);
+            
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for evidence submission {}: {}", evidenceId, e.getMessage());
+        }
     }
 
     @Override
@@ -1420,5 +1498,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         // Recalculate totals for the expenditure
         recalculateExpenditureTotals(expenditureId);
         log.info("✅ Deleted category {} and its items from expenditure {}", categoryId, expenditureId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public com.trustfund.model.response.ExpenditureEvidenceResponse getEvidenceById(Long id) {
+        com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found: " + id));
+        return mapToEvidenceResponse(evidence);
     }
 }
