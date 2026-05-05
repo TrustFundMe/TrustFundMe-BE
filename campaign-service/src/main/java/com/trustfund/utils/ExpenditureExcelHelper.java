@@ -35,6 +35,12 @@ public class ExpenditureExcelHelper {
             "Thành tiền dự kiến (VNĐ)", "Ghi chú"
     };
 
+    static String[] HEADERS_ACTUALS = {
+            "STT", "Hạng mục", "Tên hàng hóa / Dịch vụ", "Nhãn hàng", "Địa điểm mua",
+            "Số lượng thực tế", "Đơn vị", "Đơn giá thực tế (VNĐ)",
+            "Thành tiền thực tế (VNĐ)", "Ghi chú"
+    };
+
     public static boolean hasExcelFormat(MultipartFile file) {
         if (TYPE.equals(file.getContentType()))
             return true;
@@ -73,10 +79,11 @@ public class ExpenditureExcelHelper {
                 Row row = sheet.createRow(rowIdx++);
 
                 row.createCell(0).setCellValue(stt++);
-                row.createCell(1).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
-                row.createCell(2).setCellValue(item.getName() != null ? item.getName() : "");
-                row.createCell(3).setCellValue(item.getExpectedBrand() != null ? item.getExpectedBrand() : "");
-                row.createCell(4).setCellValue(
+                row.createCell(1).setCellValue(""); // Milestone name (not available in response currently)
+                row.createCell(2).setCellValue(item.getCatologyName() != null ? item.getCatologyName() : "");
+                row.createCell(3).setCellValue(item.getName() != null ? item.getName() : "");
+                row.createCell(4).setCellValue(item.getExpectedBrand() != null ? item.getExpectedBrand() : "");
+                row.createCell(5).setCellValue(
                         item.getExpectedPurchaseLocation() != null ? item.getExpectedPurchaseLocation() : "");
                 row.createCell(6).setCellValue(item.getExpectedQuantity() != null ? item.getExpectedQuantity() : 0);
                 row.createCell(7).setCellValue(item.getExpectedUnit() != null ? item.getExpectedUnit() : "");
@@ -169,6 +176,51 @@ public class ExpenditureExcelHelper {
         }
     }
 
+    /**
+     * Tạo file mẫu Excel thực chi (không có cột đợt/giải ngân).
+     */
+    public static ByteArrayInputStream itemsToActualsExcelTemplate() {
+        try (Workbook workbook = new XSSFWorkbook(); ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            Sheet itemSheet = workbook.createSheet(SHEET_ITEMS);
+            Row itemHeaderRow = itemSheet.createRow(0);
+
+            CellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+            headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+            Font headerFont = workbook.createFont();
+            headerFont.setBold(true);
+            headerStyle.setFont(headerFont);
+
+            for (int i = 0; i < HEADERS_ACTUALS.length; i++) {
+                Cell cell = itemHeaderRow.createCell(i);
+                cell.setCellValue(HEADERS_ACTUALS[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            String[][] itemSamples = {
+                    { "1", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart", "100", "Thùng", "70000", "7000000",
+                            "Cứu trợ miền Trung" },
+                    { "2", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý", "50", "Chai", "18000", "900000", "" },
+                    { "3", "Nông nghiệp", "Hạt giống rau", "Trang nông", "Cửa hàng vật tư", "50", "Gói", "25000",
+                            "1250000", "" }
+            };
+
+            for (int i = 0; i < itemSamples.length; i++) {
+                Row row = itemSheet.createRow(i + 1);
+                for (int j = 0; j < itemSamples[i].length; j++) {
+                    row.createCell(j).setCellValue(itemSamples[i][j]);
+                }
+            }
+            for (int i = 0; i < HEADERS_ACTUALS.length; i++)
+                itemSheet.autoSizeColumn(i);
+
+            workbook.write(out);
+            return new ByteArrayInputStream(out.toByteArray());
+        } catch (IOException e) {
+            throw new RuntimeException("fail to generate actuals template: " + e.getMessage());
+        }
+    }
+
     public static List<com.trustfund.model.request.BulkMilestoneImportRequest> excelToMilestones(InputStream is) {
         try (Workbook workbook = new XSSFWorkbook(is)) {
             List<com.trustfund.model.request.BulkMilestoneImportRequest> milestones = new ArrayList<>();
@@ -239,7 +291,7 @@ public class ExpenditureExcelHelper {
                 if (itemRows.hasNext()) {
                     Row header = itemRows.next();
                     int milIdx = -1, catIdx = -1, nameIdx = -1, qtyIdx = -1, priceIdx = -1, unitIdx = -1,
-                            brandIdx = -1, locIdx = -1, linkIdx = -1, noteIdx = -1;
+                            brandIdx = -1, locIdx = -1, noteIdx = -1;
                     for (Cell cell : header) {
                         String h = getCellStringValue(cell).toLowerCase();
                         int col = cell.getColumnIndex();
@@ -259,13 +311,11 @@ public class ExpenditureExcelHelper {
                             brandIdx = col;
                         else if (h.contains("địa điểm") || h.contains("nơi mua"))
                             locIdx = col;
-                        else if (h.contains("link") || h.contains("đường dẫn"))
-                            linkIdx = col;
                         else if (h.contains("ghi chú"))
                             noteIdx = col;
                     }
 
-                    // Fallbacks for Sheet 1
+                    // Fallbacks for Sheet 1 (Campaign Creation Template - 11 columns)
                     if (milIdx == -1)
                         milIdx = 1;
                     if (catIdx == -1)
@@ -358,8 +408,11 @@ public class ExpenditureExcelHelper {
      * chú
      */
     public static List<CreateExpenditureItemRequest> excelToItems(InputStream is) {
-        try (Workbook workbook = new XSSFWorkbook(is)) {
-            Sheet sheet = workbook.getSheet(SHEET);
+        try (Workbook workbook = WorkbookFactory.create(is)) {
+            Sheet sheet = workbook.getSheet(SHEET_ITEMS);
+            if (sheet == null) {
+                sheet = workbook.getSheet(SHEET);
+            }
             if (sheet == null) {
                 sheet = workbook.getSheetAt(0);
             }
@@ -371,7 +424,9 @@ public class ExpenditureExcelHelper {
 
             Row headerRow = rows.next();
             int nameIdx = -1, qtyIdx = -1, priceIdx = -1, noteIdx = -1, unitIdx = -1, brandIdx = -1,
-                    locationIdx = -1, linkIdx = -1;
+                    locationIdx = -1, catIdx = -1;
+            int actualQtyIdx = -1, actualPriceIdx = -1, actualBrandIdx = -1, actualUnitIdx = -1,
+                    actualLocationIdx = -1;
 
             // Map column indices dynamically
             for (Cell cell : headerRow) {
@@ -379,37 +434,57 @@ public class ExpenditureExcelHelper {
                 int colIdx = cell.getColumnIndex();
                 if (header.contains("tên") || header.contains("hàng") || header.contains("vật"))
                     nameIdx = colIdx;
-                else if (header.contains("số lượng") || header.contains("sl"))
-                    qtyIdx = colIdx;
-                else if (header.contains("đơn giá") || header.contains("giá"))
-                    priceIdx = colIdx;
-                else if (header.contains("ghi chú") || header.contains("note"))
+
+                // Actual fields (check for "thực" or "actual")
+                boolean isActual = header.contains("thực") || header.contains("actual");
+
+                if (header.contains("số lượng") || header.contains("sl")) {
+                    if (isActual)
+                        actualQtyIdx = colIdx;
+                    else
+                        qtyIdx = colIdx;
+                } else if (header.contains("đơn giá") || header.contains("giá")) {
+                    if (isActual)
+                        actualPriceIdx = colIdx;
+                    else
+                        priceIdx = colIdx;
+                } else if (header.contains("nhãn") || header.contains("brand")) {
+                    if (isActual)
+                        actualBrandIdx = colIdx;
+                    else
+                        brandIdx = colIdx;
+                } else if (header.contains("đơn vị") || header.contains("unit")) {
+                    if (isActual)
+                        actualUnitIdx = colIdx;
+                    else
+                        unitIdx = colIdx;
+                } else if (header.contains("điểm") || header.contains("location") || header.contains("nơi mua")) {
+                    if (isActual)
+                        actualLocationIdx = colIdx;
+                    else
+                        locationIdx = colIdx;
+                } else if (header.contains("ghi chú") || header.contains("note"))
                     noteIdx = colIdx;
-                else if (header.contains("đơn vị") || header.contains("unit"))
-                    unitIdx = colIdx;
-                else if (header.contains("nhãn") || header.contains("brand"))
-                    brandIdx = colIdx;
-                else if (header.contains("điểm") || header.contains("location"))
-                    locationIdx = colIdx;
-                else if (header.contains("link") || header.contains("đường dẫn"))
-                    linkIdx = colIdx;
             }
 
-            // Fallback for strict old template matching if dynamic matching failed
+            // Fallback for actuals template (10 columns: STT, Category, Name, Brand,
+            // Location, Qty, Unit, Price, Total, Note)
             if (nameIdx == -1)
-                nameIdx = 1;
-            if (qtyIdx == -1)
-                qtyIdx = 2;
-            if (priceIdx == -1)
-                priceIdx = 3;
-            // if noteIdx is still -1, it means we didn't find "ghi chú", we'll just leave
-            // it and not import note
-
-            // But wait, what if the user used the legacy template with "thành tiền" in col
-            // 4 and "ghi chú" in col 5?
-            // If they didn't have a header row that matched, we default to:
+                nameIdx = 2;
+            if (catIdx == -1)
+                catIdx = 1;
+            if (brandIdx == -1)
+                brandIdx = 3;
+            if (locationIdx == -1)
+                locationIdx = 4;
+            if (actualQtyIdx == -1)
+                actualQtyIdx = 5;
+            if (actualUnitIdx == -1)
+                actualUnitIdx = 6;
+            if (actualPriceIdx == -1)
+                actualPriceIdx = 7;
             if (noteIdx == -1)
-                noteIdx = 5;
+                noteIdx = 9;
 
             while (rows.hasNext()) {
                 Row currentRow = rows.next();
@@ -455,12 +530,37 @@ public class ExpenditureExcelHelper {
                     Cell c = currentRow.getCell(locationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
                     item.setExpectedPurchaseLocation(getCellStringValue(c));
                 }
+
+                // Actuals mapping
+                if (actualQtyIdx != -1) {
+                    Cell c = currentRow.getCell(actualQtyIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setActualQuantity(getCellIntValue(c));
+                }
+                if (actualPriceIdx != -1) {
+                    Cell c = currentRow.getCell(actualPriceIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setActualPrice(getCellBigDecimalValue(c));
+                }
+                if (actualBrandIdx != -1) {
+                    Cell c = currentRow.getCell(actualBrandIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setActualBrand(getCellStringValue(c));
+                }
+                if (actualUnitIdx != -1) {
+                    Cell c = currentRow.getCell(actualUnitIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setActualUnit(getCellStringValue(c));
+                }
+                if (actualLocationIdx != -1) {
+                    Cell c = currentRow.getCell(actualLocationIdx, Row.MissingCellPolicy.RETURN_BLANK_AS_NULL);
+                    item.setActualPurchaseLocation(getCellStringValue(c));
+                }
+
                 // If name is empty, skip this row (probably end of data)
                 if (item.getName() == null || item.getName().trim().isEmpty()) {
                     continue;
                 }
 
-                item.setActualPrice(BigDecimal.ZERO);
+                if (item.getActualPrice() == null) {
+                    item.setActualPrice(BigDecimal.ZERO);
+                }
                 items.add(item);
             }
 
