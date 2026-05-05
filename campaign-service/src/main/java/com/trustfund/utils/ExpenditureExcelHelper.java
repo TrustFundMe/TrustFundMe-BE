@@ -113,11 +113,21 @@ public class ExpenditureExcelHelper {
             headerFont.setBold(true);
             headerStyle.setFont(headerFont);
 
+            // Text format for date columns to prevent Excel from auto-converting dates
+            CellStyle textStyle = workbook.createCellStyle();
+            DataFormat textFormat = workbook.createDataFormat();
+            textStyle.setDataFormat(textFormat.getFormat("@"));
+
             for (int i = 0; i < HEADERS_PLAN.length; i++) {
                 Cell cell = planHeaderRow.createCell(i);
                 cell.setCellValue(HEADERS_PLAN[i]);
                 cell.setCellStyle(headerStyle);
             }
+
+            // Set date columns (2=start, 3=end, 4=evidence due) to Text format
+            planSheet.setDefaultColumnStyle(2, textStyle);
+            planSheet.setDefaultColumnStyle(3, textStyle);
+            planSheet.setDefaultColumnStyle(4, textStyle);
 
             String[][] planSamples = {
                     { "1", "Đợt 1: Hỗ trợ khẩn cấp", "01/05/2026", "15/05/2026", "20/05/2026",
@@ -129,7 +139,12 @@ public class ExpenditureExcelHelper {
             for (int i = 0; i < planSamples.length; i++) {
                 Row row = planSheet.createRow(i + 1);
                 for (int j = 0; j < planSamples[i].length; j++) {
-                    row.createCell(j).setCellValue(planSamples[i][j]);
+                    Cell cell = row.createCell(j);
+                    cell.setCellValue(planSamples[i][j]);
+                    // Apply text format explicitly to date columns
+                    if (j >= 2 && j <= 4) {
+                        cell.setCellStyle(textStyle);
+                    }
                 }
             }
             for (int i = 0; i < HEADERS_PLAN.length; i++)
@@ -487,6 +502,16 @@ public class ExpenditureExcelHelper {
                     return DATE_FORMAT.format(cell.getDateCellValue());
                 }
                 double numericVal = cell.getNumericCellValue();
+                // Excel date serial numbers: 1/1/2020 = 43831, 31/12/2030 = 47847
+                // If value is in date range and column likely holds a date, format it
+                if (numericVal >= 40000 && numericVal <= 60000) {
+                    try {
+                        java.util.Date dateVal = DateUtil.getJavaDate(numericVal);
+                        return DATE_FORMAT.format(dateVal);
+                    } catch (Exception ignored) {
+                        // Not a valid date serial, fall through to number formatting
+                    }
+                }
                 if (numericVal == (long) numericVal) {
                     return String.valueOf((long) numericVal);
                 }
