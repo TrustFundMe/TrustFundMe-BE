@@ -37,13 +37,18 @@ resolve_java17_for_mvn() {
   return 1
 }
 
-MVN_JAVA_PREFIX=""
+TF_JAVA_HOME=""
 if JAVA17="$(resolve_java17_for_mvn || true)" && [[ -n "$JAVA17" ]]; then
-  MVN_JAVA_PREFIX="export JAVA_HOME='$JAVA17' && "
+  TF_JAVA_HOME="$JAVA17"
   echo "Đã gắn JAVA_HOME → JDK 17 cho mvn: $JAVA17"
 else
   echo "Cảnh báo: không tìm thấy JDK 17 — có thể lỗi Lombok khi compile. Cài: brew install openjdk@17"
 fi
+
+# Terminal.app mặc định chạy lệnh bằng zsh; chuỗi cho osascript cần escape " và \.
+trustfund_escape_for_osascript() {
+  printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g'
+}
 
 precheck_standard_ports_if_needed() {
   [[ "${SKIP_PORT_CHECK:-}" == "1" ]] && return 0
@@ -62,7 +67,10 @@ precheck_standard_ports_if_needed() {
   for row in "${rows[@]}"; do
     IFS='|' read -r subdir port label <<<"$row"
     [[ ! -d "$ROOT/$subdir" ]] && continue
-    pids="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null | xargs)"
+    # lsof exits 1 when nothing matches; with pipefail + set -e that would kill the whole script.
+    lsof_out=""
+    lsof_out="$(lsof -tiTCP:"$port" -sTCP:LISTEN 2>/dev/null)" || true
+    pids="${lsof_out//$'\n'/ }"
     if [[ -n "${pids}" ]]; then
       echo ""
       echo "Dừng script: cổng $port ($label — $subdir) đang được dùng. PID: $pids"
@@ -74,7 +82,8 @@ precheck_standard_ports_if_needed() {
 
 precheck_standard_ports_if_needed
 
-# Khớp scripts/run-*.ps1: discovery & api-gateway không load .env trong bản scripts; còn lại load .env ở ROOT.
+# Khớp scripts/run-*.ps1: discovery & api-gateway không load .env; còn lại load .env ở ROOT.
+# Luôn exec qua bash (spring-boot-terminal-run.sh) vì Terminal mặc định zsh — tránh lệch với PowerShell.
 run_if_dir() {
   local subdir="$1"
   local echo_line="$2"
@@ -83,13 +92,14 @@ run_if_dir() {
     echo "[bỏ qua] $subdir — không có thư mục trong repo."
     return 1
   fi
-  local cmd
-  if [[ "$use_env" == "1" ]]; then
-    cmd="${MVN_JAVA_PREFIX}cd '$ROOT' && ([ ! -f .env ] || ( set -a && . ./.env && set +a )) && cd '$ROOT/$subdir' && echo '$echo_line' && mvn spring-boot:run"
-  else
-    cmd="${MVN_JAVA_PREFIX}cd '$ROOT/$subdir' && echo '$echo_line' && mvn spring-boot:run"
-  fi
-  osascript -e "tell application \"Terminal\" to do script \"$cmd\""
+  local runner="$ROOT/scripts/spring-boot-terminal-run.sh"
+  local env_prefix=""
+  [[ -n "${TF_JAVA_HOME}" ]] && env_prefix=$(printf 'export JAVA_HOME=%q; ' "${TF_JAVA_HOME}")
+  # printf %q: an toàn khi echo_line hoặc đường dẫn có ký tự đặc biệt
+  local inner="${env_prefix}exec /bin/bash --noprofile --norc $(printf '%q' "${runner}") $(printf '%q' "${ROOT}") $(printf '%q' "${subdir}") $(printf '%q' "${echo_line}") $(printf '%q' "${use_env}")"
+  local esc
+  esc="$(trustfund_escape_for_osascript "${inner}")"
+  osascript -e "tell application \"Terminal\" to do script \"${esc}\""
   return 0
 }
 
