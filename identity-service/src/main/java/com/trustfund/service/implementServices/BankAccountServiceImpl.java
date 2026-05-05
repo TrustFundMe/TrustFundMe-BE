@@ -309,6 +309,12 @@ public class BankAccountServiceImpl implements BankAccountService {
     }
 
     @Override
+    public boolean checkAccountExists(String accountNumber, String bankCode) {
+        return bankAccountRepository.existsByAccountNumberAndBankCode(
+                accountNumber.trim(), bankCode.trim());
+    }
+
+    @Override
     public java.util.Optional<BankAccountResponse> findByAccountNumber(String accountNumber) {
         return bankAccountRepository.findByAccountNumber(accountNumber.trim())
                 .stream().findFirst()

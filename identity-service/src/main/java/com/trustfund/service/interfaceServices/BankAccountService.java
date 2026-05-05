@@ -36,5 +36,7 @@ public interface BankAccountService {
 
     boolean checkAccountExists(String accountNumber, String bankCode, Long currentUserId);
 
+    boolean checkAccountExists(String accountNumber, String bankCode);
+
     java.util.Optional<BankAccountResponse> findByCampaignId(Long campaignId);
 }
