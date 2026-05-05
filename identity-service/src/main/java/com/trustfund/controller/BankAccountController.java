@@ -147,14 +147,11 @@ public class BankAccountController {
     }
 
     @GetMapping("/check-exists")
-    @Operation(summary = "Check if bank account exists", description = "Check if a bank account number + bank code combo already exists for another user")
+    @Operation(summary = "Check if bank account exists", description = "Check if a bank account number + bank code combo already exists anywhere in the system")
     public ResponseEntity<java.util.Map<String, Boolean>> checkAccountExists(
             @RequestParam("accountNumber") String accountNumber,
             @RequestParam("bankCode") String bankCode) {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        Long currentUserId = Long.parseLong(authentication.getName());
-
-        boolean exists = bankAccountService.checkAccountExists(accountNumber, bankCode, currentUserId);
+        boolean exists = bankAccountService.checkAccountExists(accountNumber, bankCode);
         return ResponseEntity.ok(java.util.Map.of("exists", exists));
     }
 
