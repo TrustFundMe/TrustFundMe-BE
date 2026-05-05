@@ -146,11 +146,11 @@ public class ExpenditureExcelHelper {
 
             String[][] itemSamples = {
                     { "1", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Thùng mì tôm", "Hảo Hảo", "Co.opmart",
-                            "https://maps.app.goo.gl/xxx", "100", "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
+                            "100", "Thùng", "70000", "7000000", "Cứu trợ miền Trung" },
                     { "2", "Đợt 1: Hỗ trợ khẩn cấp", "Thực phẩm", "Nước đóng chai", "Aquafina", "Đại lý",
-                            "https://shopee.vn/xxx", "50", "Chai", "18000", "900000", "" },
+                            "50", "Chai", "18000", "900000", "" },
                     { "3", "Đợt 2: Phục hồi sinh kế", "Nông nghiệp", "Hạt giống rau", "Trang nông",
-                            "Cửa hàng vật tư", "", "50", "Gói", "25000", "1250000", "" }
+                            "Cửa hàng vật tư", "50", "Gói", "25000", "1250000", "" }
             };
 
             for (int i = 0; i < itemSamples.length; i++) {
@@ -276,16 +276,14 @@ public class ExpenditureExcelHelper {
                         brandIdx = 4;
                     if (locIdx == -1)
                         locIdx = 5;
-                    if (linkIdx == -1)
-                        linkIdx = 6;
                     if (qtyIdx == -1)
-                        qtyIdx = 7;
+                        qtyIdx = 6;
                     if (unitIdx == -1)
-                        unitIdx = 8;
+                        unitIdx = 7;
                     if (priceIdx == -1)
-                        priceIdx = 9;
+                        priceIdx = 8;
                     if (noteIdx == -1)
-                        noteIdx = 11;
+                        noteIdx = 10;
 
                     while (itemRows.hasNext()) {
                         Row row = itemRows.next();
