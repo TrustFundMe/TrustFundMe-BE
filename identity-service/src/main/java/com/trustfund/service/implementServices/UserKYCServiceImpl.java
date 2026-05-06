@@ -19,6 +19,8 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.trustfund.service.interfaceServices.AuditLogService;
+
 @Service
 @RequiredArgsConstructor
 public class UserKYCServiceImpl implements UserKYCService {
@@ -29,6 +31,7 @@ public class UserKYCServiceImpl implements UserKYCService {
     private final UserRepository userRepository;
     private final BankAccountRepository bankAccountRepository;
     private final NotificationServiceClient notificationServiceClient;
+    private final AuditLogService auditLogService;
 
     @Override
     @Transactional
@@ -233,16 +236,18 @@ public class UserKYCServiceImpl implements UserKYCService {
                 snapshot.put("rejectionReason", rejectionReason);
                 
                 com.trustfund.model.AuditLog auditLog = com.trustfund.model.AuditLog.builder()
-                        .entityType("KYC")
-                        .entityId(kyc.getUser().getId())
+                        .entityType("USER_KYC")
+                        .entityId(kyc.getId())
                         .action("KYC_STATUS_UPDATE")
                         .dataSnapshot(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshot))
                         .actorId(0L) // System or Admin
                         .actorName("System")
                         .build();
-                // We would need to autowire AuditLogService to save it. But wait, IdentityService is exactly where AuditLogService is!
+                
+                auditLogService.saveLog(auditLog);
+                log.info("✅ [AUDIT] Audit log for KYC {} created successfully.", kyc.getId());
             } catch (Exception e) {
-                log.warn("Failed to create audit log for KYC status update: {}", e.getMessage());
+                log.warn("❌ [AUDIT] Failed to create audit log for KYC status update: {}", e.getMessage());
             }
         } catch (Exception e) {
             log.error("Error sending KYC notification for user {}: {}", kyc.getUser().getId(), e.getMessage());

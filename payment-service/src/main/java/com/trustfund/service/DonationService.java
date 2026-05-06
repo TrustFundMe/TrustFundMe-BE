@@ -890,6 +890,10 @@ public class DonationService {
                 
                 donation.setIsBalanceSynchronized(true);
                 donationRepository.save(donation);
+                
+                // [AUDIT] Create audit log for paid donation
+                createAuditLogForDonation(donation);
+                
                 log.info("✅ SUCCESS: Balance synchronized for donation {}", donation.getId());
         }
 
@@ -965,5 +969,40 @@ public class DonationService {
                         map.put("createdAt", d.getCreatedAt() != null ? d.getCreatedAt().toString() : null);
                         return map;
                 }).collect(Collectors.toList());
+        }
+
+        private void createAuditLogForDonation(Donation donation) {
+                try {
+                        log.info("➔ [AUDIT] Creating audit log for donation: {}", donation.getId());
+                        
+                        Map<String, Object> snapshotMap = new java.util.HashMap<>();
+                        snapshotMap.put("donationId", donation.getId());
+                        snapshotMap.put("campaignId", donation.getCampaignId());
+                        snapshotMap.put("donorId", donation.getDonorId());
+                        snapshotMap.put("amount", donation.getDonationAmount());
+                        snapshotMap.put("totalAmount", donation.getTotalAmount());
+                        snapshotMap.put("orderCode", donation.getOrderCode());
+                        snapshotMap.put("status", "PAID");
+                        snapshotMap.put("isAnonymous", donation.getIsAnonymous());
+
+                        String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+                        
+                        Map<String, Object> auditRequest = new java.util.HashMap<>();
+                        auditRequest.put("entityType", "DONATION");
+                        auditRequest.put("entityId", donation.getId());
+                        auditRequest.put("action", "DONATION_COMPLETED");
+                        auditRequest.put("dataSnapshot", snapshot);
+                        auditRequest.put("actorId", donation.getDonorId() != null ? donation.getDonorId() : 0);
+                        auditRequest.put("actorName", "Donor #" + (donation.getDonorId() != null ? donation.getDonorId() : "Guest"));
+                        
+                        String auditUrl = identityServiceUrl + "/api/audit";
+                        Map<String, Object> response = restTemplate.postForObject(auditUrl, auditRequest, Map.class);
+                        
+                        if (response != null && response.get("auditHash") != null) {
+                                log.info("✅ [AUDIT] Audit log for donation {} created. Hash: {}", donation.getId(), response.get("auditHash"));
+                        }
+                } catch (Exception e) {
+                        log.error("❌ [AUDIT] Failed to create audit log for donation {}: {}", donation.getId(), e.getMessage());
+                }
         }
 }
