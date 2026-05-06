@@ -754,7 +754,7 @@ public class DonationService {
                                 .campaignId(campaignId)
                                 .totalReceived(totalReceived)
                                 .totalSpent(totalSpent)
-                                .currentBalance(currentBalance)
+                                .currentBalance(totalReceived.subtract(totalSpent))
                                 .targetAmount(targetAmount)
                                 .receivedFromGeneralFund(receivedFromGeneralFund)
                                 .approvedAt(approvedAt)
