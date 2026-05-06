@@ -23,6 +23,7 @@ public class ExpenditureItemResponse {
     private BigDecimal expectedPrice;
     private String expectedNote;
     private String expectedPurchaseLocation;
+    private String actualPurchaseLocation;
     private String expectedBrand;
     private String actualBrand;
     private String expectedUnit;

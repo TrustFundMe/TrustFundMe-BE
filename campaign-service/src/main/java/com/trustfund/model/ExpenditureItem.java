@@ -62,6 +62,9 @@ public class ExpenditureItem {
     @Column(name = "expected_purchase_location", length = 500)
     private String expectedPurchaseLocation;
 
+    @Column(name = "actual_purchase_location", length = 500)
+    private String actualPurchaseLocation;
+
     @Column(name = "expected_brand", length = 255)
     private String expectedBrand;
 

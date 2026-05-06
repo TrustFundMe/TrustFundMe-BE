@@ -390,6 +390,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .expectedPrice(item.getExpectedPrice())
                 .expectedNote(item.getExpectedNote())
                 .expectedPurchaseLocation(item.getExpectedPurchaseLocation())
+                .actualPurchaseLocation(item.getActualPurchaseLocation())
                 .expectedBrand(item.getExpectedBrand())
                 .actualBrand(item.getActualBrand())
                 .expectedUnit(item.getExpectedUnit())
@@ -850,6 +851,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
 
+        // Guard: block edits on COMPLETED or CLOSED expenditures
+        if ("COMPLETED".equalsIgnoreCase(expenditure.getStatus())
+                || "CLOSED".equalsIgnoreCase(expenditure.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Đợt chi tiêu đã hoàn tất, không thể chỉnh sửa thực chi.");
+        }
+
         for (UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
             ExpenditureItem item = expenditureItemRepository.findById(updateItem.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -867,6 +875,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
             if (updateItem.getActualBrand() != null) {
                 item.setActualBrand(updateItem.getActualBrand());
+            }
+            if (updateItem.getActualPurchaseLocation() != null) {
+                item.setActualPurchaseLocation(updateItem.getActualPurchaseLocation());
             }
             if (updateItem.getActualUnit() != null) {
                 item.setActualUnit(updateItem.getActualUnit());
@@ -917,7 +928,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .expenditure(expenditure)
                         .name(itemReq.getName())
                         .expectedQuantity(itemReq.getExpectedQuantity())
-                        .actualQuantity(0)
+                        .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(itemReq.getActualPrice() != null ? itemReq.getActualPrice() : BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
@@ -926,6 +937,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .actualBrand(itemReq.getActualBrand())
                         .expectedUnit(itemReq.getExpectedUnit())
                         .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
+                        .actualPurchaseLocation(itemReq.getActualPurchaseLocation())
                         .actualUnit(itemReq.getActualUnit())
                         .catologyId(itemReq.getCatologyId())
                         .build())
@@ -1377,6 +1389,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = candidates.stream()
                 .filter(e -> e.getStartDate() != null && e.getEndDate() != null &&
                         !txDate.isBefore(e.getStartDate()) && !txDate.isAfter(e.getEndDate()))
+                .filter(e -> !"COMPLETED".equalsIgnoreCase(e.getStatus()))
                 .findFirst()
                 .orElse(null);
 
@@ -1557,5 +1570,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found: " + id));
         return mapToEvidenceResponse(evidence);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenditureEvidenceResponse> getOrphanEvidencesByCampaign(Long campaignId) {
+        return evidenceRepository.findOrphanByCampaignId(campaignId).stream()
+                .map(this::mapToEvidenceResponse)
+                .collect(Collectors.toList());
     }
 }
