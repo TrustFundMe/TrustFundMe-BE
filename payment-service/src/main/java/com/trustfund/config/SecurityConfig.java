@@ -37,7 +37,7 @@ public class SecurityConfig {
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
                                 .csrf(AbstractHttpConfigurer::disable)
                                 .authorizeHttpRequests(auth -> auth
-                                                .requestMatchers("/api/payments/webhook").permitAll()
+                                                .requestMatchers("/api/payments/webhook/**").permitAll()
                                                 .requestMatchers("/api/payments/casso-webhook").permitAll()
                                                 .requestMatchers("/api/payments/casso-webhook/ping").permitAll()
                                                 .requestMatchers("/api/payments/casso-webhook/verify-key").permitAll()

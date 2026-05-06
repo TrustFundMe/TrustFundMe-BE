@@ -34,7 +34,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            if (!path.contains("/api/payments/casso")) {
+            if (!path.contains("/api/payments/casso") && !path.contains("/api/payments/webhook")) {
                 log.warn("❌ [JWT] No/invalid Authorization header for: {}", path);
             }
             filterChain.doFilter(request, response);

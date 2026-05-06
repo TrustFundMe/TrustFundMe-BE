@@ -160,7 +160,8 @@ public class DonationService {
                                 donationRepository.save(donation);
 
                                 if ("PAID".equals(status)) {
-                                        // updateCampaignBalance(donation);
+                                        updateCampaignBalance(donation);
+                                        processQuantityUpdate(donation);
                                 } else if (("FAILED".equals(status) || "CANCELLED".equals(status))
                                                 && "PENDING".equals(oldStatus)) {
                                         processQuantityRollback(donation);
@@ -192,6 +193,7 @@ public class DonationService {
                                 donationRepository.save(donation);
 
                                 if ("PAID".equals(realStatus)) {
+                                        updateCampaignBalance(donation);
                                         processQuantityUpdate(donation);
                                 } else if ("FAILED".equals(realStatus) || "CANCELLED".equals(realStatus)) {
                                         processQuantityRollback(donation);
