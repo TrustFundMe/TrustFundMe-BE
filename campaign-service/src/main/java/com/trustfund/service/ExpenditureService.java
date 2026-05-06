@@ -71,6 +71,8 @@ public interface ExpenditureService {
 
         com.trustfund.model.response.AuditResultResponse auditExpenditure(Long id);
 
+        com.trustfund.model.response.AuditResultResponse auditExpenditureItem(Long itemId);
+
         void createEvidenceRequirement(com.trustfund.model.request.CreateEvidenceRequirementRequest request);
 
         void submitEvidence(Long evidenceId, String proofUrl);

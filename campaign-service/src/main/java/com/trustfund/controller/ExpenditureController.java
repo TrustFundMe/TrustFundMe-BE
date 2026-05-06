@@ -294,6 +294,14 @@ public class ExpenditureController {
         return ResponseEntity.ok(expenditureService.auditExpenditure(id));
     }
 
+    @PostMapping("/items/{itemId}/audit")
+    @Operation(summary = "Kiểm toán 1 item bằng AI", description = "Dùng AI Perplexity để kiểm tra giá thị trường của một hạng mục cụ thể.")
+    // @PreAuthorize("hasAnyRole('STAFF', 'ADMIN')")
+    public ResponseEntity<com.trustfund.model.response.AuditResultResponse> auditExpenditureItem(
+            @PathVariable("itemId") Long itemId) {
+        return ResponseEntity.ok(expenditureService.auditExpenditureItem(itemId));
+    }
+
     @PostMapping("/internal/evidence-requirement")
     @Operation(summary = "Tạo yêu cầu minh chứng (Hệ thống)", description = "API nội bộ dùng để tạo yêu cầu minh chứng khi phát hiện giao dịch âm từ Casso.")
     public ResponseEntity<Void> createEvidenceRequirement(

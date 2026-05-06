@@ -1296,6 +1296,56 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         return aiResponse;
     }
 
+    @Override
+    public com.trustfund.model.response.AuditResultResponse auditExpenditureItem(Long itemId) {
+        ExpenditureItem item = expenditureItemRepository.findById(itemId)
+                .orElseThrow(() -> new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.NOT_FOUND, "Item not found: " + itemId));
+
+        java.util.Map<String, Object> itemToAI = new java.util.HashMap<>();
+        itemToAI.put("itemName", item.getName());
+        itemToAI.put("brand", item.getExpectedBrand());
+        itemToAI.put("unit", item.getExpectedUnit());
+
+        com.trustfund.model.response.AuditResultResponse aiResponse = perplexityClient.auditSingleExpenseItem(itemToAI);
+        if (aiResponse == null || aiResponse.getDetectedItems() == null || aiResponse.getDetectedItems().isEmpty()) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                    "Cannot get single item audit result from Perplexity AI");
+        }
+
+        // Tự so sánh giá trong Backend
+        var aiItem = aiResponse.getDetectedItems().get(0);
+        BigDecimal declaredPrice = item.getExpectedPrice() != null ? item.getExpectedPrice() : BigDecimal.ZERO;
+        double min = aiItem.getMarketPriceMin() != null ? aiItem.getMarketPriceMin() : -1;
+        double max = aiItem.getMarketPriceMax() != null ? aiItem.getMarketPriceMax() : -1;
+
+        // Gán lại thông tin từ hệ thống để FE hiển thị đúng mapping
+        aiItem.setName(item.getName());
+        aiItem.setUnitPrice(declaredPrice.doubleValue());
+        aiItem.setQuantity(item.getExpectedQuantity());
+
+        if (min <= 0 || max <= 0) {
+            aiItem.setPriceStatus("UNKNOWN");
+            aiItem.setStatusMessage("Không tìm thấy giá thị trường tham chiếu.");
+        } else {
+            double declared = declaredPrice.doubleValue();
+            if (declared > max * 1.15) {
+                aiItem.setPriceStatus("OVERPRICED");
+                aiItem.setStatusMessage("Giá kê khai cao hơn đáng kể so với thị trường.");
+            } else if (declared < min * 0.85) {
+                aiItem.setPriceStatus("UNDERPRICED");
+                aiItem.setStatusMessage("Giá kê khai thấp hơn nhiều so với thị trường.");
+            } else {
+                aiItem.setPriceStatus("MATCHED");
+                aiItem.setStatusMessage("Giá kê khai nằm trong khoảng hợp lý.");
+            }
+        }
+
+        // Vì Schema trả về "items" list, ta dùng luôn aiResponse
+        return aiResponse;
+    }
+
     private ExpenditureEvidenceResponse mapToEvidenceResponse(com.trustfund.model.ExpenditureEvidence evidence) {
         return ExpenditureEvidenceResponse.builder()
                 .id(evidence.getId())

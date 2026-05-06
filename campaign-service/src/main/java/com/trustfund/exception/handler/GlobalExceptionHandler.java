@@ -116,7 +116,14 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex) {
         log.error("Unexpected error: ", ex);
-        String errorMessage = ex.getMessage() != null ? ex.getMessage() : "An unexpected error occurred";
+        
+        String rootCause = ex.toString();
+        if (ex.getStackTrace() != null && ex.getStackTrace().length > 0) {
+            rootCause += " at " + ex.getStackTrace()[0].toString();
+        }
+        
+        String errorMessage = ex.getMessage() != null ? ex.getMessage() + " | " + rootCause : rootCause;
+        
         ErrorResponse error = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
