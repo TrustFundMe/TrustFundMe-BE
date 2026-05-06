@@ -18,10 +18,14 @@ import reactor.core.publisher.Mono;
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Pattern;
 
 @Slf4j
 @Component
 public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
+
+    /** Matches /api/users/{numericId} — e.g. /api/users/123 (but NOT /api/users/check-email) */
+    private static final Pattern USER_BY_ID_PATTERN = Pattern.compile("^/api/users/\\d+$");
 
     @Value("${jwt.secret:TrustFundME2024SecretKeyForJWTTokenGenerationSecureRandomString64Chars}")
     private String jwtSecret;
@@ -102,8 +106,19 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return method == HttpMethod.POST || method == HttpMethod.GET;
         }
 
+        // Payment Service - Campaign analytics/progress/recent-donations are public
+        // (GET) so guests can view transaction stats on campaign details page
+        if (path.startsWith("/api/payments/campaign/")) {
+            return method == HttpMethod.GET;
+        }
+
         // Users endpoint - check-email is public
         if (path.equals("/api/users/check-email")) {
+            return true;
+        }
+
+        // Users endpoint - GET /api/users/{numericId} is public (guest can view creator name/avatar)
+        if (method == HttpMethod.GET && USER_BY_ID_PATTERN.matcher(path).matches()) {
             return true;
         }
 

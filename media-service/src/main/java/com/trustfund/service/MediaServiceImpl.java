@@ -9,29 +9,45 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
+import java.security.MessageDigest;
+import java.util.HexFormat;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.web.client.RestTemplate;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class MediaServiceImpl implements MediaService {
 
     private final MediaRepository mediaRepository;
     private final SupabaseStorageService supabaseStorageService;
+    private final RestTemplate restTemplate;
+
+    @Value("${app.identity-service.url:http://localhost:8081}")
+    private String identityServiceUrl;
 
     @Override
     @Transactional
     public MediaFileResponse uploadMedia(MediaUploadRequest request) throws IOException, InterruptedException {
-        // 1. Upload to Supabase
+        // 1. Compute Hash BEFORE upload
+        byte[] fileBytes = request.getFile().getBytes();
+        String fileHash = computeSHA256(fileBytes);
+        log.info(">>> MediaServiceImpl: Computed SHA-256: {}", fileHash);
+
+        // 2. Upload to Supabase
         SupabaseStorageService.StoredFile storedFile = supabaseStorageService.uploadFile(request.getFile());
 
-        // 2. Auto-detect mediaType if not provided
+        // 3. Auto-detect mediaType if not provided
         MediaType finalMediaType = request.getMediaType();
         if (finalMediaType == null) {
             finalMediaType = detectMediaType(request.getFile().getContentType());
         }
 
-        // 3. Save metadata to DB
+        // 4. Save metadata to DB
         Media media = Media.builder()
                 .postId(request.getPostId())
                 .campaignId(request.getCampaignId())
@@ -46,23 +62,16 @@ public class MediaServiceImpl implements MediaService {
                 .sizeBytes(request.getFile().getSize())
                 .build();
 
-        System.out.println(">>> MediaServiceImpl: Saving media - Type: " + finalMediaType + ", URL Length: "
-                + (storedFile.publicUrl() != null ? storedFile.publicUrl().length() : 0));
-
         try {
             Media savedMedia = mediaRepository.save(media);
-            System.out.println(">>> MediaServiceImpl: DB Save successful, ID: " + savedMedia.getId());
+            log.info(">>> MediaServiceImpl: DB Save successful, ID: {}", savedMedia.getId());
+            
+            // [AUDIT] Create audit log for evidence upload
+            createAuditLogForMedia(savedMedia, fileHash);
+            
             return mapToResponse(savedMedia);
         } catch (Exception e) {
-            System.err.println(">>> MediaServiceImpl: DB Save FAILED!");
-            System.err.println(">>> Error type: " + e.getClass().getName());
-            System.err.println(">>> Error message: " + e.getMessage());
-
-            // Check for specific database errors if possible
-            if (e.getCause() != null) {
-                System.err.println(">>> Root cause: " + e.getCause().getMessage());
-            }
-
+            log.error(">>> MediaServiceImpl: DB Save FAILED! {}", e.getMessage());
             throw new RuntimeException("Lỗi lưu thông tin media vào database: " + e.getMessage(), e);
         }
     }
@@ -254,6 +263,46 @@ public class MediaServiceImpl implements MediaService {
 
         // Default fallback
         return MediaType.FILE;
+    }
+
+    private String computeSHA256(byte[] data) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(data);
+            return HexFormat.of().formatHex(hash);
+        } catch (Exception e) {
+            throw new RuntimeException("SHA-256 hashing failed", e);
+        }
+    }
+
+    private void createAuditLogForMedia(Media media, String fileHash) {
+        try {
+            log.info("➔ [AUDIT] Creating audit log for media: {}", media.getId());
+            
+            Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("mediaId", media.getId());
+            snapshotMap.put("fileHash", fileHash);
+            snapshotMap.put("fileName", media.getFileName());
+            snapshotMap.put("url", media.getUrl());
+            snapshotMap.put("campaignId", media.getCampaignId());
+            snapshotMap.put("expenditureId", media.getExpenditureId());
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+            
+            Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "MEDIA_EVIDENCE");
+            auditRequest.put("entityId", media.getId());
+            auditRequest.put("action", "EVIDENCE_UPLOADED");
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", 0);
+            auditRequest.put("actorName", "System");
+            
+            String auditUrl = identityServiceUrl + "/api/audit";
+            restTemplate.postForObject(auditUrl, auditRequest, Map.class);
+            log.info("✅ [AUDIT] Audit log for media {} created successfully.", media.getId());
+        } catch (Exception e) {
+            log.error("❌ [AUDIT] Failed to create audit log for media {}: {}", media.getId(), e.getMessage());
+        }
     }
 
     private MediaFileResponse mapToResponse(Media media) {

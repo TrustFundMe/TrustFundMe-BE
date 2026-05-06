@@ -45,6 +45,7 @@ public class SecurityConfig {
                                                                 "/webjars/**")
                                                 .permitAll()
                                                 .requestMatchers("/actuator/**").permitAll()
+                                                .requestMatchers("/ws/**").permitAll()
                                                 .requestMatchers("/api/notifications/event").permitAll()
                                                 .requestMatchers("/api/emails/**").permitAll()
                                                                                                          // service khác

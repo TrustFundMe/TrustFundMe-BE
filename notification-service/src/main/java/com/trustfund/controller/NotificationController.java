@@ -41,6 +41,12 @@ public class NotificationController {
         return ResponseEntity.ok(notificationService.markAsRead(id));
     }
 
+    @PutMapping("/user/{userId}/read-all")
+    public ResponseEntity<Void> markAllAsRead(@PathVariable Long userId) {
+        notificationService.markAllAsRead(userId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/event")
     public ResponseEntity<Notification> createEventNotification(@RequestBody NotificationRequest request) {
         return ResponseEntity.ok(notificationService.createNotificationFromRequest(request));

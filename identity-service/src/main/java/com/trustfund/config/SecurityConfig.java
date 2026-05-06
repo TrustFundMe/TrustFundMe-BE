@@ -59,6 +59,7 @@ public class SecurityConfig {
                                 "/webjars/**")
                         .permitAll()
                         .requestMatchers("/actuator/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/audit").permitAll()
                         .requestMatchers("/api/audit/**").authenticated()
                         .requestMatchers("/api/internal/**").permitAll()
                         .requestMatchers("/api/emails/**").permitAll()

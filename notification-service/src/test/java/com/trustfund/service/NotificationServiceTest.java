@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.Collections;
 import java.util.List;
@@ -44,6 +45,9 @@ class NotificationServiceTest {
     @Mock
     private EmailService emailService;
 
+    @Mock
+    private SimpMessagingTemplate messagingTemplate;
+
     private NotificationService notificationService;
 
     @Captor
@@ -52,7 +56,7 @@ class NotificationServiceTest {
     @BeforeEach
     void setUp() {
         notificationService = new NotificationService(
-                notificationRepository, objectMapper, identityServiceClient, emailService);
+                notificationRepository, objectMapper, identityServiceClient, emailService, messagingTemplate);
     }
 
     @Nested

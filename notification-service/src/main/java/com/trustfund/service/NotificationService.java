@@ -4,6 +4,7 @@ import com.trustfund.model.Notification;
 import com.trustfund.exception.NotificationNotFoundException;
 import com.trustfund.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -23,12 +24,26 @@ public class NotificationService {
     private final ObjectMapper objectMapper;
     private final IdentityServiceClient identityServiceClient;
     private final EmailService emailService;
+    private final SimpMessagingTemplate messagingTemplate;
 
     public Notification createNotification(Notification notification) {
         if (notification.getIsRead() == null) {
             notification.setIsRead(false);
         }
-        return notificationRepository.save(notification);
+        Notification savedNotification = notificationRepository.save(notification);
+
+        // Push notification qua WebSocket
+        try {
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(savedNotification.getUserId()),
+                    "/queue/notifications",
+                    savedNotification
+            );
+        } catch (Exception e) {
+            log.error("Failed to send WebSocket notification: {}", e.getMessage());
+        }
+
+        return savedNotification;
     }
 
     public List<Notification> getNotificationsForUser(Long userId) {
@@ -50,6 +65,15 @@ public class NotificationService {
 
     public List<Notification> getLatestNotifications(Long userId) {
         return notificationRepository.findTop15ByUserIdOrderByCreatedAtDesc(userId);
+    }
+
+    public void markAllAsRead(Long userId) {
+        List<Notification> unread = notificationRepository.findByUserIdAndIsReadFalse(userId);
+        for (Notification n : unread) {
+            n.setIsRead(true);
+            n.setReadAt(LocalDateTime.now());
+        }
+        notificationRepository.saveAll(unread);
     }
 
     public Notification createNotificationFromRequest(NotificationRequest request) {
@@ -74,6 +98,17 @@ public class NotificationService {
                 .build();
 
         Notification saved = notificationRepository.save(notification);
+
+        // Push notification qua WebSocket
+        try {
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(saved.getUserId()),
+                    "/queue/notifications",
+                    saved
+            );
+        } catch (Exception e) {
+            log.error("Failed to send WebSocket notification: {}", e.getMessage());
+        }
 
         // Logic gửi Email nếu là cảnh báo pháp lý
         if ("LEGAL_WARNING".equals(request.getType())) {
