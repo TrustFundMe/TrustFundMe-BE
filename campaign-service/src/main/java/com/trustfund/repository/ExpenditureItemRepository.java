@@ -14,7 +14,7 @@ public interface ExpenditureItemRepository extends JpaRepository<ExpenditureItem
         @Query("SELECT ei FROM ExpenditureItem ei WHERE ei.expenditure.id = :expenditureId")
         List<ExpenditureItem> findByExpenditureId(@Param("expenditureId") Long expenditureId);
 
-        @Query("SELECT ei FROM ExpenditureItem ei WHERE ei.expenditure.campaignId = :campaignId")
+        @Query("SELECT ei FROM ExpenditureItem ei JOIN ei.expenditure e WHERE e.campaignId = :campaignId")
         List<ExpenditureItem> findByExpenditureCampaignId(@Param("campaignId") Long campaignId);
 
         @Modifying

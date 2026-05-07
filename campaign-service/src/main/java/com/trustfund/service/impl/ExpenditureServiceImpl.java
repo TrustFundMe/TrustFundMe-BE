@@ -366,16 +366,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional(readOnly = true)
     public List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId) {
         List<Expenditure> expenditures = expenditureRepository.findByCampaignIdOrderByCreatedAtDesc(campaignId);
-        // Tìm expenditure APPROVED mới nhất
+        // Find the latest expenditure that is in an "Active/Finalized" state
+        // (APPROVED, WITHDRAWAL_REQUESTED, DISBURSED, or COMPLETED)
+        java.util.Set<String> activeStatuses = java.util.Set.of("APPROVED", "WITHDRAWAL_REQUESTED", "DISBURSED", "COMPLETED");
+        
         for (Expenditure exp : expenditures) {
-            if ("APPROVED".equalsIgnoreCase(exp.getStatus())) {
+            if (activeStatuses.contains(exp.getStatus().toUpperCase())) {
                 return expenditureItemRepository.findByExpenditureId(exp.getId()).stream()
                         .map(this::mapToItemResponse)
                         .collect(Collectors.toList());
             }
         }
-        // Không có expenditure APPROVED nào
-        return null;
+        // No active expenditure found
+        return Collections.emptyList();
     }
 
     private ExpenditureItemResponse mapToItemResponse(ExpenditureItem item) {
