@@ -839,6 +839,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureItemResponse> getExpenditureItems(Long expenditureId) {
         return expenditureItemRepository.findByExpenditureId(expenditureId).stream()
                 .map(this::mapToItemResponse)
@@ -948,6 +949,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public ExpenditureItemResponse getExpenditureItemById(Long id) {
         return expenditureItemRepository.findById(id)
                 .map(this::mapToItemResponse)
@@ -1187,6 +1189,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureTransactionResponse> getAllTransactions() {
         List<ExpenditureTransaction> all = transactionRepository.findAll();
         log.info("getAllTransactions: found {} transactions", all.size());
@@ -1196,6 +1199,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByStatus(String status) {
         return expenditureRepository.findByStatusOrderByCreatedAtDesc(status).stream()
                 .map(this::mapToResponse)
@@ -1209,6 +1213,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId) {
         List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(fundOwnerId);
         if (campaignIds.isEmpty()) {
