@@ -113,6 +113,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
             return method == HttpMethod.GET;
         }
 
+        // Payment Service - Casso transactions are public (GET) for sao kê / minh bạch chi tiêu
+        if (path.startsWith("/api/payments/casso/")) {
+            return method == HttpMethod.GET;
+        }
+
         // Users endpoint - check-email is public
         if (path.equals("/api/users/check-email")) {
             return true;

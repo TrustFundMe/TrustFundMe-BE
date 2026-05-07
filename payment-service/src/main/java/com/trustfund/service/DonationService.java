@@ -39,6 +39,7 @@ public class DonationService {
         private final PayOS payOS;
         private final DonationRepository donationRepository;
         private final DonationItemRepository donationItemRepository;
+        private final com.trustfund.repository.CassoTransactionRepository cassoTransactionRepository;
         private final RestTemplate restTemplate;
         private final RestTemplate campaignEnrichmentRestTemplate;
 
@@ -55,11 +56,13 @@ public class DonationService {
                         PayOS payOS,
                         DonationRepository donationRepository,
                         DonationItemRepository donationItemRepository,
+                        com.trustfund.repository.CassoTransactionRepository cassoTransactionRepository,
                         RestTemplate restTemplate,
                         @Qualifier("campaignEnrichmentRestTemplate") RestTemplate campaignEnrichmentRestTemplate) {
                 this.payOS = payOS;
                 this.donationRepository = donationRepository;
                 this.donationItemRepository = donationItemRepository;
+                this.cassoTransactionRepository = cassoTransactionRepository;
                 this.restTemplate = restTemplate;
                 this.campaignEnrichmentRestTemplate = campaignEnrichmentRestTemplate;
         }
@@ -617,26 +620,13 @@ public class DonationService {
                 List<Donation> allDonations = donationRepository.findByCampaignIdAndStatusOrderByCreatedAtAsc(
                                 campaignId,
                                 "PAID");
-                List<Map<String, Object>> allExpenditures = new java.util.ArrayList<>();
                 List<Map<String, Object>> allInternalIncomes = new java.util.ArrayList<>();
                 BigDecimal totalReceived = BigDecimal.ZERO;
                 BigDecimal totalSpent = BigDecimal.ZERO;
                 BigDecimal receivedFromGeneralFund = BigDecimal.ZERO;
 
-                try {
-                        String expUrl = campaignServiceUrl + "/api/expenditures/campaign/" + campaignId;
-                        @SuppressWarnings("unchecked")
-                        List<Map<String, Object>> allExps = restTemplate.getForObject(expUrl, List.class);
-                        if (allExps != null) {
-                                for (Map<String, Object> exp : allExps) {
-                                        if ("DISBURSED".equals(exp.get("status"))) {
-                                                allExpenditures.add(exp);
-                                        }
-                                }
-                        }
-                } catch (Exception e) {
-                        log.warn("Could not fetch expenditures for analytics: {}", e.getMessage());
-                }
+                // Note: Expenditures DISBURSED are NOT used for withdrawal events.
+                // Casso outbound transactions (step 4e) are the source of truth for actual bank withdrawals.
 
                 try {
                         String internalUrl = campaignServiceUrl + "/api/internal-transactions/campaign/" + campaignId
@@ -667,13 +657,7 @@ public class DonationService {
                 for (Donation d : allDonations) {
                         events.add(new Event(d.getCreatedAt(), d.getDonationAmount(), false));
                 }
-                for (Map<String, Object> exp : allExpenditures) {
-                        java.time.LocalDateTime t = exp.get("updatedAt") != null
-                                        ? java.time.LocalDateTime.parse(exp.get("updatedAt").toString())
-                                        : java.time.LocalDateTime.now();
-                        BigDecimal a = new BigDecimal(exp.get("totalAmount").toString());
-                        events.add(new Event(t, a, true));
-                }
+                // Expenditure DISBURSED events removed — Casso outbound is source of truth
 
                 for (Map<String, Object> inc : allInternalIncomes) {
                         java.time.LocalDateTime t = inc.get("createdAt") != null
@@ -682,6 +666,25 @@ public class DonationService {
                         BigDecimal a = new BigDecimal(inc.get("amount").toString());
                         events.add(new Event(t, a, false));
                         receivedFromGeneralFund = receivedFromGeneralFund.add(a);
+                }
+
+                // 4e. Include Casso outbound (withdrawal) transactions for this campaign
+                // These represent actual bank withdrawals. Expenditures DISBURSED may not
+                // exist if status is still APPROVED, so Casso is the source of truth.
+                try {
+                        List<com.trustfund.model.CassoTransaction> cassoTxns = cassoTransactionRepository
+                                        .findByCampaignIdOrderByCreatedAtDesc(campaignId);
+                        for (com.trustfund.model.CassoTransaction ct : cassoTxns) {
+                                if (ct.getAmount() != null && ct.getAmount().compareTo(BigDecimal.ZERO) < 0) {
+                                        java.time.LocalDateTime t = ct.getCreatedAt() != null
+                                                        ? ct.getCreatedAt()
+                                                        : java.time.LocalDateTime.now();
+                                        BigDecimal absAmount = ct.getAmount().abs();
+                                        events.add(new Event(t, absAmount, true));
+                                }
+                        }
+                } catch (Exception e) {
+                        log.warn("Could not fetch Casso withdrawals for analytics: {}", e.getMessage());
                 }
 
                 events.sort(java.util.Comparator.comparing(e -> e.time));

@@ -1,12 +1,13 @@
 package com.trustfund.client;
 
-import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.util.List;
+
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
-import java.math.BigDecimal;
-import java.util.List;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component
@@ -88,7 +89,35 @@ public class PaymentServiceClient {
         } catch (Exception e) {
             log.error("Failed to check payment existence for item {}: {}", itemId, e.getMessage());
             return false;
+      }
+    }
+    @SuppressWarnings("unchecked")
+    public java.util.Map<String, BigDecimal> getCassoSummaryByCampaignIds(List<Long> campaignIds) {
+        java.util.Map<String, BigDecimal> result = new java.util.HashMap<>();
+        result.put("totalDonated", BigDecimal.ZERO);
+        result.put("totalSpent", BigDecimal.ZERO);
+        if (campaignIds == null || campaignIds.isEmpty()) {
+            return result;
         }
+        String idsParam = campaignIds.stream()
+                .map(String::valueOf)
+                .collect(java.util.stream.Collectors.joining(","));
+        String url = paymentServiceUrl + "/api/payments/campaigns/casso-summary?campaignIds=" + idsParam;
+        try {
+            log.info("Calling payment service for casso summary: {}", url);
+            java.util.Map<String, Object> response = restTemplate.getForObject(url, java.util.Map.class);
+            if (response != null) {
+                if (response.get("totalDonated") != null) {
+                    result.put("totalDonated", new BigDecimal(response.get("totalDonated").toString()));
+                }
+                if (response.get("totalSpent") != null) {
+                    result.put("totalSpent", new BigDecimal(response.get("totalSpent").toString()));
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch casso summary from payment service: {}", e.getMessage());
+        }
+        return result;
     }
 
     public BigDecimal getTotalRaisedByCampaignIds(List<Long> campaignIds) {

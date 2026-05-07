@@ -1,5 +1,6 @@
 package com.trustfund.service.impl;
 
+import com.trustfund.client.PaymentServiceClient;
 import com.trustfund.model.enums.InternalTransactionStatus;
 import com.trustfund.model.enums.InternalTransactionType;
 import com.trustfund.model.response.CampaignStatisticsResponse;
@@ -29,16 +30,22 @@ public class CampaignStatisticsServiceImpl implements CampaignStatisticsService 
     private final InternalTransactionRepository internalTransactionRepository;
     private final CampaignService campaignService;
     private final ExpenditureService expenditureService;
+    private final PaymentServiceClient paymentServiceClient;
 
-    private static final String ICON_TOTAL_RECEIVED = "https://cdn-icons-png.flaticon.com/512/3069/3069472.png";
-    private static final String ICON_TOTAL_SPENT = "https://cdn-icons-png.flaticon.com/512/4393/4393152.png";
-    private static final String ICON_CURRENT_BALANCE = "https://cdn-icons-png.flaticon.com/512/16184/16184101.png";
-    private static final String ICON_TOTAL_RECEIVED_FROM_GENERAL_FUND = "https://cdn-icons-png.flaticon.com/512/5529/5529892.png";
+    private static final String ICON_TOTAL_RECEIVED = "https://cdn-icons-png.flaticon.com/512/3135/3135706.png";
+    private static final String ICON_TOTAL_SPENT = "https://cdn-icons-png.flaticon.com/512/3135/3135688.png";
+    private static final String ICON_CURRENT_BALANCE = "https://cdn-icons-png.flaticon.com/512/3135/3135673.png";
+    private static final String ICON_TOTAL_RECEIVED_FROM_GENERAL_FUND = "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
 
     @Override
     @Transactional(readOnly = true)
     public CampaignStatisticsResponse getStatisticsByFundOwner(Long fundOwnerId) {
         List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(fundOwnerId);
+
+        // Lấy tổng quyên góp và đã chi từ Casso transactions (tiền thực tế qua ngân hàng)
+        Map<String, BigDecimal> cassoSummary = paymentServiceClient.getCassoSummaryByCampaignIds(campaignIds);
+        BigDecimal totalReceived = cassoSummary.get("totalDonated");
+        BigDecimal totalSpent = cassoSummary.get("totalSpent");
 
         // currentBalance = tong balance cac campaign cua user
         BigDecimal currentBalance = campaignRepository.sumBalanceByFundOwnerId(fundOwnerId);
@@ -46,13 +53,7 @@ public class CampaignStatisticsServiceImpl implements CampaignStatisticsService 
             currentBalance = BigDecimal.ZERO;
         }
 
-        // totalSpent = tong cac khoan da giai ngan (DISBURSED)
-        BigDecimal totalSpent = expenditureRepository.sumTotalAmountByCampaignIds(campaignIds);
-        if (totalSpent == null) {
-            totalSpent = BigDecimal.ZERO;
-        }
-
-        // totalReceivedFromGeneralFund = tong InternalTransaction type=SUPPORT, status=APPROVED, fromCampaignId IN campaignIds
+        // totalReceivedFromGeneralFund = tong InternalTransaction type=SUPPORT, status=APPROVED
         BigDecimal totalReceivedFromGeneralFund = BigDecimal.ZERO;
         if (!campaignIds.isEmpty()) {
             for (Long campaignId : campaignIds) {
@@ -67,16 +68,13 @@ public class CampaignStatisticsServiceImpl implements CampaignStatisticsService 
             }
         }
 
-        // totalReceived = totalSpent + currentBalance + totalReceivedFromGeneralFund
-        BigDecimal totalReceived = totalSpent.add(currentBalance).add(totalReceivedFromGeneralFund);
-
         // danh sach expenditure thuoc cac campaign cua user, chi lay status DISBURSED
         List<ExpenditureResponse> allExpenditures = expenditureService.getExpendituresByFundOwner(fundOwnerId);
         List<ExpenditureResponse> expenditures = allExpenditures.stream()
                 .filter(e -> "DISBURSED".equalsIgnoreCase(e.getStatus()))
                 .collect(Collectors.toList());
 
-        // campaignMap = map campaignId -> title de hien thi ten quy (query tat ca campaigns cua user)
+        // campaignMap = map campaignId -> title de hien thi ten quy
         Map<Long, String> campaignMap = new HashMap<>();
         campaignRepository.findByFundOwnerId(fundOwnerId)
                 .forEach(c -> campaignMap.put(c.getId(), c.getTitle()));
