@@ -25,6 +25,15 @@ public class MediaController {
     private final MediaService mediaService;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
+    @GetMapping("/debug/recent")
+    public ResponseEntity<List<Media>> debugRecent() {
+        try {
+            return ResponseEntity.ok(mediaRepository.findTop10ByOrderByIdDesc());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/debug/db-schema")
     public ResponseEntity<String> debugDbSchema() {
         try {

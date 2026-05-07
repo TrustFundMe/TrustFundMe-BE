@@ -151,6 +151,8 @@ public class MediaServiceImpl implements MediaService {
     @Override
     @Transactional
     public MediaFileResponse registerMedia(com.trustfund.model.request.RegisterMediaRequest request) {
+        log.info(">>> MediaServiceImpl: Registering media - URL: {}, Type: {}, PostID: {}, CampaignID: {}", 
+                request.getUrl(), request.getMediaType(), request.getPostId(), request.getCampaignId());
         Media media = Media.builder()
                 .url(request.getUrl())
                 .mediaType(request.getMediaType() != null ? request.getMediaType() : MediaType.PHOTO)
@@ -233,35 +235,36 @@ public class MediaServiceImpl implements MediaService {
 
     private MediaType detectMediaType(String contentType) {
         if (contentType == null || contentType.isBlank()) {
-            return MediaType.FILE; // Default for unknown types
+            return MediaType.FILE;
         }
 
         String type = contentType.toLowerCase();
+        log.info(">>> detectMediaType: detecting type for content-type: {}", type);
 
-        // Image types
         if (type.startsWith("image/")) {
             return MediaType.PHOTO;
         }
-
-        // Video types
         if (type.startsWith("video/")) {
             return MediaType.VIDEO;
         }
 
-        // Document types
-        if (type.contains("pdf") ||
-                type.contains("document") ||
-                type.contains("word") ||
-                type.contains("excel") ||
-                type.contains("spreadsheet") ||
-                type.contains("text") ||
-                type.contains("msword") ||
-                type.contains("ms-excel") ||
-                type.contains("officedocument")) {
-            return MediaType.FILE;
+        if (type.contains("excel") || 
+            type.contains("spreadsheet") || 
+            type.contains("csv") || 
+            type.contains("ms-excel") || 
+            type.contains("officedocument.spreadsheetml")) {
+            return MediaType.EXCEL;
         }
 
-        // Default fallback
+        if (type.contains("pdf") ||
+            type.contains("document") ||
+            type.contains("word") ||
+            type.contains("msword") ||
+            type.contains("text") ||
+            type.contains("officedocument.wordprocessingml")) {
+            return MediaType.DOCUMENT;
+        }
+
         return MediaType.FILE;
     }
 
