@@ -719,6 +719,64 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
         }
 
+        // [AUDIT] Log expenditure status review by staff
+        try {
+            CampaignResponse auditCampaign = campaignService.getById(expenditure.getCampaignId());
+
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("expenditureId", id);
+            snapshotMap.put("campaignId", expenditure.getCampaignId());
+            snapshotMap.put("plan", expenditure.getPlan());
+            snapshotMap.put("status", status);
+            snapshotMap.put("totalExpectedAmount", expenditure.getTotalExpectedAmount());
+            if (request.getReasonReject() != null) {
+                snapshotMap.put("reasonReject", request.getReasonReject());
+            }
+            if (request.getProofUrl() != null) {
+                snapshotMap.put("proofUrl", request.getProofUrl());
+            }
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+
+            String staffName = "Staff";
+            try {
+                com.trustfund.model.response.UserInfoResponse staffInfo = identityServiceClient
+                        .getUserById(request.getStaffId());
+                if (staffInfo != null && staffInfo.getFullName() != null) {
+                    staffName = staffInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch staff name for audit log: {}", e.getMessage());
+            }
+
+            String action;
+            if ("APPROVED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_APPROVED";
+            } else if ("REJECTED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_REJECTED";
+            } else if ("ALLOWED_EDIT".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_CORRECTION_REQUESTED";
+            } else if ("DISBURSED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_DISBURSED";
+            } else if ("COMPLETED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_COMPLETED";
+            } else {
+                action = "EXPENDITURE_STATUS_CHANGED";
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EXPENDITURE_REVIEW");
+            auditRequest.put("entityId", expenditure.getCampaignId());
+            auditRequest.put("action", action);
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", request.getStaffId());
+            auditRequest.put("actorName", staffName);
+
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for expenditure status update {}: {}", id, e.getMessage());
+        }
+
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
@@ -1096,6 +1154,51 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         campaign.getFundOwnerId());
             } catch (Exception e) {
                 log.error("❌ Failed to send notification for expenditure evidence status update: {}", e.getMessage());
+            }
+        }
+
+        // [AUDIT] Log evidence status review by staff
+        if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            try {
+                CampaignResponse auditCampaign = campaignService.getById(expenditure.getCampaignId());
+
+                java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+                snapshotMap.put("expenditureId", id);
+                snapshotMap.put("campaignId", expenditure.getCampaignId());
+                snapshotMap.put("plan", expenditure.getPlan());
+                snapshotMap.put("evidenceStatus", status);
+
+                String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+
+                // Evidence review is done by staff but staffId is not passed in this method,
+                // use staffReviewId from expenditure or a default label
+                Long staffId = expenditure.getStaffReviewId();
+                String staffName = "Staff";
+                if (staffId != null) {
+                    try {
+                        com.trustfund.model.response.UserInfoResponse staffInfo = identityServiceClient
+                                .getUserById(staffId);
+                        if (staffInfo != null && staffInfo.getFullName() != null) {
+                            staffName = staffInfo.getFullName();
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not fetch staff name for audit log: {}", e.getMessage());
+                    }
+                }
+
+                String action = "APPROVED".equalsIgnoreCase(status) ? "EVIDENCE_APPROVED" : "EVIDENCE_REJECTED";
+
+                java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+                auditRequest.put("entityType", "EVIDENCE_REVIEW");
+                auditRequest.put("entityId", expenditure.getCampaignId());
+                auditRequest.put("action", action);
+                auditRequest.put("dataSnapshot", snapshot);
+                auditRequest.put("actorId", staffId);
+                auditRequest.put("actorName", staffName);
+
+                identityServiceClient.createAuditLog(auditRequest);
+            } catch (Exception e) {
+                log.error("❌ Failed to create audit log for evidence status update {}: {}", id, e.getMessage());
             }
         }
 
