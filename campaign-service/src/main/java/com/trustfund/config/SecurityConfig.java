@@ -1,6 +1,7 @@
 package com.trustfund.config;
 
-import com.trustfund.filter.JwtAuthenticationFilter;
+import java.time.LocalDateTime;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -14,9 +15,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfigurationSource;
+
+import com.trustfund.filter.JwtAuthenticationFilter;
+
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.time.LocalDateTime;
 
 @Configuration
 @EnableWebSecurity
@@ -92,6 +95,8 @@ public class SecurityConfig {
                                                 .requestMatchers(HttpMethod.GET, "/api/forum/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/flags/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/system-configs/**").permitAll()
+                                                // Trust Score - public read for transparency
+                                                .requestMatchers(HttpMethod.GET, "/api/trust-score/**").permitAll()
                                                 // User post seen — allow GET (returns empty for anon), POST needs auth
                                                 .requestMatchers(HttpMethod.GET, "/api/user-post-seen").permitAll()
                                                 .requestMatchers(HttpMethod.POST, "/api/user-post-seen").authenticated()

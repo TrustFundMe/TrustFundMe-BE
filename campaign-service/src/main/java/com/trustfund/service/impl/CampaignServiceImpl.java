@@ -1,25 +1,27 @@
 package com.trustfund.service.impl;
 
+import java.util.List;
+
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
 import com.trustfund.client.IdentityServiceClient;
 import com.trustfund.client.MediaServiceClient;
 import com.trustfund.model.Campaign;
 import com.trustfund.model.CampaignCategory;
 import com.trustfund.model.request.CreateCampaignRequest;
 import com.trustfund.model.request.UpdateCampaignRequest;
+import com.trustfund.model.response.CampaignResponse;
+import com.trustfund.model.response.UserVerificationStatusResponse;
 import com.trustfund.repository.CampaignCategoryRepository;
 import com.trustfund.repository.CampaignRepository;
 import com.trustfund.service.CampaignService;
-import com.trustfund.model.response.CampaignResponse;
-import com.trustfund.model.response.UserVerificationStatusResponse;
-import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-import org.springframework.http.HttpStatus;
 
-import java.util.List;
+import lombok.RequiredArgsConstructor;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +37,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final com.trustfund.service.TrustScoreService trustScoreService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getAll() {
         return campaignRepository
                 .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
@@ -46,6 +49,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<CampaignResponse> getAll(Pageable pageable) {
         return campaignRepository.findByTypeNot(Campaign.TYPE_GENERAL_FUND, pageable)
                 .map(this::toCampaignResponse);
@@ -60,6 +64,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
         List<Campaign> campaigns = campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND);
         if (campaigns.isEmpty()) {
@@ -91,6 +96,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
             Pageable pageable) {
         Page<Campaign> campaignsPage = campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND, pageable);
@@ -214,6 +220,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByStatus(String status) {
         return campaignRepository
                 .findByStatusAndTypeNot(status, Campaign.TYPE_GENERAL_FUND)
@@ -223,6 +230,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByCategoryId(Long categoryId) {
         return campaignRepository
                 .findByCategoryIdAndTypeNot(categoryId, Campaign.TYPE_GENERAL_FUND)

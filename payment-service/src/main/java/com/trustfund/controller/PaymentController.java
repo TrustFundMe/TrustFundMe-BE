@@ -250,6 +250,19 @@ public class PaymentController {
         return ResponseEntity.ok(donationService.getTotalRaisedByCampaignIds(ids));
     }
 
+    @GetMapping("/campaigns/casso-summary")
+    public ResponseEntity<Map<String, Object>> getCassoSummaryByCampaignIds(
+            @RequestParam("campaignIds") String campaignIdsStr) {
+        List<Long> ids = java.util.Arrays.stream(campaignIdsStr.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(Long::parseLong)
+                .collect(java.util.stream.Collectors.toList());
+        java.math.BigDecimal totalDonated = cassoWebhookService.sumPositiveAmountByCampaignIds(ids);
+        java.math.BigDecimal totalSpent = cassoWebhookService.sumNegativeAmountByCampaignIds(ids);
+        return ResponseEntity.ok(Map.of("totalDonated", totalDonated, "totalSpent", totalSpent));
+    }
+
     @GetMapping("/campaign/{campaignId}/paid-donations")
     public ResponseEntity<?> getPaidDonationsByCampaign(@PathVariable("campaignId") Long campaignId) {
         try {

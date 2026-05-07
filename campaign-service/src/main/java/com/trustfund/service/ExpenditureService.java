@@ -88,4 +88,6 @@ public interface ExpenditureService {
         void deleteCategory(Long categoryId);
 
         com.trustfund.model.response.ExpenditureEvidenceResponse getEvidenceById(Long id);
+
+        List<com.trustfund.model.response.ExpenditureEvidenceResponse> getOrphanEvidencesByCampaign(Long campaignId);
 }

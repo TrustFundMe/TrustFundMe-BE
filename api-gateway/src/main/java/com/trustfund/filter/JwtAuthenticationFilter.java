@@ -95,7 +95,9 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 path.startsWith("/api/fundraising-goals") ||
                 path.startsWith("/api/campaign-follows") ||
                 path.startsWith("/api/campaign-categories") ||
-                path.startsWith("/api/expenditures")) {
+                path.startsWith("/api/expenditures") ||
+                path.startsWith("/api/system-configs") ||
+                path.startsWith("/api/trust-score")) {
             return method == HttpMethod.GET;
         }
 
@@ -109,6 +111,11 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
         // Payment Service - Campaign analytics/progress/recent-donations are public
         // (GET) so guests can view transaction stats on campaign details page
         if (path.startsWith("/api/payments/campaign/")) {
+            return method == HttpMethod.GET;
+        }
+
+        // Payment Service - Casso transactions are public (GET) for sao kê / minh bạch chi tiêu
+        if (path.startsWith("/api/payments/casso/")) {
             return method == HttpMethod.GET;
         }
 

@@ -497,6 +497,16 @@ public class CassoWebhookService {
         return debug;
     }
 
+    public BigDecimal sumPositiveAmountByCampaignIds(List<Long> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) return BigDecimal.ZERO;
+        return cassoTransactionRepository.sumPositiveAmountByCampaignIds(campaignIds);
+    }
+
+    public BigDecimal sumNegativeAmountByCampaignIds(List<Long> campaignIds) {
+        if (campaignIds == null || campaignIds.isEmpty()) return BigDecimal.ZERO;
+        return cassoTransactionRepository.sumNegativeAmountByCampaignIds(campaignIds).abs();
+    }
+
     private void createAuditLogForTransaction(CassoTransaction tx) {
         try {
             log.info("➔ [AUDIT] Creating audit log for transaction: {}", tx.getTid());

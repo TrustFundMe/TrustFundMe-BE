@@ -366,16 +366,19 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     @Transactional(readOnly = true)
     public List<ExpenditureItemResponse> getApprovedItemsByCampaign(Long campaignId) {
         List<Expenditure> expenditures = expenditureRepository.findByCampaignIdOrderByCreatedAtDesc(campaignId);
-        // Tìm expenditure APPROVED mới nhất
+        // Find the latest expenditure that is in an "Active/Finalized" state
+        // (APPROVED, WITHDRAWAL_REQUESTED, DISBURSED, or COMPLETED)
+        java.util.Set<String> activeStatuses = java.util.Set.of("APPROVED", "WITHDRAWAL_REQUESTED", "DISBURSED", "COMPLETED");
+        
         for (Expenditure exp : expenditures) {
-            if ("APPROVED".equalsIgnoreCase(exp.getStatus())) {
+            if (activeStatuses.contains(exp.getStatus().toUpperCase())) {
                 return expenditureItemRepository.findByExpenditureId(exp.getId()).stream()
                         .map(this::mapToItemResponse)
                         .collect(Collectors.toList());
             }
         }
-        // Không có expenditure APPROVED nào
-        return null;
+        // No active expenditure found
+        return Collections.emptyList();
     }
 
     private ExpenditureItemResponse mapToItemResponse(ExpenditureItem item) {
@@ -390,6 +393,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                 .expectedPrice(item.getExpectedPrice())
                 .expectedNote(item.getExpectedNote())
                 .expectedPurchaseLocation(item.getExpectedPurchaseLocation())
+                .actualPurchaseLocation(item.getActualPurchaseLocation())
                 .expectedBrand(item.getExpectedBrand())
                 .actualBrand(item.getActualBrand())
                 .expectedUnit(item.getExpectedUnit())
@@ -718,6 +722,64 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
         }
 
+        // [AUDIT] Log expenditure status review by staff
+        try {
+            CampaignResponse auditCampaign = campaignService.getById(expenditure.getCampaignId());
+
+            java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+            snapshotMap.put("expenditureId", id);
+            snapshotMap.put("campaignId", expenditure.getCampaignId());
+            snapshotMap.put("plan", expenditure.getPlan());
+            snapshotMap.put("status", status);
+            snapshotMap.put("totalExpectedAmount", expenditure.getTotalExpectedAmount());
+            if (request.getReasonReject() != null) {
+                snapshotMap.put("reasonReject", request.getReasonReject());
+            }
+            if (request.getProofUrl() != null) {
+                snapshotMap.put("proofUrl", request.getProofUrl());
+            }
+
+            String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+
+            String staffName = "Staff";
+            try {
+                com.trustfund.model.response.UserInfoResponse staffInfo = identityServiceClient
+                        .getUserById(request.getStaffId());
+                if (staffInfo != null && staffInfo.getFullName() != null) {
+                    staffName = staffInfo.getFullName();
+                }
+            } catch (Exception e) {
+                log.warn("Could not fetch staff name for audit log: {}", e.getMessage());
+            }
+
+            String action;
+            if ("APPROVED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_APPROVED";
+            } else if ("REJECTED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_REJECTED";
+            } else if ("ALLOWED_EDIT".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_CORRECTION_REQUESTED";
+            } else if ("DISBURSED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_DISBURSED";
+            } else if ("COMPLETED".equalsIgnoreCase(status)) {
+                action = "EXPENDITURE_COMPLETED";
+            } else {
+                action = "EXPENDITURE_STATUS_CHANGED";
+            }
+
+            java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+            auditRequest.put("entityType", "EXPENDITURE_REVIEW");
+            auditRequest.put("entityId", expenditure.getCampaignId());
+            auditRequest.put("action", action);
+            auditRequest.put("dataSnapshot", snapshot);
+            auditRequest.put("actorId", request.getStaffId());
+            auditRequest.put("actorName", staffName);
+
+            identityServiceClient.createAuditLog(auditRequest);
+        } catch (Exception e) {
+            log.error("❌ Failed to create audit log for expenditure status update {}: {}", id, e.getMessage());
+        }
+
         return mapToResponse(expenditureRepository.save(expenditure));
     }
 
@@ -851,6 +913,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = expenditureRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Expenditure not found: " + id));
 
+        // Guard: block edits on COMPLETED or CLOSED expenditures
+        if ("COMPLETED".equalsIgnoreCase(expenditure.getStatus())
+                || "CLOSED".equalsIgnoreCase(expenditure.getStatus())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Đợt chi tiêu đã hoàn tất, không thể chỉnh sửa thực chi.");
+        }
+
         for (UpdateExpenditureActualsRequest.UpdateItem updateItem : request.getItems()) {
             ExpenditureItem item = expenditureItemRepository.findById(updateItem.getId())
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
@@ -868,6 +937,9 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
             if (updateItem.getActualBrand() != null) {
                 item.setActualBrand(updateItem.getActualBrand());
+            }
+            if (updateItem.getActualPurchaseLocation() != null) {
+                item.setActualPurchaseLocation(updateItem.getActualPurchaseLocation());
             }
             if (updateItem.getActualUnit() != null) {
                 item.setActualUnit(updateItem.getActualUnit());
@@ -918,7 +990,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .expenditure(expenditure)
                         .name(itemReq.getName())
                         .expectedQuantity(itemReq.getExpectedQuantity())
-                        .actualQuantity(0)
+                        .actualQuantity(itemReq.getActualQuantity() != null ? itemReq.getActualQuantity() : 0)
                         .quantityLeft(itemReq.getExpectedQuantity())
                         .actualPrice(itemReq.getActualPrice() != null ? itemReq.getActualPrice() : BigDecimal.ZERO)
                         .expectedPrice(itemReq.getExpectedPrice())
@@ -927,6 +999,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
                         .actualBrand(itemReq.getActualBrand())
                         .expectedUnit(itemReq.getExpectedUnit())
                         .expectedPurchaseLocation(itemReq.getExpectedPurchaseLocation())
+                        .actualPurchaseLocation(itemReq.getActualPurchaseLocation())
                         .actualUnit(itemReq.getActualUnit())
                         .catologyId(itemReq.getCatologyId())
                         .build())
@@ -1087,6 +1160,51 @@ public class ExpenditureServiceImpl implements ExpenditureService {
             }
         }
 
+        // [AUDIT] Log evidence status review by staff
+        if ("APPROVED".equalsIgnoreCase(status) || "REJECTED".equalsIgnoreCase(status)) {
+            try {
+                CampaignResponse auditCampaign = campaignService.getById(expenditure.getCampaignId());
+
+                java.util.Map<String, Object> snapshotMap = new java.util.HashMap<>();
+                snapshotMap.put("expenditureId", id);
+                snapshotMap.put("campaignId", expenditure.getCampaignId());
+                snapshotMap.put("plan", expenditure.getPlan());
+                snapshotMap.put("evidenceStatus", status);
+
+                String snapshot = new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshotMap);
+
+                // Evidence review is done by staff but staffId is not passed in this method,
+                // use staffReviewId from expenditure or a default label
+                Long staffId = expenditure.getStaffReviewId();
+                String staffName = "Staff";
+                if (staffId != null) {
+                    try {
+                        com.trustfund.model.response.UserInfoResponse staffInfo = identityServiceClient
+                                .getUserById(staffId);
+                        if (staffInfo != null && staffInfo.getFullName() != null) {
+                            staffName = staffInfo.getFullName();
+                        }
+                    } catch (Exception e) {
+                        log.warn("Could not fetch staff name for audit log: {}", e.getMessage());
+                    }
+                }
+
+                String action = "APPROVED".equalsIgnoreCase(status) ? "EVIDENCE_APPROVED" : "EVIDENCE_REJECTED";
+
+                java.util.Map<String, Object> auditRequest = new java.util.HashMap<>();
+                auditRequest.put("entityType", "EVIDENCE_REVIEW");
+                auditRequest.put("entityId", expenditure.getCampaignId());
+                auditRequest.put("action", action);
+                auditRequest.put("dataSnapshot", snapshot);
+                auditRequest.put("actorId", staffId);
+                auditRequest.put("actorName", staffName);
+
+                identityServiceClient.createAuditLog(auditRequest);
+            } catch (Exception e) {
+                log.error("❌ Failed to create audit log for evidence status update {}: {}", id, e.getMessage());
+            }
+        }
+
         return mapToResponse(saved);
     }
 
@@ -1177,6 +1295,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureTransactionResponse> getAllTransactions() {
         List<ExpenditureTransaction> all = transactionRepository.findAll();
         log.info("getAllTransactions: found {} transactions", all.size());
@@ -1186,6 +1305,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByStatus(String status) {
         return expenditureRepository.findByStatusOrderByCreatedAtDesc(status).stream()
                 .map(this::mapToResponse)
@@ -1199,6 +1319,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<ExpenditureResponse> getExpendituresByFundOwner(Long fundOwnerId) {
         List<Long> campaignIds = campaignService.getCampaignIdsByFundOwner(fundOwnerId);
         if (campaignIds.isEmpty()) {
@@ -1428,6 +1549,7 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         Expenditure expenditure = candidates.stream()
                 .filter(e -> e.getStartDate() != null && e.getEndDate() != null &&
                         !txDate.isBefore(e.getStartDate()) && !txDate.isAfter(e.getEndDate()))
+                .filter(e -> !"COMPLETED".equalsIgnoreCase(e.getStatus()))
                 .findFirst()
                 .orElse(null);
 
@@ -1608,5 +1730,13 @@ public class ExpenditureServiceImpl implements ExpenditureService {
         com.trustfund.model.ExpenditureEvidence evidence = evidenceRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Evidence not found: " + id));
         return mapToEvidenceResponse(evidence);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ExpenditureEvidenceResponse> getOrphanEvidencesByCampaign(Long campaignId) {
+        return evidenceRepository.findOrphanByCampaignId(campaignId).stream()
+                .map(this::mapToEvidenceResponse)
+                .collect(Collectors.toList());
     }
 }

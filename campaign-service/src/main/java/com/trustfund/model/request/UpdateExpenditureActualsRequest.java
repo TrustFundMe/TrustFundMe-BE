@@ -29,6 +29,8 @@ public class UpdateExpenditureActualsRequest {
 
         private String actualBrand;
 
+        private String actualPurchaseLocation;
+
         private String actualUnit;
     }
 }

@@ -353,4 +353,11 @@ public class ExpenditureController {
         expenditureService.deleteCategory(id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/campaign/{campaignId}/orphan-evidences")
+    @Operation(summary = "Lấy danh sách minh chứng chưa gắn đợt chi tiêu", description = "Lấy các minh chứng giao dịch âm không thuộc đợt chi tiêu nào (expenditure_id = null) của một chiến dịch.")
+    public ResponseEntity<List<com.trustfund.model.response.ExpenditureEvidenceResponse>> getOrphanEvidences(
+            @PathVariable("campaignId") Long campaignId) {
+        return ResponseEntity.ok(expenditureService.getOrphanEvidencesByCampaign(campaignId));
+    }
 }

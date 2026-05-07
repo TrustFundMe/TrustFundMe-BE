@@ -29,8 +29,7 @@ public class AuditLog {
     @Column(name = "action", nullable = false)
     private String action;
 
-    @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "data_snapshot", columnDefinition = "JSON", nullable = false)
+    @Column(name = "data_snapshot", columnDefinition = "LONGTEXT", nullable = false)
     private String dataSnapshot;
 
     @Column(name = "audit_hash", nullable = false)
