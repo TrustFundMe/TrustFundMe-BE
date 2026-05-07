@@ -18,6 +18,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     Optional<AuditLog> findTopByOrderByCreatedAtDesc();
 
     Optional<AuditLog> findFirstByCreatedAtBeforeOrderByCreatedAtDesc(LocalDateTime createdAt);
+    
+    Optional<AuditLog> findFirstByIdLessThanOrderByIdDesc(Long id);
 
     Page<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId, Pageable pageable);
 

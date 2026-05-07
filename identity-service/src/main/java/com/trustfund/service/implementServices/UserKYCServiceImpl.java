@@ -199,6 +199,44 @@ public class UserKYCServiceImpl implements UserKYCService {
             return;
         }
 
+        // [AUDIT] Log KYC status change - runs INDEPENDENTLY of notification
+        try {
+            java.util.Map<String, Object> snapshot = new java.util.LinkedHashMap<>();
+            snapshot.put("kycId", kyc.getId());
+            snapshot.put("userId", kyc.getUser().getId());
+            snapshot.put("fullName", kyc.getFullNameOcr());
+            snapshot.put("idNumber", kyc.getIdNumber());
+            snapshot.put("idType", kyc.getIdType());
+            snapshot.put("address", kyc.getAddress());
+            snapshot.put("issueDate", kyc.getIssueDate());
+            snapshot.put("issuePlace", kyc.getIssuePlace());
+            snapshot.put("status", status.name());
+            snapshot.put("rejectionReason", rejectionReason);
+            snapshot.put("idImageFront", kyc.getIdImageFront());
+            snapshot.put("idImageBack", kyc.getIdImageBack());
+            snapshot.put("selfieImage", kyc.getSelfieImage());
+
+            com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
+            mapper.disable(com.fasterxml.jackson.databind.SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+            String snapshotJson = mapper.writeValueAsString(snapshot);
+
+            com.trustfund.model.AuditLog auditLog = com.trustfund.model.AuditLog.builder()
+                    .entityType("USER_KYC")
+                    .entityId(kyc.getId())
+                    .action("KYC_STATUS_UPDATE")
+                    .dataSnapshot(snapshotJson)
+                    .actorId(0L)
+                    .actorName("System")
+                    .build();
+
+            auditLogService.saveLog(auditLog);
+            log.info("✅ [AUDIT] Audit log for KYC {} saved successfully.", kyc.getId());
+        } catch (Exception e) {
+            log.warn("❌ [AUDIT] Failed to create audit log for KYC {}: {}", kyc.getId(), e.getMessage());
+        }
+
+        // Send notification (separately - failure here won't affect audit log)
         try {
             boolean isApproved = status == KYCStatus.APPROVED;
 
@@ -226,29 +264,6 @@ public class UserKYCServiceImpl implements UserKYCService {
             log.info("[UserKYCService] Sending KYC notification to user {} for KYC {}",
                     kyc.getUser().getId(), kyc.getId());
             notificationServiceClient.sendNotification(notificationRequest);
-            
-            // [AUDIT] Log KYC status change
-            try {
-                java.util.Map<String, Object> snapshot = new java.util.HashMap<>();
-                snapshot.put("kycId", kyc.getId());
-                snapshot.put("userId", kyc.getUser().getId());
-                snapshot.put("status", status.name());
-                snapshot.put("rejectionReason", rejectionReason);
-                
-                com.trustfund.model.AuditLog auditLog = com.trustfund.model.AuditLog.builder()
-                        .entityType("USER_KYC")
-                        .entityId(kyc.getId())
-                        .action("KYC_STATUS_UPDATE")
-                        .dataSnapshot(new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(snapshot))
-                        .actorId(0L) // System or Admin
-                        .actorName("System")
-                        .build();
-                
-                auditLogService.saveLog(auditLog);
-                log.info("✅ [AUDIT] Audit log for KYC {} created successfully.", kyc.getId());
-            } catch (Exception e) {
-                log.warn("❌ [AUDIT] Failed to create audit log for KYC status update: {}", e.getMessage());
-            }
         } catch (Exception e) {
             log.error("Error sending KYC notification for user {}: {}", kyc.getUser().getId(), e.getMessage());
         }
