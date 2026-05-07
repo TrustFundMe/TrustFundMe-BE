@@ -78,14 +78,9 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/campaign-follows/**").authenticated()
                                                 // Expenditures endpoints
                                                 .requestMatchers(HttpMethod.GET, "/api/expenditures/**").permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/expenditures/{id}").permitAll()
-                                                .requestMatchers(HttpMethod.GET, "/api/expenditures/campaign/**")
-                                                .permitAll()
-                                                .requestMatchers(HttpMethod.GET,
-                                                                "/api/expenditures/transactions/campaign/**")
-                                                .permitAll()
                                                 .requestMatchers("/api/expenditures/items/**").permitAll()
                                                 .requestMatchers("/api/expenditures/internal/**").permitAll()
+                                                .requestMatchers("/api/expenditures/**").hasAnyRole("STAFF", "ADMIN", "FUND_OWNER")
                                                 // Internal transactions - public read for campaign owners
                                                 .requestMatchers(HttpMethod.GET,
                                                                 "/api/internal-transactions/campaign/**")
