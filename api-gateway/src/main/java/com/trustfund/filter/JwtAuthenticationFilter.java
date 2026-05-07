@@ -95,7 +95,8 @@ public class JwtAuthenticationFilter implements GlobalFilter, Ordered {
                 path.startsWith("/api/fundraising-goals") ||
                 path.startsWith("/api/campaign-follows") ||
                 path.startsWith("/api/campaign-categories") ||
-                path.startsWith("/api/expenditures")) {
+                path.startsWith("/api/expenditures") ||
+                path.startsWith("/api/system-configs")) {
             return method == HttpMethod.GET;
         }
 

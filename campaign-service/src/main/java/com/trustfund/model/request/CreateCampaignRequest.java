@@ -46,7 +46,6 @@ public class CreateCampaignRequest {
     @Size(max = 2000)
     private String thankMessage;
 
-    @NotNull(message = "Số dư không được để trống")
     @DecimalMin(value = "0.0", message = "Số dư không được nhỏ hơn 0")
     @Builder.Default
     private BigDecimal balance = BigDecimal.ZERO;
