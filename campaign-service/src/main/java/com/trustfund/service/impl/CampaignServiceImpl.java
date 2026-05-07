@@ -35,6 +35,7 @@ public class CampaignServiceImpl implements CampaignService {
     private final com.trustfund.service.TrustScoreService trustScoreService;
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getAll() {
         return campaignRepository
                 .findByTypeNot(Campaign.TYPE_GENERAL_FUND,
@@ -46,6 +47,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<CampaignResponse> getAll(Pageable pageable) {
         return campaignRepository.findByTypeNot(Campaign.TYPE_GENERAL_FUND, pageable)
                 .map(this::toCampaignResponse);
@@ -60,6 +62,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
         return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND)
                 .stream()
@@ -68,6 +71,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
             Pageable pageable) {
         return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND, pageable)
@@ -168,6 +172,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByStatus(String status) {
         return campaignRepository
                 .findByStatusAndTypeNot(status, Campaign.TYPE_GENERAL_FUND)
@@ -177,6 +182,7 @@ public class CampaignServiceImpl implements CampaignService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CampaignResponse> getByCategoryId(Long categoryId) {
         return campaignRepository
                 .findByCategoryIdAndTypeNot(categoryId, Campaign.TYPE_GENERAL_FUND)
