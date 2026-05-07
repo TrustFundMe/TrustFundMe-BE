@@ -87,6 +87,8 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
             creatorRole = "ROLE_STAFF";
         }
 
+        AppointmentStatus defaultStatus = "ROLE_STAFF".equals(creatorRole) ? AppointmentStatus.CONFIRMED : AppointmentStatus.PENDING;
+
         AppointmentSchedule appointment = AppointmentSchedule.builder()
                 .donorId(request.getDonorId())
                 .staffId(request.getStaffId())
@@ -94,7 +96,7 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
                 .endTime(request.getEndTime())
                 .location(request.getLocation())
                 .purpose(request.getPurpose())
-                .status(request.getStatus() != null ? request.getStatus() : AppointmentStatus.PENDING)
+                .status(request.getStatus() != null ? request.getStatus() : defaultStatus)
                 .createdByRole(creatorRole)
                 .build();
 
@@ -106,8 +108,8 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
         
         Long targetUserId = isStaff ? saved.getDonorId() : saved.getStaffId();
         
-        // Send notification for PENDING status
-        sendAppointmentNotification(saved, AppointmentStatus.PENDING, targetUserId);
+        // Send notification based on the actual status
+        sendAppointmentNotification(saved, saved.getStatus(), targetUserId);
 
         return mapToResponse(saved);
     }
@@ -171,13 +173,13 @@ public class AppointmentScheduleServiceImpl implements AppointmentScheduleServic
         // Enforce confirmation rules
         if (status == AppointmentStatus.CONFIRMED) {
             String currentRole = httpServletRequest.getHeader("X-User-Role");
-            boolean isStaffAction = currentRole != null && currentRole.contains("ROLE_STAFF");
+            String roleUpper = (currentRole != null) ? currentRole.toUpperCase() : "";
+            
+            boolean isStaffOrAdmin = roleUpper.contains("STAFF") || roleUpper.contains("ADMIN");
             boolean createdByStaff = "ROLE_STAFF".equals(appointment.getCreatedByRole());
 
-            if (isStaffAction && createdByStaff) {
-                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Staff không thể xác nhận lịch hẹn do chính mình tạo.");
-            }
-            if (!isStaffAction && !createdByStaff) {
+            // Only regular users are restricted from confirming their own creations
+            if (!isStaffOrAdmin && !createdByStaff) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Người dùng không thể xác nhận lịch hẹn do chính mình tạo.");
             }
         }
