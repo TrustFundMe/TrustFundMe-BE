@@ -61,17 +61,63 @@ public class CampaignServiceImpl implements CampaignService {
 
     @Override
     public List<CampaignResponse> getByFundOwnerId(Long fundOwnerId) {
-        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND)
-                .stream()
-                .map(this::toCampaignResponse)
+        List<Campaign> campaigns = campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND);
+        if (campaigns.isEmpty()) {
+            return java.util.Collections.emptyList();
+        }
+
+        UserVerificationStatusResponse verificationStatus = null;
+        com.trustfund.model.response.UserInfoResponse userInfo = null;
+        try {
+            verificationStatus = identityServiceClient.getVerificationStatus(fundOwnerId);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                    .warn("Could not fetch verification status for campaign owner {}", fundOwnerId);
+        }
+
+        try {
+            userInfo = identityServiceClient.getUserInfo(fundOwnerId);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                    .warn("Could not fetch user info for campaign owner {}", fundOwnerId);
+        }
+
+        final UserVerificationStatusResponse finalVerificationStatus = verificationStatus;
+        final com.trustfund.model.response.UserInfoResponse finalUserInfo = userInfo;
+
+        return campaigns.stream()
+                .map(campaign -> toCampaignResponseWithPreloadedData(campaign, finalVerificationStatus, finalUserInfo))
                 .collect(java.util.stream.Collectors.toList());
     }
 
     @Override
     public Page<CampaignResponse> getByFundOwnerIdPaginated(Long fundOwnerId,
             Pageable pageable) {
-        return campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND, pageable)
-                .map(this::toCampaignResponse);
+        Page<Campaign> campaignsPage = campaignRepository.findByFundOwnerIdAndTypeNot(fundOwnerId, Campaign.TYPE_GENERAL_FUND, pageable);
+        if (campaignsPage.isEmpty()) {
+            return org.springframework.data.domain.Page.empty(pageable);
+        }
+
+        UserVerificationStatusResponse verificationStatus = null;
+        com.trustfund.model.response.UserInfoResponse userInfo = null;
+        try {
+            verificationStatus = identityServiceClient.getVerificationStatus(fundOwnerId);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                    .warn("Could not fetch verification status for campaign owner {}", fundOwnerId);
+        }
+
+        try {
+            userInfo = identityServiceClient.getUserInfo(fundOwnerId);
+        } catch (Exception e) {
+            org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
+                    .warn("Could not fetch user info for campaign owner {}", fundOwnerId);
+        }
+
+        final UserVerificationStatusResponse finalVerificationStatus = verificationStatus;
+        final com.trustfund.model.response.UserInfoResponse finalUserInfo = userInfo;
+
+        return campaignsPage.map(campaign -> toCampaignResponseWithPreloadedData(campaign, finalVerificationStatus, finalUserInfo));
     }
 
     @Override
@@ -283,20 +329,28 @@ public class CampaignServiceImpl implements CampaignService {
             }
         }
 
-        String ownerName = null;
-        String ownerAvatarUrl = null;
+        com.trustfund.model.response.UserInfoResponse userInfo = null;
         if (campaign.getFundOwnerId() != null) {
             try {
-                com.trustfund.model.response.UserInfoResponse userInfo = identityServiceClient
-                        .getUserInfo(campaign.getFundOwnerId());
-                if (userInfo != null) {
-                    ownerName = userInfo.getFullName();
-                    ownerAvatarUrl = userInfo.getAvatarUrl();
-                }
+                userInfo = identityServiceClient.getUserInfo(campaign.getFundOwnerId());
             } catch (Exception e) {
                 org.slf4j.LoggerFactory.getLogger(CampaignServiceImpl.class)
                         .warn("Could not fetch user info for campaign owner {}", campaign.getFundOwnerId());
             }
+        }
+
+        return toCampaignResponseWithPreloadedData(campaign, verificationStatus, userInfo);
+    }
+
+    private CampaignResponse toCampaignResponseWithPreloadedData(Campaign campaign, 
+            UserVerificationStatusResponse verificationStatus,
+            com.trustfund.model.response.UserInfoResponse userInfo) {
+
+        String ownerName = null;
+        String ownerAvatarUrl = null;
+        if (userInfo != null) {
+            ownerName = userInfo.getFullName();
+            ownerAvatarUrl = userInfo.getAvatarUrl();
         }
 
         // Resolve cover image URL

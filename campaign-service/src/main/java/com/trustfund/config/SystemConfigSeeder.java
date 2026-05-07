@@ -31,6 +31,11 @@ public class SystemConfigSeeder implements CommandLineRunner {
                                 loadPrompt("ai_market_analysis_schema.json"),
                                 "Prompt cho Perplexity để check giá thị trường.");
 
+                saveConfig("ai_market_analysis_actual_prompt",
+                                loadPrompt("ai_market_analysis_actual_prompt.txt"),
+                                loadPrompt("ai_market_analysis_schema.json"),
+                                "Prompt cho Perplexity để check giá thị trường (hàng thực tế).");
+
                 // 2. Bill Analysis (Vision)
                 saveConfig("ai_bill_analysis_prompt", loadPrompt("ai_bill_analysis_prompt.txt"), null,
                                 "Prompt đối soát minh chứng hóa đơn.");
