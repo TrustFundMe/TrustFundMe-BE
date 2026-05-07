@@ -1,5 +1,7 @@
 package com.trustfund.controller;
 
+import com.trustfund.model.Media;
+import com.trustfund.repository.MediaRepository;
 import com.trustfund.model.enums.MediaType;
 import com.trustfund.model.request.MediaUploadRequest;
 import com.trustfund.model.response.MediaFileResponse;
@@ -23,6 +25,7 @@ import java.util.List;
 public class MediaController {
 
     private final MediaService mediaService;
+    private final MediaRepository mediaRepository;
     private final org.springframework.jdbc.core.JdbcTemplate jdbcTemplate;
 
     @GetMapping("/debug/recent")
